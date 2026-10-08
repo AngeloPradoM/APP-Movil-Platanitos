@@ -114,6 +114,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
+      const SizedBox(height: 12),
+      OutlinedButton(
+        onPressed: () => enterShop(context),
+        child: const Text('Continuar como invitada/o'),
+      ),
       const SizedBox(height: 20),
       TextButton(
         onPressed: () => Navigator.push(
