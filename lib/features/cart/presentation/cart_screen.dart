@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'checkout_screen.dart';
-import 'catalog_screens.dart';
+import '../../../core/app_theme.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../checkout/presentation/checkout_screen.dart';
+import '../../catalog/presentation/catalog_screens.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});

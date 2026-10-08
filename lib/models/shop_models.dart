@@ -14,6 +14,7 @@ class Product {
     this.availableSizes = const [0, 1, 2, 3, 4, 5],
   });
   final int id;
+
   /// UUID del backend cuando el producto proviene de PostgreSQL.
   final String? remoteId;
   final Map<int, String> remoteVariantIds;

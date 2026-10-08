@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/app_theme.dart';
-import '../core/validators.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'auth_screens.dart';
-import 'order_screens.dart';
-import 'support_screens.dart';
+import '../../../core/app_theme.dart';
+import '../../../core/validators.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../auth/presentation/auth_screens.dart';
+import '../../orders/presentation/order_screens.dart';
+import '../../support/presentation/support_screens.dart';
 
 Future<void> confirmLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(

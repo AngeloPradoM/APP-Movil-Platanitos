@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
+import '../shared/models/shop_models.dart';
+import '../shared/state/shop_state.dart';
 
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key});

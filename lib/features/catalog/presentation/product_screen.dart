@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../data/mock_data.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'cart_screen.dart';
+import '../../../core/app_theme.dart';
+import '../../../data/mock_data.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../cart/presentation/cart_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key, required this.product});

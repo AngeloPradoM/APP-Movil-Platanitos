@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../core/navigation.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'support_screens.dart';
-import 'catalog_screens.dart';
+import '../../../core/app_theme.dart';
+import '../../../core/navigation.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../support/presentation/support_screens.dart';
+import '../../catalog/presentation/catalog_screens.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});

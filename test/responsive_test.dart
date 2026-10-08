@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platanitos_app/core/app_theme.dart';
 import 'package:platanitos_app/data/mock_data.dart';
-import 'package:platanitos_app/models/shop_models.dart';
-import 'package:platanitos_app/state/shop_state.dart';
-import 'package:platanitos_app/screens/auth_screens.dart';
-import 'package:platanitos_app/screens/catalog_screens.dart';
-import 'package:platanitos_app/screens/cart_screen.dart';
-import 'package:platanitos_app/screens/checkout_screen.dart';
-import 'package:platanitos_app/screens/order_screens.dart';
-import 'package:platanitos_app/screens/account_screens.dart';
-import 'package:platanitos_app/screens/support_screens.dart';
-import 'package:platanitos_app/screens/product_screen.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
+import 'package:platanitos_app/shared/state/shop_state.dart';
+import 'package:platanitos_app/features/auth/presentation/auth_screens.dart';
+import 'package:platanitos_app/features/catalog/presentation/catalog_screens.dart';
+import 'package:platanitos_app/features/cart/presentation/cart_screen.dart';
+import 'package:platanitos_app/features/checkout/presentation/checkout_screen.dart';
+import 'package:platanitos_app/features/orders/presentation/order_screens.dart';
+import 'package:platanitos_app/features/account/presentation/account_screens.dart';
+import 'package:platanitos_app/features/support/presentation/support_screens.dart';
+import 'package:platanitos_app/features/catalog/presentation/product_screen.dart';
 import 'package:platanitos_app/widgets/shop_widgets.dart';
 
 void main() {

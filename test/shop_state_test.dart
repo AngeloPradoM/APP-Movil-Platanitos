@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platanitos_app/data/mock_data.dart';
-import 'package:platanitos_app/models/shop_models.dart';
-import 'package:platanitos_app/state/shop_state.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
+import 'package:platanitos_app/shared/state/shop_state.dart';
 import 'package:platanitos_app/core/validators.dart';
 
 void main() {

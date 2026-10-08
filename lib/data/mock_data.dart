@@ -1,4 +1,4 @@
-import '../models/shop_models.dart';
+import '../shared/models/shop_models.dart';
 
 const products = [
   Product(

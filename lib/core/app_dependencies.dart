@@ -1,8 +1,8 @@
-import '../data/api_client.dart';
+import 'network/api_client.dart';
 import 'api_config.dart';
-import '../data/auth_repository.dart';
-import '../data/cart_repository.dart';
-import '../data/catalog_repository.dart';
+import '../features/auth/data/auth_repository.dart';
+import '../features/cart/data/cart_repository.dart';
+import '../features/catalog/data/catalog_repository.dart';
 
 class AppDependencies {
   AppDependencies({required this.auth, required this.catalog, required this.cart});

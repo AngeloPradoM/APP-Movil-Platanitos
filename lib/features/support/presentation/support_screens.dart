@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../core/navigation.dart';
-import '../widgets/shop_widgets.dart';
+import '../../../core/app_theme.dart';
+import '../../../core/navigation.dart';
+import '../../../widgets/shop_widgets.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});

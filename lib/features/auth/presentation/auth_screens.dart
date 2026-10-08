@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/app_theme.dart';
-import '../core/validators.dart';
-import '../data/api_client.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'shop_shell.dart';
+import '../../../core/app_theme.dart';
+import '../../../core/validators.dart';
+import '../../../core/network/api_client.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../../app/shop_shell.dart';
 
 void enterShop(BuildContext context) => Navigator.of(context)
     .pushAndRemoveUntil(
@@ -38,13 +38,21 @@ class _LoginScreenState extends State<LoginScreen> {
       } on ApiException {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No pudimos iniciar sesión. Verifica tus datos e inténtalo nuevamente.')),
+            const SnackBar(
+              content: Text(
+                'No pudimos iniciar sesión. Verifica tus datos e inténtalo nuevamente.',
+              ),
+            ),
           );
         }
       } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('El sistema está fallando en este momento. Intenta más tarde.')),
+            const SnackBar(
+              content: Text(
+                'El sistema está fallando en este momento. Intenta más tarde.',
+              ),
+            ),
           );
         }
       } finally {
@@ -118,7 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
             FilledButton(
               onPressed: submitting ? null : login,
               child: submitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Iniciar sesión'),
             ),
           ],
@@ -324,13 +336,36 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       } else {
         await Future<void>.delayed(const Duration(milliseconds: 650));
-        state.login(account: AppUser(name: name.trim(), document: '$documentType $document', email: email.trim(), phone: phone));
+        state.login(
+          account: AppUser(
+            name: name.trim(),
+            document: '$documentType $document',
+            email: email.trim(),
+            phone: phone,
+          ),
+        );
       }
       if (mounted) enterShop(context);
     } on ApiException {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No pudimos crear la cuenta. Verifica tus datos e inténtalo nuevamente.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No pudimos crear la cuenta. Verifica tus datos e inténtalo nuevamente.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El sistema está fallando en este momento. Intenta más tarde.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'El sistema está fallando en este momento. Intenta más tarde.',
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => submitting = false);
     }

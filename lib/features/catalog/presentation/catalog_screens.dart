@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../data/mock_data.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
+import '../../../core/app_theme.dart';
+import '../../../data/mock_data.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
 import 'product_screen.dart';
 
 void openProduct(BuildContext context, Product product) => Navigator.push(
@@ -221,6 +221,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       if (mounted) ShopScope.of(context).loadRemoteCatalog();
     });
   }
+
   Future<void> apply() async {
     setState(() => loading = true);
     ShopScope.of(context).updateCatalog();
@@ -252,28 +253,40 @@ class _CatalogScreenState extends State<CatalogScreen> {
               DropdownButtonFormField<String>(
                 initialValue: brand ?? '',
                 decoration: const InputDecoration(labelText: 'Marca'),
-                items: ['', ...ShopScope.of(context).catalogProducts.map((p) => p.brand).toSet()]
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(value.isEmpty ? 'Todas' : value),
-                      ),
-                    )
-                    .toList(),
+                items:
+                    [
+                          '',
+                          ...ShopScope.of(context).catalogProducts
+                              .map((p) => p.brand)
+                              .toSet(),
+                        ]
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value.isEmpty ? 'Todas' : value),
+                          ),
+                        )
+                        .toList(),
                 onChanged: (value) => brand = value == '' ? null : value,
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: color ?? '',
                 decoration: const InputDecoration(labelText: 'Color'),
-                items: ['', ...ShopScope.of(context).catalogProducts.map((p) => p.color).toSet()]
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(value.isEmpty ? 'Todos' : value),
-                      ),
-                    )
-                    .toList(),
+                items:
+                    [
+                          '',
+                          ...ShopScope.of(context).catalogProducts
+                              .map((p) => p.color)
+                              .toSet(),
+                        ]
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value.isEmpty ? 'Todos' : value),
+                          ),
+                        )
+                        .toList(),
                 onChanged: (value) => color = value == '' ? null : value,
               ),
               const SizedBox(height: 14),
@@ -416,8 +429,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
               children: [
                 const Icon(Icons.cloud_off, color: Colors.orange),
                 const SizedBox(width: 8),
-                const Expanded(child: Text('El sistema está fallando en este momento. Mostramos datos de respaldo.')),
-                TextButton(onPressed: state.loadRemoteCatalog, child: const Text('Reintentar')),
+                const Expanded(
+                  child: Text(
+                    'El sistema está fallando en este momento. Mostramos datos de respaldo.',
+                  ),
+                ),
+                TextButton(
+                  onPressed: state.loadRemoteCatalog,
+                  child: const Text('Reintentar'),
+                ),
               ],
             ),
           ),
@@ -546,7 +566,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final state = ShopScope.of(context);
     final filter = CatalogFilter()..sort = sort;
     final result = filter.apply(
-      state.catalogProducts.where((product) => state.favorites.contains(product.id)),
+      state.catalogProducts.where(
+        (product) => state.favorites.contains(product.id),
+      ),
       favorites: state.favorites,
     );
     if (result.isEmpty) {

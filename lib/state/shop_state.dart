@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
-import '../data/catalog_repository.dart';
-import '../data/auth_repository.dart';
-import '../data/session_storage.dart';
-import '../data/cart_repository.dart';
-import '../models/shop_models.dart';
+import '../features/catalog/data/catalog_repository.dart';
+import '../features/auth/data/auth_repository.dart';
+import '../features/auth/data/session_storage.dart';
+import '../features/cart/data/cart_repository.dart';
+import '../shared/models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
 
@@ -55,8 +55,13 @@ class CatalogFilter {
 }
 
 class ShopState extends ChangeNotifier {
-  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository, this.cartRepository, SessionStorage? sessionStorage})
-    : _sessionStorage = sessionStorage ?? SessionStorage() {
+  ShopState({
+    bool seedHistory = true,
+    this.catalogRepository,
+    this.authRepository,
+    this.cartRepository,
+    SessionStorage? sessionStorage,
+  }) : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
       _orders.add(
         ShopOrder(
@@ -96,7 +101,8 @@ class ShopState extends ChangeNotifier {
   List<int> get favorites => List.unmodifiable(_favorites);
   List<CartItem> get cart => List.unmodifiable(_cart);
   List<ShopOrder> get orders => List.unmodifiable(_orders);
-  List<Product> get catalogProducts => _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
+  List<Product> get catalogProducts =>
+      _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
   bool get catalogLoading => _catalogLoading;
   String? get catalogError => _catalogError;
   String? get accessToken => _authSession?.accessToken;
@@ -110,12 +116,20 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loginRemote({required String email, required String password}) async {
+  Future<void> loginRemote({
+    required String email,
+    required String password,
+  }) async {
     final repository = authRepository;
-    if (repository == null) throw StateError('Autenticación remota no configurada');
+    if (repository == null) {
+      throw StateError('Autenticación remota no configurada');
+    }
     final session = await repository.login(email: email, password: password);
     _authSession = session;
-    await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+    await _sessionStorage.save(
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+    );
     await syncCartRemote();
     final remoteUser = session.user;
     user = AppUser(
@@ -128,9 +142,18 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> registerRemote({required String email, required String name, required String password, String? phone, String? documentType, String? documentNumber}) async {
+  Future<void> registerRemote({
+    required String email,
+    required String name,
+    required String password,
+    String? phone,
+    String? documentType,
+    String? documentNumber,
+  }) async {
     final repository = authRepository;
-    if (repository == null) throw StateError('Autenticación remota no configurada');
+    if (repository == null) {
+      throw StateError('Autenticación remota no configurada');
+    }
     final session = await repository.register(
       email: email,
       name: name,
@@ -140,11 +163,16 @@ class ShopState extends ChangeNotifier {
       documentNumber: documentNumber,
     );
     _authSession = session;
-    await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+    await _sessionStorage.save(
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+    );
     await syncCartRemote();
     user = AppUser(
       name: session.user['name'] as String? ?? name,
-      document: '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'.trim(),
+      document:
+          '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'
+              .trim(),
       email: session.user['email'] as String? ?? email,
       phone: session.user['phone'] as String? ?? phone ?? user.phone,
     );
@@ -167,7 +195,10 @@ class ShopState extends ChangeNotifier {
         phone: remoteUser['phone'] as String? ?? user.phone,
       );
       signedIn = true;
-      await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+      await _sessionStorage.save(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+      );
       await syncCartRemote();
       notifyListeners();
     } catch (_) {
@@ -181,7 +212,12 @@ class ShopState extends ChangeNotifier {
     if (repository == null || token == null) return;
     final items = _cart
         .where((item) => item.remoteVariantId != null)
-        .map((item) => {'variantId': item.remoteVariantId, 'quantity': item.quantity})
+        .map(
+          (item) => {
+            'variantId': item.remoteVariantId,
+            'quantity': item.quantity,
+          },
+        )
         .toList(growable: false);
     if (items.isEmpty) return;
     await repository.sync(accessToken: token, items: items);
@@ -219,7 +255,9 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
     try {
       final page = await catalogRepository!.listProducts();
-      _remoteProducts = page.products.map((product) => product.toShopProduct()).toList(growable: false);
+      _remoteProducts = page.products
+          .map((product) => product.toShopProduct())
+          .toList(growable: false);
     } catch (error) {
       _catalogError = error.toString();
       _remoteProducts = const [];
@@ -228,6 +266,7 @@ class ShopState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   void addToCart(Product product, int sizeIndex, SizeSystem system) {
     if (sizeIndex < 0 ||
         sizeIndex >= sizeLabels[system]!.length ||

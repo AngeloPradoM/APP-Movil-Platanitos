@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import '../state/shop_state.dart';
+import '../shared/state/shop_state.dart';
 import '../widgets/shop_widgets.dart';
-import 'account_screens.dart';
-import 'cart_screen.dart';
-import 'catalog_screens.dart';
-import 'order_screens.dart';
+import '../features/account/presentation/account_screens.dart';
+import '../features/cart/presentation/cart_screen.dart';
+import '../features/catalog/presentation/catalog_screens.dart';
+import '../features/orders/presentation/order_screens.dart';
 
 class ShopShell extends StatefulWidget {
   const ShopShell({super.key});

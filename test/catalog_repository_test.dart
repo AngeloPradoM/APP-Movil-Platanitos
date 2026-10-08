@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:platanitos_app/data/api_client.dart';
-import 'package:platanitos_app/data/catalog_repository.dart';
+import 'package:platanitos_app/core/network/api_client.dart';
+import 'package:platanitos_app/features/catalog/data/catalog_repository.dart';
 
 class _FakeClient extends http.BaseClient {
   @override

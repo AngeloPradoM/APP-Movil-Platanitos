@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'core/app_dependencies.dart';
-import 'screens/auth_screens.dart';
-import 'screens/shop_shell.dart';
-import 'state/shop_state.dart';
+import 'features/auth/presentation/auth_screens.dart';
+import 'app/shop_shell.dart';
+import 'shared/state/shop_state.dart';
 
 void main() => runApp(const PlatanitosApp());
 
@@ -23,11 +23,18 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
   void initState() {
     super.initState();
     final dependencies = AppDependencies.local();
-    state = widget.state ?? ShopState(catalogRepository: dependencies.catalog, authRepository: dependencies.auth, cartRepository: dependencies.cart);
+    state =
+        widget.state ??
+        ShopState(
+          catalogRepository: dependencies.catalog,
+          authRepository: dependencies.auth,
+          cartRepository: dependencies.cart,
+        );
     state.restoreSession().whenComplete(() {
       if (mounted) setState(() {});
     });
   }
+
   @override
   void dispose() {
     if (widget.state == null) state.dispose();

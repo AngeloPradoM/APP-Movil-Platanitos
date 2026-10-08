@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../core/navigation.dart';
-import '../models/shop_models.dart';
-import '../state/shop_state.dart';
-import '../widgets/shop_widgets.dart';
-import 'order_screens.dart';
+import '../../../core/app_theme.dart';
+import '../../../core/navigation.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../../shared/state/shop_state.dart';
+import '../../../widgets/shop_widgets.dart';
+import '../../orders/presentation/order_screens.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
