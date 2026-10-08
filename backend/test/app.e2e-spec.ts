@@ -32,7 +32,10 @@ describe('AppController (e2e)', () => {
   });
 
   it('protects the persistent cart for authenticated users', () => {
-    return request(app.getHttpServer()).get('/cart').expect(401);
+    return Promise.all([
+      request(app.getHttpServer()).get('/cart').expect(401),
+      request(app.getHttpServer()).post('/cart/sync').send({ items: [] }).expect(401),
+    ]);
   });
 
   it('exposes the public catalog without authentication', async () => {

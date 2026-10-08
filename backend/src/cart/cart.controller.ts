@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
+import { SyncCartDto } from './dto/sync-cart.dto.js';
 import { CartService } from './cart.service.js';
 
 @Controller('cart')
@@ -18,6 +19,11 @@ export class CartController {
   @Post('items')
   addItem(@CurrentUser() user: { id: string }, @Body() input: AddCartItemDto) {
     return this.cartService.addItem(user.id, input);
+  }
+
+  @Post('sync')
+  syncCart(@CurrentUser() user: { id: string }, @Body() input: SyncCartDto) {
+    return this.cartService.syncCart(user.id, input);
   }
 
   @Patch('items/:itemId')

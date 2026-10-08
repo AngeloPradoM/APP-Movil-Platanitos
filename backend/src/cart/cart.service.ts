@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
+import { SyncCartDto } from './dto/sync-cart.dto.js';
 import { mapCart } from './cart.mapper.js';
 
 const cartInclude = {
@@ -46,6 +47,34 @@ export class CartService {
       where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
       update: { quantity },
       create: { cartId: cart.id, variantId: variant.id, quantity },
+    });
+    return this.getCart(userId);
+  }
+
+  async syncCart(userId: string, input: SyncCartDto) {
+    const quantities = new Map<string, number>();
+    for (const item of input.items) {
+      quantities.set(item.variantId, (quantities.get(item.variantId) ?? 0) + item.quantity);
+    }
+    const variantIds = [...quantities.keys()];
+    const variants = await this.prisma.productVariant.findMany({
+      where: { id: { in: variantIds }, isActive: true, product: { isActive: true } },
+    });
+    if (variants.length !== variantIds.length) throw new NotFoundException('Una o más variantes no están disponibles');
+
+    const cart = await this.prisma.cart.upsert({ where: { userId }, update: { status: 'ACTIVE' }, create: { userId } });
+    await this.prisma.$transaction(async (transaction) => {
+      for (const variant of variants) {
+        const quantity = quantities.get(variant.id) ?? 0;
+        const existing = await transaction.cartItem.findUnique({ where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } } });
+        const totalQuantity = (existing?.quantity ?? 0) + quantity;
+        if (totalQuantity > variant.stock) throw new BadRequestException(`Stock insuficiente para ${variant.sku}`);
+        await transaction.cartItem.upsert({
+          where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
+          update: { quantity: totalQuantity },
+          create: { cartId: cart.id, variantId: variant.id, quantity: totalQuantity },
+        });
+      }
     });
     return this.getCart(userId);
   }
