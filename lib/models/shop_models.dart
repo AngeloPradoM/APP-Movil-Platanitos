@@ -8,10 +8,13 @@ class Product {
     required this.oldPrice,
     required this.image,
     required this.color,
+    this.remoteId,
     this.lowStock = false,
     this.availableSizes = const [0, 1, 2, 3, 4, 5],
   });
   final int id;
+  /// UUID del backend cuando el producto proviene de PostgreSQL.
+  final String? remoteId;
   final String brand, name, category, image, color;
   final double price, oldPrice;
   final bool lowStock;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
+import '../data/catalog_repository.dart';
 import '../models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
@@ -51,7 +52,7 @@ class CatalogFilter {
 }
 
 class ShopState extends ChangeNotifier {
-  ShopState({bool seedHistory = true}) {
+  ShopState({bool seedHistory = true, this.catalogRepository}) {
     if (seedHistory) {
       _orders.add(
         ShopOrder(
@@ -78,11 +79,18 @@ class ShopState extends ChangeNotifier {
   final _favorites = <int>[1, 3, 4];
   final _cart = <CartItem>[];
   final _orders = <ShopOrder>[];
+  final CatalogRepository? catalogRepository;
+  List<Product> _remoteProducts = const [];
+  bool _catalogLoading = false;
+  String? _catalogError;
   final catalog = CatalogFilter();
   int _orderSequence = 98240;
   List<int> get favorites => List.unmodifiable(_favorites);
   List<CartItem> get cart => List.unmodifiable(_cart);
   List<ShopOrder> get orders => List.unmodifiable(_orders);
+  List<Product> get catalogProducts => _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
+  bool get catalogLoading => _catalogLoading;
+  String? get catalogError => _catalogError;
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _cart.fold(0, (sum, item) => sum + item.subtotal);
   double get shipping => _cart.isEmpty ? 0 : 6.9;
@@ -111,6 +119,23 @@ class ShopState extends ChangeNotifier {
   }
 
   void updateCatalog() => notifyListeners();
+
+  Future<void> loadRemoteCatalog() async {
+    if (catalogRepository == null || _catalogLoading) return;
+    _catalogLoading = true;
+    _catalogError = null;
+    notifyListeners();
+    try {
+      final page = await catalogRepository!.listProducts();
+      _remoteProducts = page.products.map((product) => product.toShopProduct()).toList(growable: false);
+    } catch (error) {
+      _catalogError = error.toString();
+      _remoteProducts = const [];
+    } finally {
+      _catalogLoading = false;
+      notifyListeners();
+    }
+  }
   void addToCart(Product product, int sizeIndex, SizeSystem system) {
     if (sizeIndex < 0 ||
         sizeIndex >= sizeLabels[system]!.length ||

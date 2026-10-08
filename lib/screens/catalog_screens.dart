@@ -147,7 +147,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         ProductGrid(
-          products: products,
+          products: state.catalogProducts,
           onOpen: (product) => openProduct(context, product),
         ),
         const SizedBox(height: 28),
@@ -213,6 +213,14 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ShopScope.of(context).loadRemoteCatalog();
+    });
+  }
   Future<void> apply() async {
     setState(() => loading = true);
     ShopScope.of(context).updateCatalog();
@@ -244,7 +252,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               DropdownButtonFormField<String>(
                 initialValue: brand ?? '',
                 decoration: const InputDecoration(labelText: 'Marca'),
-                items: ['', ...products.map((p) => p.brand).toSet()]
+                items: ['', ...ShopScope.of(context).catalogProducts.map((p) => p.brand).toSet()]
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
@@ -258,7 +266,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               DropdownButtonFormField<String>(
                 initialValue: color ?? '',
                 decoration: const InputDecoration(labelText: 'Color'),
-                items: ['', ...products.map((p) => p.color).toSet()]
+                items: ['', ...ShopScope.of(context).catalogProducts.map((p) => p.color).toSet()]
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
@@ -321,7 +329,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context), filter = state.catalog;
-    final result = filter.apply(products);
+    final result = filter.apply(state.catalogProducts);
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
@@ -396,8 +404,33 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ],
         ),
         const SizedBox(height: 20),
-        if (loading)
+        if (state.catalogError != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('El sistema está fallando en este momento. Mostramos datos de respaldo.')),
+                TextButton(onPressed: state.loadRemoteCatalog, child: const Text('Reintentar')),
+              ],
+            ),
+          ),
+        if (state.catalogLoading || loading)
           const CatalogSkeleton()
+        else if (state.catalogError != null && state.catalogProducts.isEmpty)
+          EmptyState(
+            icon: Icons.cloud_off,
+            title: 'El sistema está presentando problemas',
+            message: 'No pudimos cargar el catálogo en este momento. Intenta nuevamente.',
+            action: 'Reintentar',
+            onAction: state.loadRemoteCatalog,
+          )
         else if (result.isEmpty)
           EmptyState(
             icon: Icons.search,
@@ -513,7 +546,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final state = ShopScope.of(context);
     final filter = CatalogFilter()..sort = sort;
     final result = filter.apply(
-      products.where((product) => state.favorites.contains(product.id)),
+      state.catalogProducts.where((product) => state.favorites.contains(product.id)),
       favorites: state.favorites,
     );
     if (result.isEmpty) {
