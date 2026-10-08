@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../data/catalog_repository.dart';
+import '../data/auth_repository.dart';
 import '../models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
@@ -52,7 +53,7 @@ class CatalogFilter {
 }
 
 class ShopState extends ChangeNotifier {
-  ShopState({bool seedHistory = true, this.catalogRepository}) {
+  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository}) {
     if (seedHistory) {
       _orders.add(
         ShopOrder(
@@ -80,6 +81,8 @@ class ShopState extends ChangeNotifier {
   final _cart = <CartItem>[];
   final _orders = <ShopOrder>[];
   final CatalogRepository? catalogRepository;
+  final AuthRepository? authRepository;
+  AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
   String? _catalogError;
@@ -91,6 +94,7 @@ class ShopState extends ChangeNotifier {
   List<Product> get catalogProducts => _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
   bool get catalogLoading => _catalogLoading;
   String? get catalogError => _catalogError;
+  String? get accessToken => _authSession?.accessToken;
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _cart.fold(0, (sum, item) => sum + item.subtotal);
   double get shipping => _cart.isEmpty ? 0 : 6.9;
@@ -101,7 +105,28 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loginRemote({required String email, required String password}) async {
+    final repository = authRepository;
+    if (repository == null) throw StateError('Autenticación remota no configurada');
+    final session = await repository.login(email: email, password: password);
+    _authSession = session;
+    final remoteUser = session.user;
+    user = AppUser(
+      name: remoteUser['name'] as String? ?? user.name,
+      document: remoteUser['documentNumber'] as String? ?? user.document,
+      email: remoteUser['email'] as String? ?? email,
+      phone: remoteUser['phone'] as String? ?? user.phone,
+    );
+    signedIn = true;
+    notifyListeners();
+  }
+
   void logout() {
+    final refreshToken = _authSession?.refreshToken;
+    if (refreshToken != null && authRepository != null) {
+      authRepository!.logout(refreshToken).catchError((_) {});
+    }
+    _authSession = null;
     signedIn = false;
     _cart.clear();
     catalog.clear();

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/app_theme.dart';
 import '../core/validators.dart';
+import '../data/api_client.dart';
 import '../models/shop_models.dart';
 import '../state/shop_state.dart';
 import '../widgets/shop_widgets.dart';
@@ -24,9 +25,33 @@ class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
   String email = '', password = '';
   bool hidden = true;
-  void login({bool social = false}) {
+  bool submitting = false;
+
+  Future<void> login({bool social = false}) async {
     if (!social && !form.currentState!.validate()) return;
     final state = ShopScope.of(context);
+    if (!social && state.authRepository != null) {
+      setState(() => submitting = true);
+      try {
+        await state.loginRemote(email: email.trim(), password: password);
+        if (mounted) enterShop(context);
+      } on ApiException {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No pudimos iniciar sesión. Verifica tus datos e inténtalo nuevamente.')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('El sistema está fallando en este momento. Intenta más tarde.')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => submitting = false);
+      }
+      return;
+    }
     state.login(
       account: social
           ? null
@@ -90,7 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('¿Olvidaste tu contraseña?'),
               ),
             ),
-            FilledButton(onPressed: login, child: const Text('Iniciar sesión')),
+            FilledButton(
+              onPressed: submitting ? null : login,
+              child: submitting
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Iniciar sesión'),
+            ),
           ],
         ),
       ),

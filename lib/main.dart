@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'data/catalog_repository.dart';
+import 'data/auth_repository.dart';
 import 'screens/auth_screens.dart';
 import 'screens/shop_shell.dart';
 import 'state/shop_state.dart';
@@ -16,7 +17,10 @@ class PlatanitosApp extends StatefulWidget {
 }
 
 class _PlatanitosAppState extends State<PlatanitosApp> {
-  late final ShopState state = widget.state ?? ShopState(catalogRepository: CatalogRepository());
+  late final ShopState state = widget.state ?? ShopState(
+    catalogRepository: CatalogRepository(),
+    authRepository: AuthRepository(),
+  );
   @override
   void dispose() {
     if (widget.state == null) state.dispose();
