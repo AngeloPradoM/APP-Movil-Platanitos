@@ -31,6 +31,10 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer()).get('/me').expect(401);
   });
 
+  it('protects the persistent cart for authenticated users', () => {
+    return request(app.getHttpServer()).get('/cart').expect(401);
+  });
+
   it('exposes the public catalog without authentication', async () => {
     const catalog = await request(app.getHttpServer())
       .get('/catalog/products?page=1&limit=10')

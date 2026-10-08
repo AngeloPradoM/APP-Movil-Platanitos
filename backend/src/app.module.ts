@@ -8,6 +8,7 @@ import { HealthController } from './health.controller.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { CartModule } from './cart/cart.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CatalogModule } from './catalog/catalog.module.js';
     DatabaseModule,
     AuthModule,
     CatalogModule,
+    CartModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
