@@ -30,6 +30,29 @@
 $ npm install
 ```
 
+## Configuración local de PostgreSQL
+
+Cada integrante debe usar su propia instalación local de PostgreSQL. No se
+suben contraseñas, archivos `.env` ni credenciales al repositorio.
+
+1. Instala PostgreSQL y asegúrate de que el servidor esté iniciado.
+2. Crea una base de datos llamada `platanitos` desde pgAdmin o `psql`.
+3. Copia `.env.example` como `.env` dentro de esta carpeta.
+4. Completa `DATABASE_URL` con el usuario y la contraseña de tu instalación.
+
+Ejemplo de PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edita `.env` localmente. Nunca reemplaces los valores de `.env.example` con
+credenciales reales ni subas `.env` a GitHub.
+
+Cuando PostgreSQL esté configurado, las migraciones se ejecutarán desde esta
+carpeta con Prisma. No se debe usar el usuario administrador de PostgreSQL
+para la aplicación en entornos compartidos o de producción.
+
 ## Compile and run the project
 
 ```bash
