@@ -1,5 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsEnum, IsInt, IsNumberString, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+
+enum ProductSort {
+  NEWEST = 'newest',
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc',
+}
 
 export class ProductQueryDto {
   @IsOptional()
@@ -14,6 +20,26 @@ export class ProductQueryDto {
   @IsOptional()
   @IsString()
   brand?: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  sizeSystem?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  minPrice?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  maxPrice?: string;
+
+  @IsOptional()
+  @IsEnum(ProductSort)
+  sort: ProductSort = ProductSort.NEWEST;
 
   @IsOptional()
   @Transform(({ value }) => (value === undefined ? value : Number(value)))

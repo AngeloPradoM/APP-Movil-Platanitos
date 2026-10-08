@@ -61,7 +61,10 @@ Después de configurar `backend/.env`, ejecuta:
 npm install
 npx prisma migrate deploy
 npx prisma generate
+npm run db:seed
 ```
+
+`npm run db:seed` carga productos de demostración de forma idempotente. Puede ejecutarse nuevamente sin duplicar categorías, marcas, productos ni variantes.
 
 `migrate deploy` aplica las migraciones versionadas del repositorio y no borra
 las tablas existentes. Para crear una nueva migración durante el desarrollo,

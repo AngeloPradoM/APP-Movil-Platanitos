@@ -41,6 +41,12 @@ describe('AppController (e2e)', () => {
     await request(app.getHttpServer())
       .get('/catalog/products/slug-inexistente-e2e')
       .expect(404);
+
+    const categories = await request(app.getHttpServer()).get('/catalog/categories').expect(200);
+    expect(categories.body).toEqual(expect.any(Array));
+
+    const brands = await request(app.getHttpServer()).get('/catalog/brands').expect(200);
+    expect(brands.body).toEqual(expect.any(Array));
   });
 
   it('registers, authenticates, refreshes and logs out a user', async () => {

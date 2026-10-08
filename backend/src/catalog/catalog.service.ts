@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { ProductQueryDto } from './dto/product-query.dto.js';
-import { mapProduct } from './catalog.mapper.js';
+import { mapProduct, ProductWithRelations } from './catalog.mapper.js';
 
 @Injectable()
 export class CatalogService {
@@ -25,15 +25,37 @@ export class CatalogService {
         ? { category: { slug: query.category.trim(), isActive: true } }
         : {}),
       ...(query.brand ? { brand: { slug: query.brand.trim(), isActive: true } } : {}),
+      ...(query.color || query.sizeSystem || query.minPrice || query.maxPrice
+        ? {
+            variants: {
+              some: {
+                isActive: true,
+                ...(query.color ? { color: { equals: query.color.trim(), mode: 'insensitive' } } : {}),
+                ...(query.sizeSystem ? { sizeSystem: query.sizeSystem as never } : {}),
+                ...(query.minPrice || query.maxPrice
+                  ? {
+                      price: {
+                        ...(query.minPrice ? { gte: new Prisma.Decimal(query.minPrice) } : {}),
+                        ...(query.maxPrice ? { lte: new Prisma.Decimal(query.maxPrice) } : {}),
+                      },
+                    }
+                  : {}),
+              },
+            },
+          }
+        : {}),
     };
+
+    const orderBy = { createdAt: 'desc' as const };
 
     const [total, products] = await this.prisma.$transaction([
       this.prisma.product.count({ where }),
       this.prisma.product.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        orderBy,
+        ...(query.sort === 'newest'
+          ? { skip: (page - 1) * limit, take: limit }
+          : {}),
         include: {
           brand: { select: { name: true, slug: true } },
           category: { select: { name: true, slug: true } },
@@ -47,10 +69,36 @@ export class CatalogService {
       }),
     ]);
 
+    const orderedProducts = [...products].sort((a, b) => {
+      if (query.sort === 'newest') return 0;
+      const aPrice = Number(a.variants[0]?.price ?? 0);
+      const bPrice = Number(b.variants[0]?.price ?? 0);
+      return query.sort === 'price_asc' ? aPrice - bPrice : bPrice - aPrice;
+    });
+    const paginatedProducts = query.sort === 'newest'
+      ? orderedProducts
+      : orderedProducts.slice((page - 1) * limit, page * limit);
+
     return {
-      data: products.map(mapProduct),
+      data: paginatedProducts.map((product) => mapProduct(product as unknown as ProductWithRelations)),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  listCategories() {
+    return this.prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, slug: true },
+    });
+  }
+
+  listBrands() {
+    return this.prisma.brand.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, slug: true },
+    });
   }
 
   async getProductBySlug(slug: string) {
@@ -65,6 +113,6 @@ export class CatalogService {
     });
 
     if (!product) throw new NotFoundException('Producto no encontrado');
-    return mapProduct(product);
+    return mapProduct(product as unknown as ProductWithRelations);
   }
 }

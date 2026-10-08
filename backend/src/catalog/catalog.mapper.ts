@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-type ProductWithRelations = {
+export type ProductWithRelations = {
   id: string;
   name: string;
   slug: string;
