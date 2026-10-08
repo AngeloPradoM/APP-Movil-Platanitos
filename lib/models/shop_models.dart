@@ -9,12 +9,14 @@ class Product {
     required this.image,
     required this.color,
     this.remoteId,
+    this.remoteVariantIds = const {},
     this.lowStock = false,
     this.availableSizes = const [0, 1, 2, 3, 4, 5],
   });
   final int id;
   /// UUID del backend cuando el producto proviene de PostgreSQL.
   final String? remoteId;
+  final Map<int, String> remoteVariantIds;
   final String brand, name, category, image, color;
   final double price, oldPrice;
   final bool lowStock;
@@ -42,6 +44,7 @@ class CartItem {
   final SizeSystem system;
   int quantity;
   String get size => sizeLabels[system]![sizeIndex];
+  String? get remoteVariantId => product.remoteVariantIds[sizeIndex];
   double get subtotal => product.price * quantity;
 }
 

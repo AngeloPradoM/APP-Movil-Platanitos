@@ -72,9 +72,14 @@ class CatalogProduct {
         .map((variant) => int.tryParse(variant.sizeValue))
         .whereType<int>()
         .toList(growable: false);
+    final remoteVariantIds = <int, String>{};
+    for (var index = 0; index < variants.length; index++) {
+      remoteVariantIds[index] = variants[index].id;
+    }
     return Product(
       id: slug.hashCode,
       remoteId: id,
+      remoteVariantIds: remoteVariantIds,
       brand: brand,
       name: name,
       category: category,

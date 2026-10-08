@@ -4,6 +4,7 @@ import '../data/mock_data.dart';
 import '../data/catalog_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/session_storage.dart';
+import '../data/cart_repository.dart';
 import '../models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
@@ -54,7 +55,7 @@ class CatalogFilter {
 }
 
 class ShopState extends ChangeNotifier {
-  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository, SessionStorage? sessionStorage})
+  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository, this.cartRepository, SessionStorage? sessionStorage})
     : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
       _orders.add(
@@ -85,6 +86,7 @@ class ShopState extends ChangeNotifier {
   final CatalogRepository? catalogRepository;
   final AuthRepository? authRepository;
   final SessionStorage _sessionStorage;
+  final CartRepository? cartRepository;
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
@@ -114,6 +116,7 @@ class ShopState extends ChangeNotifier {
     final session = await repository.login(email: email, password: password);
     _authSession = session;
     await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+    await syncCartRemote();
     final remoteUser = session.user;
     user = AppUser(
       name: remoteUser['name'] as String? ?? user.name,
@@ -138,6 +141,7 @@ class ShopState extends ChangeNotifier {
     );
     _authSession = session;
     await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+    await syncCartRemote();
     user = AppUser(
       name: session.user['name'] as String? ?? name,
       document: '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'.trim(),
@@ -164,10 +168,23 @@ class ShopState extends ChangeNotifier {
       );
       signedIn = true;
       await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+      await syncCartRemote();
       notifyListeners();
     } catch (_) {
       await _sessionStorage.clear();
     }
+  }
+
+  Future<void> syncCartRemote() async {
+    final repository = cartRepository;
+    final token = accessToken;
+    if (repository == null || token == null) return;
+    final items = _cart
+        .where((item) => item.remoteVariantId != null)
+        .map((item) => {'variantId': item.remoteVariantId, 'quantity': item.quantity})
+        .toList(growable: false);
+    if (items.isEmpty) return;
+    await repository.sync(accessToken: token, items: items);
   }
 
   void logout() {
