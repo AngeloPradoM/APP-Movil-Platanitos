@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../data/catalog_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/session_storage.dart';
 import '../models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
@@ -53,7 +54,8 @@ class CatalogFilter {
 }
 
 class ShopState extends ChangeNotifier {
-  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository}) {
+  ShopState({bool seedHistory = true, this.catalogRepository, this.authRepository, SessionStorage? sessionStorage})
+    : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
       _orders.add(
         ShopOrder(
@@ -82,6 +84,7 @@ class ShopState extends ChangeNotifier {
   final _orders = <ShopOrder>[];
   final CatalogRepository? catalogRepository;
   final AuthRepository? authRepository;
+  final SessionStorage _sessionStorage;
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
@@ -110,6 +113,7 @@ class ShopState extends ChangeNotifier {
     if (repository == null) throw StateError('Autenticación remota no configurada');
     final session = await repository.login(email: email, password: password);
     _authSession = session;
+    await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
     final remoteUser = session.user;
     user = AppUser(
       name: remoteUser['name'] as String? ?? user.name,
@@ -133,6 +137,7 @@ class ShopState extends ChangeNotifier {
       documentNumber: documentNumber,
     );
     _authSession = session;
+    await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
     user = AppUser(
       name: session.user['name'] as String? ?? name,
       document: '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'.trim(),
@@ -149,6 +154,7 @@ class ShopState extends ChangeNotifier {
       authRepository!.logout(refreshToken).catchError((_) {});
     }
     _authSession = null;
+    _sessionStorage.clear();
     signedIn = false;
     _cart.clear();
     catalog.clear();

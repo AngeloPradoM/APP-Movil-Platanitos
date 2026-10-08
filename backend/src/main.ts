@@ -14,6 +14,8 @@ async function bootstrap() {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+  const isDevelopment = config.get<string>('NODE_ENV', 'development') !== 'production';
+  const allowLocalhost = config.get<string>('CORS_ALLOW_LOCALHOST', isDevelopment ? 'true' : 'false') === 'true';
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be an integer between 1 and 65535');
@@ -21,7 +23,11 @@ async function bootstrap() {
 
   app.use(helmet());
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      if (!origin) return callback(null, true);
+      const isLocalFlutterOrigin = allowLocalhost && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      callback(null, allowedOrigins.includes(origin) || isLocalFlutterOrigin);
+    },
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],

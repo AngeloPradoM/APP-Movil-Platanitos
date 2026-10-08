@@ -66,6 +66,23 @@ npm run db:seed
 
 `npm run db:seed` carga productos de demostración de forma idempotente. Puede ejecutarse nuevamente sin duplicar categorías, marcas, productos ni variantes.
 
+## Configuración por entorno
+
+La API no contiene URLs de producción en el código. En desarrollo se usa `CORS_ALLOW_LOCALHOST=true` para aceptar los puertos dinámicos de Flutter Web. En producción configura únicamente variables del entorno:
+
+```env
+NODE_ENV=production
+HOST=0.0.0.0
+CORS_ORIGINS=https://app.ejemplo.com
+CORS_ALLOW_LOCALHOST=false
+```
+
+Flutter recibe la URL del backend al compilar o ejecutar:
+
+```powershell
+flutter run -d chrome --dart-define=API_BASE_URL=https://api.ejemplo.com
+```
+
 `migrate deploy` aplica las migraciones versionadas del repositorio y no borra
 las tablas existentes. Para crear una nueva migración durante el desarrollo,
 modifica `prisma/schema.prisma` y ejecuta:
