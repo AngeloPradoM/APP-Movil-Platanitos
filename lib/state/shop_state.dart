@@ -148,6 +148,28 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> restoreSession() async {
+    if (authRepository == null) return;
+    final stored = await _sessionStorage.read();
+    if (stored == null) return;
+    try {
+      final session = await authRepository!.refresh(stored.refreshToken);
+      _authSession = session;
+      final remoteUser = session.user;
+      user = AppUser(
+        name: remoteUser['name'] as String? ?? user.name,
+        document: remoteUser['documentNumber'] as String? ?? user.document,
+        email: remoteUser['email'] as String? ?? user.email,
+        phone: remoteUser['phone'] as String? ?? user.phone,
+      );
+      signedIn = true;
+      await _sessionStorage.save(accessToken: session.accessToken, refreshToken: session.refreshToken);
+      notifyListeners();
+    } catch (_) {
+      await _sessionStorage.clear();
+    }
+  }
+
   void logout() {
     final refreshToken = _authSession?.refreshToken;
     if (refreshToken != null && authRepository != null) {

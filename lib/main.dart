@@ -17,10 +17,17 @@ class PlatanitosApp extends StatefulWidget {
 }
 
 class _PlatanitosAppState extends State<PlatanitosApp> {
-  late final ShopState state = widget.state ?? ShopState(
-    catalogRepository: CatalogRepository(),
-    authRepository: AuthRepository(),
-  );
+  late final ShopState state;
+  bool restoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    state = widget.state ?? ShopState(catalogRepository: CatalogRepository(), authRepository: AuthRepository());
+    state.restoreSession().whenComplete(() {
+      if (mounted) setState(() {});
+    });
+  }
   @override
   void dispose() {
     if (widget.state == null) state.dispose();
@@ -34,7 +41,9 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
       title: 'Platanitos',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: state.signedIn ? const ShopShell() : const LoginScreen(),
+      home: restoring
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : (state.signedIn ? const ShopShell() : const LoginScreen()),
     ),
   );
 }
