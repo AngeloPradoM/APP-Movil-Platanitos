@@ -53,6 +53,24 @@ Cuando PostgreSQL esté configurado, las migraciones se ejecutarán desde esta
 carpeta con Prisma. No se debe usar el usuario administrador de PostgreSQL
 para la aplicación en entornos compartidos o de producción.
 
+## Crear las tablas del proyecto
+
+Después de configurar `backend/.env`, ejecuta:
+
+```powershell
+npm install
+npx prisma migrate deploy
+npx prisma generate
+```
+
+`migrate deploy` aplica las migraciones versionadas del repositorio y no borra
+las tablas existentes. Para crear una nueva migración durante el desarrollo,
+modifica `prisma/schema.prisma` y ejecuta:
+
+```powershell
+npx prisma migrate dev --name descripcion_del_cambio
+```
+
 ## Compile and run the project
 
 ```bash
