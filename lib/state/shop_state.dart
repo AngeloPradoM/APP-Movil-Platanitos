@@ -121,6 +121,28 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> registerRemote({required String email, required String name, required String password, String? phone, String? documentType, String? documentNumber}) async {
+    final repository = authRepository;
+    if (repository == null) throw StateError('Autenticación remota no configurada');
+    final session = await repository.register(
+      email: email,
+      name: name,
+      password: password,
+      phone: phone,
+      documentType: documentType,
+      documentNumber: documentNumber,
+    );
+    _authSession = session;
+    user = AppUser(
+      name: session.user['name'] as String? ?? name,
+      document: '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'.trim(),
+      email: session.user['email'] as String? ?? email,
+      phone: session.user['phone'] as String? ?? phone ?? user.phone,
+    );
+    signedIn = true;
+    notifyListeners();
+  }
+
   void logout() {
     final refreshToken = _authSession?.refreshToken;
     if (refreshToken != null && authRepository != null) {

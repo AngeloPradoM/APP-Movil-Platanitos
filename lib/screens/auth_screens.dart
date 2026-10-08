@@ -311,17 +311,29 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     setState(() => submitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 650));
-    if (!mounted) return;
-    ShopScope.of(context).login(
-      account: AppUser(
-        name: name.trim(),
-        document: '$documentType $document',
-        email: email.trim(),
-        phone: phone,
-      ),
-    );
-    enterShop(context);
+    final state = ShopScope.of(context);
+    try {
+      if (state.authRepository != null) {
+        await state.registerRemote(
+          email: email.trim(),
+          name: name.trim(),
+          password: password,
+          phone: phone,
+          documentType: documentType,
+          documentNumber: document,
+        );
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 650));
+        state.login(account: AppUser(name: name.trim(), document: '$documentType $document', email: email.trim(), phone: phone));
+      }
+      if (mounted) enterShop(context);
+    } on ApiException {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No pudimos crear la cuenta. Verifica tus datos e inténtalo nuevamente.')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El sistema está fallando en este momento. Intenta más tarde.')));
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override

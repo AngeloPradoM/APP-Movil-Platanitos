@@ -25,12 +25,14 @@ class AuthRepository {
     return AuthSession.fromJson(payload as Map<String, dynamic>);
   }
 
-  Future<AuthSession> register({required String email, required String name, required String password, String? phone}) async {
+  Future<AuthSession> register({required String email, required String name, required String password, String? phone, String? documentType, String? documentNumber}) async {
     final payload = await _client.post('/auth/register', body: {
       'email': email,
       'name': name,
       'password': password,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (documentType != null && documentType.isNotEmpty) 'documentType': documentType,
+      if (documentNumber != null && documentNumber.isNotEmpty) 'documentNumber': documentNumber,
     });
     return AuthSession.fromJson(payload as Map<String, dynamic>);
   }
