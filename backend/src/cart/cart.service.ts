@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
+import { mapCart } from './cart.mapper.js';
 
 const cartInclude = {
   items: {
@@ -23,7 +24,7 @@ export class CartService {
 
   async getCart(userId: string) {
     const cart = await this.prisma.cart.findUnique({ where: { userId }, include: cartInclude });
-    return cart ?? { id: null, status: 'ACTIVE', items: [] };
+    return mapCart(cart ?? { id: null, status: 'ACTIVE', items: [] });
   }
 
   async addItem(userId: string, input: AddCartItemDto) {
