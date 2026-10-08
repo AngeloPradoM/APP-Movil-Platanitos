@@ -7,6 +7,7 @@ import { AppService } from './app.service.js';
 import { HealthController } from './health.controller.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CatalogModule } from './catalog/catalog.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from './auth/auth.module.js';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     DatabaseModule,
     AuthModule,
+    CatalogModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
