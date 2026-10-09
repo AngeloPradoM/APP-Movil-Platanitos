@@ -14,11 +14,6 @@ import 'catalog_screens.dart';
 String _photo(String id) =>
     'https://images.unsplash.com/$id?fit=crop&q=85&w=800';
 
-bool Function(Product) _inCategory(List<String> words) => (product) {
-  final category = product.category.toLowerCase();
-  return words.any(category.contains);
-};
-
 bool Function(Product) _named(List<String> words) => (product) {
   final name = product.name.toLowerCase();
   return words.any(name.contains);
@@ -30,50 +25,49 @@ abstract final class _Collections {
     'Calzado',
     (product) => product.sizeSystem == SizeSystem.eur,
   );
-  static final bags = ProductCollection(
-    'Carteras y bolsos',
-    _inCategory(['cartera', 'bolso', 'mochila']),
-  );
+  static final bags = ProductCollection.categories('Carteras y bolsos', [
+    'cartera',
+    'bolso',
+    'mochila',
+  ]);
   static final offers = ProductCollection(
     'Ofertas',
     (product) => product.onSale,
   );
-  static final accessories = ProductCollection(
-    'Accesorios',
-    _inCategory(['accesorio', 'reloj', 'correa', 'billetera', 'joyer']),
-  );
-  static final sneakers = ProductCollection(
-    'Zapatillas',
-    _inCategory(['zapatilla']),
-  );
-  static final running = ProductCollection('Running', _inCategory(['running']));
-  static final football = ProductCollection(
-    'Fútbol',
-    _inCategory(['fútbol', 'futbol']),
-  );
-  static final sandals = ProductCollection(
-    'Sandalias',
-    _inCategory(['sandalia']),
-  );
-  static final boots = ProductCollection(
-    'Botines',
-    _inCategory(['bota', 'botin', 'botín']),
-  );
-  static final dress = ProductCollection(
-    'Vestir',
-    _inCategory(['vestir', 'mocasin', 'mocasín', 'taco', 'ballerina']),
-  );
-  static final handbags = ProductCollection(
-    'Carteras',
-    _inCategory(['cartera']),
-  );
-  static final backpacks = ProductCollection(
-    'Mochilas',
-    _inCategory(['mochila']),
-  );
-  static final clothing = ProductCollection(
+  static final accessories = ProductCollection.categories('Accesorios', [
+    'accesorio',
+    'reloj',
+    'correa',
+    'billetera',
+    'joyer',
+  ]);
+  static final sneakers = ProductCollection.categories('Zapatillas', [
+    'zapatilla',
+  ]);
+  static final running = ProductCollection.categories('Running', ['running']);
+  static final football = ProductCollection.categories('Fútbol', ['futbol']);
+  static final sandals = ProductCollection.categories('Sandalias', [
+    'sandalia',
+  ]);
+  static final boots = ProductCollection.categories('Botines', [
+    'bota',
+    'botin',
+  ]);
+  static final dress = ProductCollection.categories('Vestir', [
+    'vestir',
+    'mocasin',
+    'taco',
+    'ballerina',
+  ]);
+  static final handbags = ProductCollection.categories('Carteras', [
+    'cartera',
+  ]);
+  static final backpacks = ProductCollection.categories('Mochilas', [
+    'mochila',
+  ]);
+  static final clothing = ProductCollection.categories(
     'Ropa',
-    _inCategory([
+    [
       'polo',
       'polera',
       'pantal',
@@ -87,7 +81,7 @@ abstract final class _Collections {
       'pijama',
       'ropa',
       'conjunto',
-    ]),
+    ],
   );
   static final women = ProductCollection('Mujer', _named(['mujer', 'dama']));
   static final men = ProductCollection('Hombre', _named(['hombre']));
@@ -321,17 +315,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openCatalog([void Function(CatalogFilter filter)? select]) {
     final state = ShopScope.of(context);
-    state.catalog.clear();
+    state.catalog
+      ..clear()
+      ..sort = ProductSort.recommended;
     select?.call(state.catalog);
     state.updateCatalog();
     widget.onCatalog();
   }
 
-  void _openCollection(ProductCollection collection) =>
-      _openCatalog((filter) => filter.collection = collection);
+  /// Las colecciones por categoría abren directamente sus categorías; las
+  /// demás (ofertas, público…) filtran el listado de la pestaña Categorías.
+  void _openCollection(ProductCollection collection) {
+    final words = collection.categoryWords?.map(normalizeText).toList();
+    final categories = words == null
+        ? const <ShopCategory>[]
+        : [
+            for (final category in ShopScope.of(context).categories)
+              if (words.any(
+                normalizeText('${category.name} ${category.slug}').contains,
+              ))
+                category,
+          ];
+    if (categories.isEmpty) {
+      return _openCatalog((filter) => filter.collection = collection);
+    }
+    openCategory(context, title: collection.label, categories: categories);
+  }
 
   void _openBrand(String brand) =>
-      _openCatalog((filter) => filter.brand = brand);
+      _openCatalog((filter) => filter.brands.add(brand));
 
   void _open(Product product) => openProduct(context, product);
 
@@ -555,7 +567,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: OutlinedButton.icon(
                   style: outlineGreenButtonStyle,
-                  onPressed: _openCatalog,
+                  onPressed: () =>
+                      openProductList(context, title: 'Todos los productos'),
                   icon: const Icon(Icons.grid_view_rounded, size: 20),
                   label: const Text('Ver todo el catálogo'),
                 ),

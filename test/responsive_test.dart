@@ -38,6 +38,18 @@ void main() {
           child: HomeScreen(onCatalog: () {}),
         ),
         const PageFrame(title: 'Catálogo', child: CatalogScreen()),
+        const PageFrame(title: 'Categorías', child: CategoriesScreen()),
+        CategoryScreen(
+          title: 'Calzado',
+          categories: categoriesFromProducts(products),
+        ),
+        Scaffold(
+          body: FilterPanel(
+            filter: CatalogFilter()..brands.add('VIZZANO'),
+            source: (state) => state.catalogProducts,
+            onApply: () {},
+          ),
+        ),
         ProductScreen(product: products[0]),
         PageFrame(
           title: 'Mi Bolsa',

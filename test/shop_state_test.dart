@@ -61,10 +61,12 @@ void main() {
     expect(state.favorites, isNot(contains(2)));
     final filter = CatalogFilter()
       ..query = 'platanitos'
-      ..color = 'Blanco'
-      ..maxPrice = 100;
+      ..colors.add('Blanco')
+      ..price = PriceRange.all.first;
     expect(filter.apply(products).single.id, 1);
-    filter.color = 'Negro';
+    filter.colors
+      ..clear()
+      ..add('Negro');
     expect(filter.apply(products), isEmpty);
     filter.clear();
     filter.sort = ProductSort.cheapest;

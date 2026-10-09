@@ -10,85 +10,19 @@ import '../features/account/data/addresses_repository.dart';
 import '../features/account/data/content_repository.dart';
 import '../features/catalog/data/catalog_repository.dart';
 import '../features/catalog/data/favorites_repository.dart';
+import '../features/catalog/domain/catalog_filter.dart';
+import '../features/catalog/domain/categories.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/session_storage.dart';
 import '../features/cart/data/cart_repository.dart';
 import '../features/orders/data/orders_repository.dart';
 import '../shared/models/shop_models.dart';
 
-enum ProductSort { recommended, cheapest, expensive, recent, offers }
+export '../features/catalog/domain/catalog_filter.dart';
+export '../features/catalog/domain/categories.dart';
 
-/// Grupo de productos que se abre desde la portada (categoría, público, ofertas…).
-class ProductCollection {
-  const ProductCollection(this.label, this.matches);
-  final String label;
-  final bool Function(Product product) matches;
-}
-
-class CatalogFilter {
-  String query = '';
-  String? brand, color, size;
-  ProductCollection? collection;
-  double maxPrice = double.infinity;
-  ProductSort sort = ProductSort.recommended;
-
-  /// Búsqueda, filtros u orden que deben considerar todo el catálogo.
-  bool get isActive =>
-      query.trim().isNotEmpty ||
-      collection != null ||
-      brand != null ||
-      color != null ||
-      size != null ||
-      maxPrice.isFinite ||
-      sort != ProductSort.recommended;
-
-  /// "Recomendados" conserva el orden de origen (el del backend).
-  List<Product> apply(Iterable<Product> source, {List<int>? favorites}) {
-    final term = query.trim().toLowerCase();
-    final result = source
-        .where(
-          (p) =>
-              '${p.name} ${p.brand} ${p.category}'.toLowerCase().contains(
-                term,
-              ) &&
-              (collection?.matches(p) ?? true) &&
-              (brand == null || p.brand == brand) &&
-              (color == null || p.color == color) &&
-              p.price <= maxPrice &&
-              (size == null ||
-                  p.availableSizes.any((index) => p.sizes[index] == size)),
-        )
-        .toList();
-    if (sort == ProductSort.recommended) return result;
-    final position = {
-      for (final (index, product) in result.indexed) product: index,
-    };
-    result.sort((a, b) {
-      final order = switch (sort) {
-        ProductSort.cheapest => a.price.compareTo(b.price),
-        ProductSort.expensive => b.price.compareTo(a.price),
-        ProductSort.offers => (b.oldPrice - b.price).compareTo(
-          a.oldPrice - a.price,
-        ),
-        ProductSort.recent => (favorites?.indexOf(b.id) ?? b.id).compareTo(
-          favorites?.indexOf(a.id) ?? a.id,
-        ),
-        ProductSort.recommended => 0,
-      };
-      return order != 0 ? order : position[a]!.compareTo(position[b]!);
-    });
-    return result;
-  }
-
-  void clear() {
-    collection = null;
-    brand = null;
-    color = null;
-    size = null;
-    maxPrice = double.infinity;
-    query = '';
-  }
-}
+/// Productos de una o varias categorías; [offline] indica que son de respaldo.
+typedef CategoryProducts = ({List<Product> products, bool offline});
 
 class ShopState extends ChangeNotifier {
   ShopState({
@@ -153,6 +87,9 @@ class ShopState extends ChangeNotifier {
   int _catalogGeneration = 0;
   bool _catalogMoreFailed = false;
   Future<void>? _catalogMoreRequest, _fullCatalogRequest;
+  List<ShopCategory>? _remoteCategories;
+  bool _categoriesLoading = false, _categoriesFailed = false;
+  final _categoryProducts = <String, List<Product>>{};
   LoyaltySummary? _loyalty;
   List<StoreLocation> _stores = stores;
   List<BlogArticle> _articles = blogArticles;
@@ -187,10 +124,16 @@ class ShopState extends ChangeNotifier {
   List<BlogArticle> get articles => List.unmodifiable(_articles);
   List<int> get favorites => List.unmodifiable(_favorites);
 
+  /// Catálogo cargado más los productos traídos por categoría.
+  Iterable<Product> get _knownProducts => [
+    ...catalogProducts,
+    for (final list in _categoryProducts.values) ...list,
+  ];
+
   /// Favoritos visibles, incluidos los que no llegaron en la página del catálogo.
   List<Product> get favoriteProducts {
-    final visible = {
-      for (final product in catalogProducts)
+    final visible = <int, Product>{
+      for (final product in _knownProducts)
         if (_favorites.contains(product.id)) product.id: product,
     };
     for (final entry in _favoriteProducts.entries) {
@@ -450,6 +393,7 @@ class ShopState extends ChangeNotifier {
   ({Product product, int sizeIndex})? _findRemoteVariant(String variantId) {
     for (final product in [
       ..._remoteProducts,
+      for (final list in _categoryProducts.values) ...list,
       ..._favoriteProducts.values,
       ..._cartProducts.values,
     ]) {
@@ -828,7 +772,7 @@ class ShopState extends ChangeNotifier {
   }
 
   Product? _productById(int id) {
-    for (final product in catalogProducts) {
+    for (final product in _knownProducts) {
       if (product.id == id) return product;
     }
     return _favoriteProducts[id];
@@ -922,6 +866,92 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
     if (catalog.isActive) unawaited(loadFullCatalog());
   }
+
+  /// Categorías del backend; si fallan se derivan de los productos cargados.
+  List<ShopCategory> get categories =>
+      _remoteCategories ?? categoriesFromProducts(catalogProducts);
+  bool get categoriesLoading => _categoriesLoading;
+  bool get categoriesFailed => _categoriesFailed;
+
+  /// Hay backend pero aún no responde: se muestran marcadores de carga.
+  bool get categoriesPending =>
+      catalogRepository != null &&
+      _remoteCategories == null &&
+      !_categoriesFailed;
+
+  Future<void> loadCategories() async {
+    final repository = catalogRepository;
+    if (repository == null || _categoriesLoading) return;
+    _categoriesLoading = true;
+    _categoriesFailed = false;
+    _notifySafely();
+    try {
+      _remoteCategories = await repository.listCategories();
+    } catch (_) {
+      _categoriesFailed = true;
+    } finally {
+      _categoriesLoading = false;
+      _notifySafely();
+    }
+  }
+
+  /// Trae todas las páginas de cada categoría (son pocas) en vez del
+  /// catálogo completo. Sin conexión usa lo ya cargado; si no hay nada
+  /// que mostrar, propaga el error.
+  Future<CategoryProducts> loadCategoryProducts(
+    List<ShopCategory> selection,
+  ) async {
+    List<Product> local() => [
+      for (final product in catalogProducts)
+        if (selection.any((category) => category.contains(product))) product,
+    ];
+    final repository = catalogRepository;
+    if (repository == null) return (products: local(), offline: false);
+    try {
+      final lists = await Future.wait(
+        selection.map((category) => _fetchCategory(repository, category)),
+      );
+      final seen = <String?>{};
+      return (
+        products: [
+          for (final list in lists)
+            for (final product in list)
+              if (seen.add(product.remoteId ?? product.slug)) product,
+        ],
+        offline: false,
+      );
+    } catch (_) {
+      final cached = [
+        for (final category in selection) ...?_categoryProducts[category.slug],
+      ];
+      final fallback = cached.isNotEmpty ? cached : local();
+      if (fallback.isEmpty) rethrow;
+      return (products: fallback, offline: true);
+    }
+  }
+
+  Future<List<Product>> _fetchCategory(
+    CatalogRepository repository,
+    ShopCategory category,
+  ) async {
+    Future<CatalogPage> page(int number) => repository.listProducts(
+      category: category.slug,
+      page: number,
+      limit: catalogPageSize,
+    );
+    final first = await page(1);
+    final rest = await Future.wait([
+      for (var number = 2; number <= first.totalPages; number++) page(number),
+    ]);
+    return _categoryProducts[category.slug] = List.unmodifiable([
+      for (final result in [first, ...rest])
+        for (final product in result.products) product.toShopProduct(),
+    ]);
+  }
+
+  /// Carga la primera página solo si aún no hay catálogo remoto.
+  Future<void> ensureCatalog() =>
+      _remoteProducts.isEmpty ? loadRemoteCatalog() : Future.value();
 
   /// Carga la primera página y reinicia la paginación del catálogo.
   Future<void> loadRemoteCatalog() async {

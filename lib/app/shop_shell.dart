@@ -22,7 +22,7 @@ class _ShopShellState extends State<ShopShell> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final titles = ['Inicio', 'Catálogo', 'Mi Bolsa', 'Favoritos', 'Mi Cuenta'];
+    final titles = ['Inicio', 'Categorías', 'Mi Bolsa', 'Favoritos', 'Mi Cuenta'];
     return PopScope(
       canPop: tab == 0,
       onPopInvokedWithResult: (didPop, result) {
@@ -71,7 +71,7 @@ class _ShopShellState extends State<ShopShell> {
                 index: tab,
                 children: [
                   HomeScreen(onCatalog: () => select(1)),
-                  const CatalogScreen(),
+                  const CategoriesScreen(),
                   CartScreen(onCatalog: () => select(1)),
                   FavoritesScreen(onCatalog: () => select(1)),
                   AccountScreen(onFavorites: () => select(3)),

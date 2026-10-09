@@ -53,6 +53,23 @@ describe('AppController (e2e)', () => {
 
     const categories = await request(app.getHttpServer()).get('/catalog/categories').expect(200);
     expect(categories.body).toEqual(expect.any(Array));
+    for (const category of categories.body) {
+      expect(category).toEqual({
+        id: expect.any(String),
+        name: expect.any(String),
+        slug: expect.any(String),
+        productCount: expect.any(Number),
+        image: category.image === null ? null : expect.stringMatching(/^https?:\/\//),
+      });
+      expect(category.productCount).toBeGreaterThan(0);
+    }
+    if (categories.body.length > 0) {
+      const [first] = categories.body;
+      const inCategory = await request(app.getHttpServer())
+        .get(`/catalog/products?category=${first.slug}&limit=1`)
+        .expect(200);
+      expect(inCategory.body.pagination.total).toBe(first.productCount);
+    }
 
     const brands = await request(app.getHttpServer()).get('/catalog/brands').expect(200);
     expect(brands.body).toEqual(expect.any(Array));

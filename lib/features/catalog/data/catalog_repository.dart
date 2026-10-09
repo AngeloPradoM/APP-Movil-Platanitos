@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../../core/api_config.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/shop_models.dart';
+import '../domain/categories.dart';
 
 class CatalogVariant {
   const CatalogVariant({
@@ -146,6 +147,7 @@ class CatalogRepository {
   final ApiClient _client;
   Future<CatalogPage> listProducts({
     String? query,
+    String? category,
     int page = 1,
     int limit = 20,
   }) async {
@@ -153,11 +155,21 @@ class CatalogRepository {
       'page': '$page',
       'limit': '$limit',
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      'category': ?category,
     };
     final payload = await _client.get(
       '/catalog/products?${Uri(queryParameters: parameters).query}',
     );
     return CatalogPage.fromJson(payload as Map<String, dynamic>);
+  }
+
+  /// Categorías con productos activos, su conteo y una foto de muestra.
+  Future<List<ShopCategory>> listCategories() async {
+    final payload = await _client.get('/catalog/categories') as List<dynamic>;
+    return payload
+        .map((item) => ShopCategory.fromJson(item as Map<String, dynamic>))
+        .where((category) => category.productCount > 0)
+        .toList(growable: false);
   }
 
   Future<CatalogProduct> getProduct(String slug) async {

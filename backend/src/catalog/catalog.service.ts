@@ -85,12 +85,29 @@ export class CatalogService {
     };
   }
 
-  listCategories() {
-    return this.prisma.category.findMany({
-      where: { isActive: true },
+  /** Solo categorías con productos activos, con su conteo y la foto del más reciente. */
+  async listCategories() {
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true, products: { some: { isActive: true } } },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, slug: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: { select: { products: { where: { isActive: true } } } },
+        products: {
+          where: { isActive: true, images: { some: {} } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } } },
+        },
+      },
     });
+    return categories.map(({ _count, products, ...category }) => ({
+      ...category,
+      productCount: _count.products,
+      image: products[0]?.images[0]?.url ?? null,
+    }));
   }
 
   listBrands() {

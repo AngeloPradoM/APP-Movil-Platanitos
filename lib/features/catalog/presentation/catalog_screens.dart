@@ -5,8 +5,12 @@ import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/shop_widgets.dart';
 import '../../auth/presentation/auth_screens.dart';
+import 'catalog_filters.dart';
 import 'product_screen.dart';
 
+export 'catalog_filters.dart';
+export 'categories_screen.dart';
+export 'category_screen.dart';
 export 'home_screen.dart';
 
 void openProduct(BuildContext context, Product product) => Navigator.push(
@@ -14,201 +18,108 @@ void openProduct(BuildContext context, Product product) => Navigator.push(
   MaterialPageRoute<void>(builder: (_) => ProductScreen(product: product)),
 );
 
+/// Listado general en una pantalla aparte con su propio filtro.
+void openProductList(
+  BuildContext context, {
+  required String title,
+  CatalogFilter? filter,
+}) => Navigator.push(
+  context,
+  MaterialPageRoute<void>(
+    builder: (_) => PageFrame(
+      title: title,
+      child: CatalogScreen(filter: filter ?? CatalogFilter()),
+    ),
+  ),
+);
+
 class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key});
+  const CatalogScreen({super.key, this.filter, this.header});
+
+  /// Filtro propio; sin él usa el compartido con la portada y la búsqueda.
+  final CatalogFilter? filter;
+  final Widget? header;
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  bool loading = false;
+  CatalogFilter _filterOf(ShopState state) => widget.filter ?? state.catalog;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ShopScope.of(context).loadRemoteCatalog();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final state = ShopScope.of(context);
+      await state.ensureCatalog();
+      if (mounted && _filterOf(state).isActive) state.loadFullCatalog();
     });
   }
 
-  Future<void> apply() async {
-    setState(() => loading = true);
-    ShopScope.of(context).updateCatalog();
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (mounted) setState(() => loading = false);
+  /// Filtrar u ordenar necesita todo el catálogo; sin filtros se pagina.
+  void _changed() {
+    final state = ShopScope.of(context);
+    if (widget.filter == null) return state.updateCatalog();
+    setState(() {});
+    if (widget.filter!.isActive) state.loadFullCatalog();
   }
 
-  static const _prices = [double.infinity, 100.0, 200.0, 300.0, 500.0];
-  static const _sorts = [
-    ProductSort.recommended,
-    ProductSort.cheapest,
-    ProductSort.expensive,
-  ];
-
-  String _sortLabel(ProductSort sort) => switch (sort) {
-    ProductSort.cheapest => 'Menor precio',
-    ProductSort.expensive => 'Mayor precio',
-    _ => 'Recomendados',
-  };
-
-  /// Muestra las opciones como pastillas y devuelve la elegida, o `null` si
-  /// se cierra sin elegir. Con [fromCatalog] las opciones se actualizan
-  /// mientras llegan las páginas restantes del catálogo.
-  Future<String?> choose(
-    String title,
-    List<String> Function(ShopState state) options,
-    String selected, {
-    bool fromCatalog = false,
-  }) {
-    if (fromCatalog) ShopScope.of(context).loadFullCatalog();
-    return showModalBottomSheet<String>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Colors.white,
-      builder: (context) {
-        final state = ShopScope.of(context);
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (fromCatalog && state.catalogLoadingMore) ...[
-                const LinearProgressIndicator(),
-                const SizedBox(height: 12),
-              ],
-              Wrap(
-                spacing: 8,
-                runSpacing: 10,
-                children: [
-                  for (final option in options(state))
-                    FilterPill(
-                      label: option,
-                      selected: option == selected,
-                      onTap: () => Navigator.pop(context, option),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+  void _openFilters(FilterSection? section) {
+    final state = ShopScope.of(context);
+    state.loadFullCatalog();
+    showFilterPanel(
+      context,
+      filter: _filterOf(state),
+      source: (state) => state.catalogProducts,
+      section: section,
+      loading: (state) => state.catalogHasMore && !state.catalogMoreFailed,
+      onApply: _changed,
     );
-  }
-
-  static List<String> _distinct(Iterable<String> values) =>
-      values.toSet().toList()..sort();
-
-  Future<void> pickSize() async {
-    final filter = ShopScope.of(context).catalog;
-    final choice = await choose(
-      'Talla',
-      (state) => [
-        'Todas',
-        ...{
-          for (final product in state.catalogProducts)
-            if (product.sizeSystem != SizeSystem.oneSize) ...product.sizes,
-        }.toList()..sort(compareSizes),
-      ],
-      filter.size ?? 'Todas',
-      fromCatalog: true,
-    );
-    if (choice == null || !mounted) return;
-    filter.size = choice == 'Todas' ? null : choice;
-    await apply();
-  }
-
-  Future<void> pickBrand() async {
-    final filter = ShopScope.of(context).catalog;
-    final choice = await choose(
-      'Marca',
-      (state) => [
-        'Todas',
-        ..._distinct(state.catalogProducts.map((p) => p.brand)),
-      ],
-      filter.brand ?? 'Todas',
-      fromCatalog: true,
-    );
-    if (choice == null || !mounted) return;
-    filter.brand = choice == 'Todas' ? null : choice;
-    await apply();
-  }
-
-  Future<void> pickColor() async {
-    final filter = ShopScope.of(context).catalog;
-    final choice = await choose(
-      'Color',
-      (state) => [
-        'Todos',
-        ..._distinct(state.catalogProducts.map((p) => p.color)),
-      ],
-      filter.color ?? 'Todos',
-      fromCatalog: true,
-    );
-    if (choice == null || !mounted) return;
-    filter.color = choice == 'Todos' ? null : choice;
-    await apply();
-  }
-
-  Future<void> pickPrice() async {
-    final filter = ShopScope.of(context).catalog;
-    final labels = [
-      'Todos',
-      for (final price in _prices.skip(1)) 'Hasta ${money(price)}',
-    ];
-    final current = _prices.indexOf(filter.maxPrice);
-    final choice = await choose(
-      'Precio',
-      (_) => labels,
-      labels[current < 0 ? 0 : current],
-    );
-    if (choice == null || !mounted) return;
-    filter.maxPrice = _prices[labels.indexOf(choice)];
-    await apply();
-  }
-
-  Future<void> pickSort() async {
-    final filter = ShopScope.of(context).catalog;
-    final labels = _sorts.map(_sortLabel).toList();
-    final choice = await choose(
-      'Ordenar por',
-      (_) => labels,
-      _sortLabel(filter.sort),
-    );
-    if (choice == null || !mounted) return;
-    filter.sort = _sorts[labels.indexOf(choice)];
-    await apply();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ShopScope.of(context), filter = state.catalog;
-    final result = filter.apply(state.catalogProducts);
+    final state = ShopScope.of(context), filter = _filterOf(state);
+    final source = state.catalogProducts;
+    final result = filter.apply(source);
     return ColoredBox(
       color: AppColors.background,
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification.depth == 0 &&
-              notification.metrics.extentAfter < 600) {
+              notification.metrics.extentAfter < 600 &&
+              !filter.isActive) {
             state.loadMoreCatalog();
           }
           return false;
         },
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _filters(filter)),
+            if (widget.header case final header?)
+              SliverToBoxAdapter(child: header),
+            PinnedHeaderSliver(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CatalogFilterBar(
+                      filter: filter,
+                      facets: filter.facets(source),
+                      onOpen: _openFilters,
+                      onChanged: _changed,
+                    ),
+                    ActiveFilterChips(filter: filter, onChanged: _changed),
+                  ],
+                ),
+              ),
+            ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
               sliver: SliverMainAxisGroup(
                 slivers: _results(context, state, filter, result),
               ),
@@ -218,70 +129,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
     );
   }
-
-  Widget _filters(CatalogFilter filter) => DecoratedBox(
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: AppColors.border)),
-    ),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Row(
-        children: [
-          if (filter.collection case final collection?) ...[
-            Tooltip(
-              message: 'Quitar filtro ${collection.label}',
-              child: FilterPill(
-                label: collection.label,
-                icon: Icons.close,
-                selected: true,
-                onTap: () {
-                  filter.collection = null;
-                  apply();
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          FilterPill(
-            label: filter.size == null ? 'Talla' : 'Talla ${filter.size}',
-            selected: filter.size != null,
-            onTap: pickSize,
-          ),
-          const SizedBox(width: 8),
-          FilterPill(
-            label: filter.brand ?? 'Marca',
-            selected: filter.brand != null,
-            onTap: pickBrand,
-          ),
-          const SizedBox(width: 8),
-          FilterPill(
-            label: filter.color ?? 'Color',
-            selected: filter.color != null,
-            onTap: pickColor,
-          ),
-          const SizedBox(width: 8),
-          FilterPill(
-            label: filter.maxPrice.isFinite
-                ? 'Hasta ${money(filter.maxPrice)}'
-                : 'Precio',
-            selected: filter.maxPrice.isFinite,
-            onTap: pickPrice,
-          ),
-          const SizedBox(width: 8),
-          FilterPill(
-            label: filter.sort == ProductSort.recommended
-                ? 'Ordenar'
-                : _sortLabel(filter.sort),
-            icon: Icons.swap_vert,
-            selected: filter.sort != ProductSort.recommended,
-            onTap: pickSort,
-          ),
-        ],
-      ),
-    ),
-  );
 
   /// Pie del listado: carga en curso, error de página o "Ver más".
   Widget _footer(
@@ -350,20 +197,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogFilter filter,
     List<Product> result,
   ) {
-    final searching =
-        state.catalogLoadingMore ||
-        (filter.isActive && state.catalogHasMore && !state.catalogMoreFailed);
+    final completing =
+        filter.isActive && state.catalogHasMore && !state.catalogMoreFailed;
+    final small = Theme.of(context).textTheme.bodySmall;
     return [
-      if (filter.query.isNotEmpty)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (filter.query.isNotEmpty)
                       Text(
                         'Resultados para “${filter.query}”',
                         style: const TextStyle(
@@ -371,73 +218,52 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           fontSize: 16,
                         ),
                       ),
-                      Text(
-                        '${result.length} productos',
-                        style: Theme.of(context).textTheme.bodySmall,
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        filter.isActive
+                            ? productsLabel(result.length)
+                            : productsLabel(state.catalogTotal),
+                        style: small,
                       ),
-                    ],
-                  ),
+                    ),
+                    if (completing)
+                      Text('Buscando en todo el catálogo…', style: small),
+                  ],
                 ),
+              ),
+              if (filter.query.isNotEmpty)
                 IconButton(
                   tooltip: 'Limpiar búsqueda',
                   onPressed: () {
                     filter.query = '';
-                    state.updateCatalog();
+                    _changed();
                   },
                   icon: const Icon(Icons.close),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
+      ),
       if (state.catalogError != null)
         SliverToBoxAdapter(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off, color: Colors.orange),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'El sistema está fallando en este momento. Mostramos datos de respaldo.',
-                  ),
-                ),
-                TextButton(
-                  onPressed: state.loadRemoteCatalog,
-                  child: const Text('Reintentar'),
-                ),
-              ],
-            ),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: OfflineBanner(onRetry: state.loadRemoteCatalog),
           ),
         ),
-      if (state.catalogLoading || loading || (result.isEmpty && searching))
+      if (state.catalogLoading || (result.isEmpty && completing))
         const SliverToBoxAdapter(child: CatalogSkeleton())
-      else if (state.catalogError != null && state.catalogProducts.isEmpty)
-        SliverToBoxAdapter(
-          child: EmptyState(
-            icon: Icons.cloud_off,
-            title: 'El sistema está presentando problemas',
-            message: 'No pudimos cargar el catálogo en este momento. Intenta nuevamente.',
-            action: 'Reintentar',
-            onAction: state.loadRemoteCatalog,
-          ),
-        )
       else if (result.isEmpty)
         SliverToBoxAdapter(
           child: EmptyState(
-            icon: Icons.search,
+            icon: Icons.search_off,
             title: 'No encontramos productos',
             message: 'Prueba con otra palabra o elimina los filtros.',
             action: 'Limpiar búsqueda y filtros',
             onAction: () {
               filter.clear();
-              state.updateCatalog();
+              _changed();
             },
           ),
         )
@@ -475,25 +301,10 @@ class SortMenu extends StatelessWidget {
                     ProductSort.recent,
                     ProductSort.cheapest,
                     ProductSort.expensive,
-                    ProductSort.offers,
+                    ProductSort.discount,
                   ]
-                : [
-                    ProductSort.recommended,
-                    ProductSort.cheapest,
-                    ProductSort.expensive,
-                  ])
-            .map(
-              (sort) => PopupMenuItem(
-                value: sort,
-                child: Text(switch (sort) {
-                  ProductSort.recommended => 'Recomendados',
-                  ProductSort.cheapest => 'Menor precio',
-                  ProductSort.expensive => 'Mayor precio',
-                  ProductSort.recent => 'Más recientes',
-                  ProductSort.offers => 'Ofertas',
-                }),
-              ),
-            )
+                : catalogSorts)
+            .map((sort) => PopupMenuItem(value: sort, child: Text(sort.label)))
             .toList(),
     child: const Padding(
       padding: EdgeInsets.all(10),
@@ -505,32 +316,6 @@ class SortMenu extends StatelessWidget {
         ],
       ),
     ),
-  );
-}
-
-class CatalogSkeleton extends StatelessWidget {
-  const CatalogSkeleton({super.key});
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      const LinearProgressIndicator(),
-      const SizedBox(height: 18),
-      Row(
-        children: List.generate(
-          2,
-          (_) => Expanded(
-            child: Container(
-              height: 240,
-              margin: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(13),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ],
   );
 }
 

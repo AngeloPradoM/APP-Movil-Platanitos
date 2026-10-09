@@ -117,6 +117,9 @@ void main() {
 
     await tester.tap(find.text('Categorías'));
     await tester.pump();
+    await tester.tap(find.text(products[0].category));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text(products[0].name).first);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -128,9 +131,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(state.favorites, favoritesBefore);
-    await tester.pageBack();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    for (var i = 0; i < 2; i++) {
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
 
     await tester.tap(find.text('Mi Cuenta'));
     await tester.pump();

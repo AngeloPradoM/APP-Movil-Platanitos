@@ -530,11 +530,13 @@ class FilterPill extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
+    this.minHeight = 32,
   });
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final IconData? icon;
+  final double minHeight;
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
@@ -553,7 +555,7 @@ class FilterPill extends StatelessWidget {
             ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
             : _greenOverlay,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 32),
+          constraints: BoxConstraints(minHeight: minHeight),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
             child: Row(

@@ -118,7 +118,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pump();
       expect(find.text('Resultados para “Botines”'), findsOneWidget);
-      expect(find.text('1 productos'), findsOneWidget);
+      expect(find.text('1 producto'), findsOneWidget);
       await tester.tap(find.text('Inicio'));
       await tester.pump();
       await tester.enterText(find.byType(TextField).first, 'noexiste');

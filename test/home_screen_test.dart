@@ -75,21 +75,41 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('tocar una categoría filtra el catálogo y se puede quitar', (
+  testWidgets('tocar un círculo de categoría abre esa categoría', (
     tester,
   ) async {
     final state = await _mountShop(tester);
     await tester.tap(find.text('Botines'));
     await tester.pump();
-    expect(state.catalog.collection?.label, 'Botines');
-    expect(find.text('Catálogo'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(CategoryScreen), findsOneWidget);
+    expect(state.catalog.narrows, isFalse);
+    expect(find.text('1 producto'), findsOneWidget);
     expect(find.text('Botines Chelsea Abril'), findsOneWidget);
     expect(find.text('Tacos Amelia'), findsNothing);
 
-    await tester.tap(find.byTooltip('Quitar filtro Botines'));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(state.catalog.collection, isNull);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(CategoryScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('una colección sin categorías filtra el listado y se puede quitar', (
+    tester,
+  ) async {
+    final state = await _mountShop(tester);
+    await tester.tap(find.text('Ver todo').first);
+    await tester.pump();
+    expect(state.catalog.collection?.label, 'Calzado');
+    expect(find.text('Volver a categorías'), findsOneWidget);
     expect(find.text('Tacos Amelia'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Quitar filtro Calzado'));
+    await tester.pump();
+    expect(state.catalog.collection, isNull);
+    expect(find.text('Todas las categorías'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -104,9 +124,9 @@ void main() {
     await tester.scrollUntilVisible(brand, 300, scrollable: _homeScroll);
     await tester.tap(brand);
     await tester.pump();
-    expect(state.catalog.brand, 'VIZZANO');
+    expect(state.catalog.brands, {'VIZZANO'});
     expect(state.catalog.query, isEmpty);
-    expect(find.text('Catálogo'), findsOneWidget);
+    expect(find.text('Volver a categorías'), findsOneWidget);
     expect(find.text('Botines Chelsea Abril'), findsOneWidget);
     expect(find.text('Zapatilla Plataforma'), findsNothing);
     semantics.dispose();
