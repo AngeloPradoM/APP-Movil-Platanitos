@@ -36,9 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .where(
           (product) => switch (section) {
             1 => inCategory(product, _bags),
-            2 => product.oldPrice > product.price,
+            2 => product.onSale,
             3 => inCategory(product, _accessories),
-            _ => !inCategory(product, [..._bags, ..._accessories]),
+            _ => product.sizeSystem == SizeSystem.eur,
           },
         )
         .toList(growable: false);
@@ -423,7 +423,18 @@ class RecommendedCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: ColoredBox(
                   color: AppColors.background,
-                  child: ShopImage(product.image),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ShopImage(product.image),
+                      if (product.onSale)
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: OfferBadge(discount: product.discount),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -447,12 +458,29 @@ class RecommendedCard extends StatelessWidget {
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
-            Text(
-              money(product.price),
-              style: const TextStyle(
-                color: AppColors.darkGreen,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: money(product.price),
+                    style: const TextStyle(
+                      color: AppColors.darkGreen,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (product.onSale) ...[
+                    const TextSpan(text: '  '),
+                    TextSpan(
+                      text: money(product.oldPrice),
+                      style: const TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -517,7 +545,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (mounted) setState(() => loading = false);
   }
 
-  static const _prices = [250.0, 100.0, 150.0, 200.0];
+  static const _prices = [double.infinity, 100.0, 200.0, 300.0, 500.0];
   static const _sorts = [
     ProductSort.recommended,
     ProductSort.cheapest,
@@ -530,16 +558,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
     _ => 'Recomendados',
   };
 
-  /// Muestra las opciones como pastillas y devuelve el índice elegido,
-  /// o `null` si se cierra sin elegir.
-  Future<int?> choose(String title, List<String> options, int selected) =>
-      showModalBottomSheet<int>(
-        context: context,
-        useSafeArea: true,
-        isScrollControlled: true,
-        showDragHandle: true,
-        backgroundColor: Colors.white,
-        builder: (context) => SingleChildScrollView(
+  /// Muestra las opciones como pastillas y devuelve la elegida, o `null` si
+  /// se cierra sin elegir. Con [fromCatalog] las opciones se actualizan
+  /// mientras llegan las páginas restantes del catálogo.
+  Future<String?> choose(
+    String title,
+    List<String> Function(ShopState state) options,
+    String selected, {
+    bool fromCatalog = false,
+  }) {
+    if (fromCatalog) ShopScope.of(context).loadFullCatalog();
+    return showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      builder: (context) {
+        final state = ShopScope.of(context);
+        return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -553,81 +590,110 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (fromCatalog && state.catalogLoadingMore) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+              ],
               Wrap(
                 spacing: 8,
                 runSpacing: 10,
                 children: [
-                  for (var i = 0; i < options.length; i++)
+                  for (final option in options(state))
                     FilterPill(
-                      label: options[i],
-                      selected: i == selected,
-                      onTap: () => Navigator.pop(context, i),
+                      label: option,
+                      selected: option == selected,
+                      onTap: () => Navigator.pop(context, option),
                     ),
                 ],
               ),
             ],
           ),
-        ),
-      );
+        );
+      },
+    );
+  }
+
+  static List<String> _distinct(Iterable<String> values) =>
+      values.toSet().toList()..sort();
 
   Future<void> pickSize() async {
     final filter = ShopScope.of(context).catalog;
-    final sizes = sizeLabels[SizeSystem.eur]!.take(6).toList();
-    final index = await choose('Talla (EUR)', [
-      'Todas',
-      ...sizes,
-    ], (filter.sizeIndex ?? -1) + 1);
-    if (index == null || !mounted) return;
-    filter.sizeIndex = index == 0 ? null : index - 1;
+    final choice = await choose(
+      'Talla',
+      (state) => [
+        'Todas',
+        ...{
+          for (final product in state.catalogProducts)
+            if (product.sizeSystem != SizeSystem.oneSize) ...product.sizes,
+        }.toList()..sort(compareSizes),
+      ],
+      filter.size ?? 'Todas',
+      fromCatalog: true,
+    );
+    if (choice == null || !mounted) return;
+    filter.size = choice == 'Todas' ? null : choice;
     await apply();
   }
 
   Future<void> pickBrand() async {
-    final state = ShopScope.of(context), filter = state.catalog;
-    final brands = state.catalogProducts.map((p) => p.brand).toSet().toList()
-      ..sort();
-    final index = await choose('Marca', [
-      'Todas',
-      ...brands,
-    ], filter.brand == null ? 0 : brands.indexOf(filter.brand!) + 1);
-    if (index == null || !mounted) return;
-    filter.brand = index == 0 ? null : brands[index - 1];
+    final filter = ShopScope.of(context).catalog;
+    final choice = await choose(
+      'Marca',
+      (state) => [
+        'Todas',
+        ..._distinct(state.catalogProducts.map((p) => p.brand)),
+      ],
+      filter.brand ?? 'Todas',
+      fromCatalog: true,
+    );
+    if (choice == null || !mounted) return;
+    filter.brand = choice == 'Todas' ? null : choice;
     await apply();
   }
 
   Future<void> pickColor() async {
-    final state = ShopScope.of(context), filter = state.catalog;
-    final colors = state.catalogProducts.map((p) => p.color).toSet().toList()
-      ..sort();
-    final index = await choose('Color', [
-      'Todos',
-      ...colors,
-    ], filter.color == null ? 0 : colors.indexOf(filter.color!) + 1);
-    if (index == null || !mounted) return;
-    filter.color = index == 0 ? null : colors[index - 1];
+    final filter = ShopScope.of(context).catalog;
+    final choice = await choose(
+      'Color',
+      (state) => [
+        'Todos',
+        ..._distinct(state.catalogProducts.map((p) => p.color)),
+      ],
+      filter.color ?? 'Todos',
+      fromCatalog: true,
+    );
+    if (choice == null || !mounted) return;
+    filter.color = choice == 'Todos' ? null : choice;
     await apply();
   }
 
   Future<void> pickPrice() async {
     final filter = ShopScope.of(context).catalog;
-    final index = await choose('Precio', [
+    final labels = [
       'Todos',
       for (final price in _prices.skip(1)) 'Hasta ${money(price)}',
-    ], _prices.indexOf(filter.maxPrice));
-    if (index == null || !mounted) return;
-    filter.maxPrice = _prices[index];
+    ];
+    final current = _prices.indexOf(filter.maxPrice);
+    final choice = await choose(
+      'Precio',
+      (_) => labels,
+      labels[current < 0 ? 0 : current],
+    );
+    if (choice == null || !mounted) return;
+    filter.maxPrice = _prices[labels.indexOf(choice)];
     await apply();
   }
 
   Future<void> pickSort() async {
     final filter = ShopScope.of(context).catalog;
-    final index = await choose(
+    final labels = _sorts.map(_sortLabel).toList();
+    final choice = await choose(
       'Ordenar por',
-      _sorts.map(_sortLabel).toList(),
-      _sorts.indexOf(filter.sort),
+      (_) => labels,
+      _sortLabel(filter.sort),
     );
-    if (index == null || !mounted) return;
-    filter.sort = _sorts[index];
+    if (choice == null || !mounted) return;
+    filter.sort = _sorts[labels.indexOf(choice)];
     await apply();
   }
 
@@ -637,65 +703,133 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final result = filter.apply(state.catalogProducts);
     return ColoredBox(
       color: AppColors.background,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DecoratedBox(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Row(
-                children: [
-                  FilterPill(
-                    label: filter.sizeIndex == null
-                        ? 'Talla'
-                        : 'Talla ${sizeLabels[SizeSystem.eur]![filter.sizeIndex!]}',
-                    selected: filter.sizeIndex != null,
-                    onTap: pickSize,
-                  ),
-                  const SizedBox(width: 8),
-                  FilterPill(
-                    label: filter.brand ?? 'Marca',
-                    selected: filter.brand != null,
-                    onTap: pickBrand,
-                  ),
-                  const SizedBox(width: 8),
-                  FilterPill(
-                    label: filter.color ?? 'Color',
-                    selected: filter.color != null,
-                    onTap: pickColor,
-                  ),
-                  const SizedBox(width: 8),
-                  FilterPill(
-                    label: filter.maxPrice < 250
-                        ? 'Hasta ${money(filter.maxPrice)}'
-                        : 'Precio',
-                    selected: filter.maxPrice < 250,
-                    onTap: pickPrice,
-                  ),
-                  const SizedBox(width: 8),
-                  FilterPill(
-                    label: filter.sort == ProductSort.recommended
-                        ? 'Ordenar'
-                        : _sortLabel(filter.sort),
-                    icon: Icons.swap_vert,
-                    selected: filter.sort != ProductSort.recommended,
-                    onTap: pickSort,
-                  ),
-                ],
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.depth == 0 &&
+              notification.metrics.extentAfter < 600) {
+            state.loadMoreCatalog();
+          }
+          return false;
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _filters(filter)),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              sliver: SliverMainAxisGroup(
+                slivers: _results(context, state, filter, result),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filters(CatalogFilter filter) => DecoratedBox(
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(bottom: BorderSide(color: AppColors.border)),
+    ),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Row(
+        children: [
+          FilterPill(
+            label: filter.size == null ? 'Talla' : 'Talla ${filter.size}',
+            selected: filter.size != null,
+            onTap: pickSize,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _results(context, state, filter, result),
+          const SizedBox(width: 8),
+          FilterPill(
+            label: filter.brand ?? 'Marca',
+            selected: filter.brand != null,
+            onTap: pickBrand,
+          ),
+          const SizedBox(width: 8),
+          FilterPill(
+            label: filter.color ?? 'Color',
+            selected: filter.color != null,
+            onTap: pickColor,
+          ),
+          const SizedBox(width: 8),
+          FilterPill(
+            label: filter.maxPrice.isFinite
+                ? 'Hasta ${money(filter.maxPrice)}'
+                : 'Precio',
+            selected: filter.maxPrice.isFinite,
+            onTap: pickPrice,
+          ),
+          const SizedBox(width: 8),
+          FilterPill(
+            label: filter.sort == ProductSort.recommended
+                ? 'Ordenar'
+                : _sortLabel(filter.sort),
+            icon: Icons.swap_vert,
+            selected: filter.sort != ProductSort.recommended,
+            onTap: pickSort,
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// Pie del listado: carga en curso, error de página o "Ver más".
+  Widget _footer(
+    BuildContext context,
+    ShopState state,
+    CatalogFilter filter,
+    int shown,
+  ) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    if (state.catalogLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 20),
+        child: Center(
+          child: SizedBox.square(
+            dimension: 28,
+            child: CircularProgressIndicator(strokeWidth: 3),
+          ),
+        ),
+      );
+    }
+    if (state.catalogMoreFailed) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Column(
+          children: [
+            Text(
+              'El sistema está fallando en este momento. Intenta más tarde.',
+              textAlign: TextAlign.center,
+              style: small,
             ),
+            TextButton(
+              onPressed: state.retryCatalogPage,
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (!state.catalogHasMore || filter.isActive) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        children: [
+          Text(
+            'Mostrando $shown de ${state.catalogTotal} productos',
+            textAlign: TextAlign.center,
+            style: small,
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: state.loadMoreCatalog,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.darkGreen,
+              side: const BorderSide(color: AppColors.darkGreen),
+            ),
+            child: const Text('Ver más productos'),
           ),
         ],
       ),
@@ -708,91 +842,106 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogFilter filter,
     List<Product> result,
   ) {
+    final searching =
+        state.catalogLoadingMore ||
+        (filter.isActive && state.catalogHasMore && !state.catalogMoreFailed);
     return [
       if (filter.query.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Resultados para “${filter.query}”',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Resultados para “${filter.query}”',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${result.length} productos',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                      Text(
+                        '${result.length} productos',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Limpiar búsqueda',
-                onPressed: () {
-                  filter.query = '';
-                  state.updateCatalog();
-                },
-                icon: const Icon(Icons.close),
-              ),
-            ],
+                IconButton(
+                  tooltip: 'Limpiar búsqueda',
+                  onPressed: () {
+                    filter.query = '';
+                    state.updateCatalog();
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
           ),
         ),
       if (state.catalogError != null)
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: .12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.cloud_off, color: Colors.orange),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'El sistema está fallando en este momento. Mostramos datos de respaldo.',
+        SliverToBoxAdapter(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'El sistema está fallando en este momento. Mostramos datos de respaldo.',
+                  ),
                 ),
-              ),
-              TextButton(
-                onPressed: state.loadRemoteCatalog,
-                child: const Text('Reintentar'),
-              ),
-            ],
+                TextButton(
+                  onPressed: state.loadRemoteCatalog,
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
           ),
         ),
-      if (state.catalogLoading || loading)
-        const CatalogSkeleton()
+      if (state.catalogLoading || loading || (result.isEmpty && searching))
+        const SliverToBoxAdapter(child: CatalogSkeleton())
       else if (state.catalogError != null && state.catalogProducts.isEmpty)
-        EmptyState(
-          icon: Icons.cloud_off,
-          title: 'El sistema está presentando problemas',
-          message: 'No pudimos cargar el catálogo en este momento. Intenta nuevamente.',
-          action: 'Reintentar',
-          onAction: state.loadRemoteCatalog,
+        SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.cloud_off,
+            title: 'El sistema está presentando problemas',
+            message: 'No pudimos cargar el catálogo en este momento. Intenta nuevamente.',
+            action: 'Reintentar',
+            onAction: state.loadRemoteCatalog,
+          ),
         )
       else if (result.isEmpty)
-        EmptyState(
-          icon: Icons.search,
-          title: 'No encontramos productos',
-          message: 'Prueba con otra palabra o elimina los filtros.',
-          action: 'Limpiar búsqueda y filtros',
-          onAction: () {
-            filter.clear();
-            state.updateCatalog();
-          },
+        SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.search,
+            title: 'No encontramos productos',
+            message: 'Prueba con otra palabra o elimina los filtros.',
+            action: 'Limpiar búsqueda y filtros',
+            onAction: () {
+              filter.clear();
+              state.updateCatalog();
+            },
+          ),
         )
-      else
-        ProductGrid(
+      else ...[
+        ProductGrid.sliver(
           products: result,
           onOpen: (product) => openProduct(context, product),
         ),
+        SliverToBoxAdapter(
+          child: _footer(context, state, filter, result.length),
+        ),
+      ],
     ];
   }
 }

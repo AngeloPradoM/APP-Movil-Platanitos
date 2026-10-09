@@ -18,9 +18,12 @@ class ProductScreen extends StatefulWidget {
 
 class _ProductScreenState extends State<ProductScreen> {
   final gallery = PageController();
-  SizeSystem system = SizeSystem.eur;
-  int? sizeIndex;
+  late SizeSystem system = widget.product.sizeSystem;
+  late int? sizeIndex = oneSize && widget.product.availableSizes.contains(0)
+      ? 0
+      : null;
   int imageIndex = 0;
+  bool get oneSize => widget.product.sizeSystem == SizeSystem.oneSize;
   @override
   void dispose() {
     gallery.dispose();
@@ -31,6 +34,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Widget build(BuildContext context) {
     final state = ShopScope.of(context), product = widget.product;
     final images = [product.image, ...galleryImages];
+    final soldOut = product.availableSizes.isEmpty;
     return PageFrame(
       title: 'Detalle',
       actions: [
@@ -60,24 +64,26 @@ class _ProductScreenState extends State<ProductScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        onPressed: () {
-          if (sizeIndex == null) {
-            feedback(
-              context,
-              'Selecciona una talla antes de agregar a la bolsa.',
-            );
-            return;
-          }
-          try {
-            state.addToCart(product, sizeIndex!, system);
-          } on ArgumentError catch (error) {
-            feedback(context, '${error.message}');
-            return;
-          }
-          feedback(context, 'Producto agregado a tu bolsa');
-        },
+        onPressed: soldOut
+            ? null
+            : () {
+                if (sizeIndex == null) {
+                  feedback(
+                    context,
+                    'Selecciona una talla antes de agregar a la bolsa.',
+                  );
+                  return;
+                }
+                try {
+                  state.addToCart(product, sizeIndex!, system);
+                } on ArgumentError catch (error) {
+                  feedback(context, '${error.message}');
+                  return;
+                }
+                feedback(context, 'Producto agregado a tu bolsa');
+              },
         icon: const LineIcon(LineIcons.bag, size: 20),
-        label: const Text('Agregar a la Bolsa'),
+        label: Text(soldOut ? 'Producto agotado' : 'Agregar a la Bolsa'),
       ),
       child: ListView(
         children: [
@@ -187,7 +193,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (product.oldPrice > product.price)
+                    if (product.onSale) ...[
                       Text(
                         money(product.oldPrice),
                         style: const TextStyle(
@@ -196,6 +202,8 @@ class _ProductScreenState extends State<ProductScreen> {
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
+                      OfferBadge(discount: product.discount),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -208,44 +216,53 @@ class _ProductScreenState extends State<ProductScreen> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 6,
                   children: [
-                    const Text(
-                      'Elige tu talla',
-                      style: TextStyle(
+                    Text(
+                      oneSize ? 'Talla' : 'Elige tu talla',
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.darkGreen,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                    if (!oneSize)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.darkGreen,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          textStyle: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                        onPressed: () => showInfo(
+                          context,
+                          'Guía de tallas',
+                          product.sizeSystem == SizeSystem.alpha
+                              ? 'Mide tu contorno de pecho, cintura y cadera y compáralo con tu talla habitual. Si estás entre dos tallas, elige la mayor.'
+                              : 'Mide tu pie desde el talón hasta la punta. Para 23.5 cm recomendamos talla 37 EUR / 7 US.',
+                        ),
+                        child: const Text('Guía de tallas'),
                       ),
-                      onPressed: () => showInfo(
-                        context,
-                        'Guía de tallas',
-                        'Mide tu pie desde el talón hasta la punta. Para 23.5 cm recomendamos talla 37 EUR / 7 US.',
-                      ),
-                      child: const Text('Guía de tallas'),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                SizeSystemTabs(
-                  value: system,
-                  onChanged: (value) => setState(() => system = value),
-                ),
-                const SizedBox(height: 14),
+                if (product.convertible) ...[
+                  SizeSystemTabs(
+                    systems: product.sizeSystems,
+                    value: system,
+                    onChanged: (value) => setState(() => system = value),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 LayoutBuilder(
                   builder: (context, constraints) {
                     const gap = 8.0;
                     final scale = MediaQuery.textScalerOf(context).scale(1);
-                    final columns = (constraints.maxWidth / (56 * scale))
+                    final cell = product.sizes.any((size) => size.length > 3)
+                        ? 72.0
+                        : 56.0;
+                    final columns = (constraints.maxWidth / (cell * scale))
                         .floor()
                         .clamp(3, 6);
                     final width =
@@ -254,11 +271,11 @@ class _ProductScreenState extends State<ProductScreen> {
                       spacing: gap,
                       runSpacing: gap,
                       children: List.generate(
-                        6,
+                        product.sizes.length,
                         (index) => SizedBox(
                           width: width,
                           child: SizeBox(
-                            label: sizeLabels[system]![index],
+                            label: product.sizeLabel(index, system),
                             selected: sizeIndex == index,
                             onTap: product.availableSizes.contains(index)
                                 ? () => setState(() => sizeIndex = index)
@@ -333,9 +350,11 @@ class SizeSystemTabs extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    this.systems = const [SizeSystem.eur, SizeSystem.us, SizeSystem.cm],
   });
   final SizeSystem value;
   final ValueChanged<SizeSystem> onChanged;
+  final List<SizeSystem> systems;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(3),
@@ -345,7 +364,7 @@ class SizeSystemTabs extends StatelessWidget {
     ),
     child: Row(
       children: [
-        for (final system in SizeSystem.values)
+        for (final system in systems)
           Expanded(
             child: Semantics(
               button: true,
@@ -375,7 +394,7 @@ class SizeSystemTabs extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 7),
                       child: Center(
                         child: Text(
-                          system.name.toUpperCase(),
+                          system.label,
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: system == value

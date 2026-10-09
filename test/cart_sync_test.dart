@@ -150,7 +150,7 @@ Future<void> _settle() async {
   }
 }
 
-final _size40 = sizeLabels[SizeSystem.eur]!.indexOf('40');
+int _size40(Product product) => product.sizes.indexOf('40');
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
@@ -185,7 +185,7 @@ void main() {
       await state.loadRemoteCatalog();
       final remoteProduct = state.catalogProducts.single;
       for (var i = 0; i < 3; i++) {
-        state.addToCart(remoteProduct, _size40, SizeSystem.eur);
+        state.addToCart(remoteProduct, _size40(remoteProduct), SizeSystem.eur);
       }
       state.addToCart(products[0], 2, SizeSystem.eur);
       expect(backend.requests, isNot(contains('POST /cart/items')));
@@ -216,7 +216,7 @@ void main() {
       await state.loginRemote(email: 'cliente@test.pe', password: 'secreta');
       final remoteProduct = state.catalogProducts.single;
 
-      state.addToCart(remoteProduct, _size40, SizeSystem.eur);
+      state.addToCart(remoteProduct, _size40(remoteProduct), SizeSystem.eur);
       await _settle();
       expect(backend.requests, contains('POST /cart/items'));
       expect(state.cart.single.remoteItemId, isNotNull);
@@ -235,7 +235,7 @@ void main() {
       backend
         ..failStatus = 400
         ..failMessage = 'La cantidad supera el stock disponible';
-      state.addToCart(remoteProduct, _size40, SizeSystem.eur);
+      state.addToCart(remoteProduct, _size40(remoteProduct), SizeSystem.eur);
       expect(state.cart.single.quantity, 2);
       await _settle();
       expect(state.cart.single.quantity, 1);

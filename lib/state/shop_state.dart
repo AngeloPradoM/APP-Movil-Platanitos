@@ -20,10 +20,20 @@ enum ProductSort { recommended, cheapest, expensive, recent, offers }
 
 class CatalogFilter {
   String query = '';
-  String? brand, color;
-  int? sizeIndex;
-  double maxPrice = 250;
+  String? brand, color, size;
+  double maxPrice = double.infinity;
   ProductSort sort = ProductSort.recommended;
+
+  /// Búsqueda, filtros u orden que deben considerar todo el catálogo.
+  bool get isActive =>
+      query.trim().isNotEmpty ||
+      brand != null ||
+      color != null ||
+      size != null ||
+      maxPrice.isFinite ||
+      sort != ProductSort.recommended;
+
+  /// "Recomendados" conserva el orden de origen (el del backend).
   List<Product> apply(Iterable<Product> source, {List<int>? favorites}) {
     final term = query.trim().toLowerCase();
     final result = source
@@ -35,11 +45,16 @@ class CatalogFilter {
               (brand == null || p.brand == brand) &&
               (color == null || p.color == color) &&
               p.price <= maxPrice &&
-              (sizeIndex == null || p.availableSizes.contains(sizeIndex)),
+              (size == null ||
+                  p.availableSizes.any((index) => p.sizes[index] == size)),
         )
         .toList();
-    result.sort(
-      (a, b) => switch (sort) {
+    if (sort == ProductSort.recommended) return result;
+    final position = {
+      for (final (index, product) in result.indexed) product: index,
+    };
+    result.sort((a, b) {
+      final order = switch (sort) {
         ProductSort.cheapest => a.price.compareTo(b.price),
         ProductSort.expensive => b.price.compareTo(a.price),
         ProductSort.offers => (b.oldPrice - b.price).compareTo(
@@ -48,17 +63,18 @@ class CatalogFilter {
         ProductSort.recent => (favorites?.indexOf(b.id) ?? b.id).compareTo(
           favorites?.indexOf(a.id) ?? a.id,
         ),
-        ProductSort.recommended => a.id.compareTo(b.id),
-      },
-    );
+        ProductSort.recommended => 0,
+      };
+      return order != 0 ? order : position[a]!.compareTo(position[b]!);
+    });
     return result;
   }
 
   void clear() {
     brand = null;
     color = null;
-    sizeIndex = null;
-    maxPrice = 250;
+    size = null;
+    maxPrice = double.infinity;
     query = '';
   }
 }
@@ -117,8 +133,14 @@ class ShopState extends ChangeNotifier {
   int _addressSequence = 0;
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
+  final _cartProducts = <String, Product>{};
   bool _catalogLoading = false;
   String? _catalogError;
+  static const catalogPageSize = 50;
+  int _catalogPage = 0, _catalogTotal = 0, _catalogTotalPages = 0;
+  int _catalogGeneration = 0;
+  bool _catalogMoreFailed = false;
+  Future<void>? _catalogMoreRequest, _fullCatalogRequest;
   LoyaltySummary? _loyalty;
   List<StoreLocation> _stores = stores;
   List<BlogArticle> _articles = blogArticles;
@@ -173,6 +195,12 @@ class ShopState extends ChangeNotifier {
       _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
   bool get catalogLoading => _catalogLoading;
   String? get catalogError => _catalogError;
+  bool get catalogHasMore =>
+      _remoteProducts.isNotEmpty && _catalogPage < _catalogTotalPages;
+  bool get catalogLoadingMore => _catalogMoreRequest != null;
+  bool get catalogMoreFailed => _catalogMoreFailed;
+  int get catalogTotal =>
+      _remoteProducts.isEmpty ? products.length : _catalogTotal;
   bool get cartSyncing => _pendingCartRequests > 0;
   String? get cartError => _cartError;
   String? get accessToken => _authSession?.accessToken;
@@ -311,6 +339,7 @@ class ShopState extends ChangeNotifier {
           ],
         );
       }
+      await _loadCartProducts(remote);
       _applyRemoteCart(remote);
     } catch (error) {
       _cartError = _cartErrorMessage(error);
@@ -355,15 +384,12 @@ class ShopState extends ChangeNotifier {
     _cart.removeWhere((item) => item.remoteVariantId != null);
     for (final remoteItem in remote.items) {
       final match = _findRemoteVariant(remoteItem.variantId);
-      final sizeIndex =
-          match?.sizeIndex ??
-          sizeLabels[SizeSystem.eur]!.indexOf(remoteItem.sizeValue);
-      if (sizeIndex < 0) continue;
+      final product = match?.product ?? _productFromCart(remoteItem);
       _cart.add(
         CartItem(
-          product: match?.product ?? _productFromCart(remoteItem, sizeIndex),
-          sizeIndex: sizeIndex,
-          system: systems[remoteItem.variantId] ?? SizeSystem.eur,
+          product: product,
+          sizeIndex: match?.sizeIndex ?? 0,
+          system: systems[remoteItem.variantId] ?? product.sizeSystem,
           quantity: remoteItem.quantity,
           remoteItemId: remoteItem.id,
         ),
@@ -371,8 +397,31 @@ class ShopState extends ChangeNotifier {
     }
   }
 
+  /// Trae la ficha de los productos de la bolsa que aún no llegaron en las
+  /// páginas cargadas del catálogo, para mostrar su imagen y sus tallas.
+  Future<void> _loadCartProducts(RemoteCart remote) async {
+    final repository = catalogRepository;
+    if (repository == null) return;
+    final slugs = {
+      for (final item in remote.items)
+        if (_findRemoteVariant(item.variantId) == null) item.productSlug,
+    };
+    await Future.wait(
+      slugs.map(
+        (slug) => _keepLocalOnFailure(() async {
+          _cartProducts[slug] = (await repository.getProduct(slug))
+              .toShopProduct();
+        }),
+      ),
+    );
+  }
+
   ({Product product, int sizeIndex})? _findRemoteVariant(String variantId) {
-    for (final product in _remoteProducts) {
+    for (final product in [
+      ..._remoteProducts,
+      ..._favoriteProducts.values,
+      ..._cartProducts.values,
+    ]) {
       for (final entry in product.remoteVariantIds.entries) {
         if (entry.value == variantId) {
           return (product: product, sizeIndex: entry.key);
@@ -382,10 +431,10 @@ class ShopState extends ChangeNotifier {
     return null;
   }
 
-  Product _productFromCart(RemoteCartItem item, int sizeIndex) => Product(
+  Product _productFromCart(RemoteCartItem item) => Product(
     id: item.productSlug.hashCode,
-    remoteVariantIds: {sizeIndex: item.variantId},
-    variantStock: {sizeIndex: item.stock},
+    remoteVariantIds: {0: item.variantId},
+    variantStock: {0: item.stock},
     brand: '',
     name: item.productName,
     category: '',
@@ -394,7 +443,9 @@ class ShopState extends ChangeNotifier {
     image: '',
     color: item.color,
     lowStock: item.stock > 0 && item.stock <= 3,
-    availableSizes: item.stock > 0 ? [sizeIndex] : const [],
+    sizeSystem: sizeSystemFromApi(item.sizeSystem) ?? SizeSystem.eur,
+    sizes: [item.sizeValue],
+    availableSizes: item.stock > 0 ? const [0] : const [],
   );
 
   Future<void> _runCartRequest(
@@ -625,6 +676,7 @@ class ShopState extends ChangeNotifier {
     final base = variantId == null
         ? null
         : _findRemoteVariant(variantId)?.product;
+    final system = sizeSystemFromApi(item.sizeSystem) ?? SizeSystem.eur;
     return OrderItem(
       product: Product(
         id: base?.id ?? (item.productSlug ?? item.productName).hashCode,
@@ -636,12 +688,12 @@ class ShopState extends ChangeNotifier {
         oldPrice: math.max(base?.oldPrice ?? 0, item.unitPrice),
         image: item.image ?? base?.image ?? '',
         color: item.color,
+        sizeSystem: system,
+        sizes: [item.sizeValue],
         availableSizes: const [],
       ),
       size: item.sizeValue,
-      system:
-          SizeSystem.values.asNameMap()[item.sizeSystem.toLowerCase()] ??
-          SizeSystem.eur,
+      system: system,
       quantity: item.quantity,
     );
   }
@@ -681,6 +733,7 @@ class ShopState extends ChangeNotifier {
       ..clear()
       ..addAll(_demoFavorites);
     _favoriteProducts.clear();
+    _cartProducts.clear();
     _addresses.clear();
     _loyalty = null;
     catalog.clear();
@@ -834,35 +887,106 @@ class ShopState extends ChangeNotifier {
     }
   }
 
-  void updateCatalog() => notifyListeners();
+  void updateCatalog() {
+    notifyListeners();
+    if (catalog.isActive) unawaited(loadFullCatalog());
+  }
 
+  /// Carga la primera página y reinicia la paginación del catálogo.
   Future<void> loadRemoteCatalog() async {
     if (catalogRepository == null || _catalogLoading) return;
+    _catalogGeneration++;
     _catalogLoading = true;
+    _catalogMoreFailed = false;
     _catalogError = null;
     notifyListeners();
     try {
-      final page = await catalogRepository!.listProducts();
+      final page = await catalogRepository!.listProducts(
+        limit: catalogPageSize,
+      );
       _remoteProducts = page.products
           .map((product) => product.toShopProduct())
           .toList(growable: false);
+      _catalogPage = 1;
+      _catalogTotal = page.total;
+      _catalogTotalPages = page.totalPages;
     } catch (error) {
       _catalogError = error.toString();
       _remoteProducts = const [];
+      _catalogPage = _catalogTotal = _catalogTotalPages = 0;
     } finally {
       _catalogLoading = false;
-      notifyListeners();
+      _notifySafely();
     }
+    if (catalog.isActive) unawaited(loadFullCatalog());
+  }
+
+  /// Agrega la siguiente página; si ya hay una en curso devuelve esa.
+  Future<void> loadMoreCatalog() {
+    if (catalogRepository == null || _catalogLoading || !catalogHasMore) {
+      return Future.value();
+    }
+    return _catalogMoreRequest ??= _fetchNextCatalogPage().whenComplete(() {
+      _catalogMoreRequest = null;
+      _notifySafely();
+    });
+  }
+
+  Future<void> _fetchNextCatalogPage() async {
+    final generation = _catalogGeneration;
+    final next = _catalogPage + 1;
+    _catalogMoreFailed = false;
+    _notifySafely();
+    try {
+      final page = await catalogRepository!.listProducts(
+        page: next,
+        limit: catalogPageSize,
+      );
+      if (generation != _catalogGeneration) return;
+      final loaded = {for (final product in _remoteProducts) product.remoteId};
+      _remoteProducts = List.unmodifiable([
+        ..._remoteProducts,
+        for (final product in page.products)
+          if (!loaded.contains(product.id)) product.toShopProduct(),
+      ]);
+      _catalogPage = next;
+      _catalogTotal = page.total;
+      _catalogTotalPages = page.totalPages;
+    } catch (_) {
+      if (generation == _catalogGeneration) _catalogMoreFailed = true;
+    }
+  }
+
+  /// Trae las páginas restantes para que búsqueda, filtros y orden
+  /// consideren todo el catálogo; se detiene si una página falla.
+  Future<void> loadFullCatalog() => _fullCatalogRequest ??= () async {
+    while (catalogHasMore &&
+        !_catalogLoading &&
+        !_catalogMoreFailed &&
+        !_disposed) {
+      await loadMoreCatalog();
+    }
+  }().whenComplete(() => _fullCatalogRequest = null);
+
+  void retryCatalogPage() {
+    _catalogMoreFailed = false;
+    unawaited(catalog.isActive ? loadFullCatalog() : loadMoreCatalog());
   }
 
   void addToCart(Product product, int sizeIndex, SizeSystem system) {
     if (sizeIndex < 0 ||
-        sizeIndex >= sizeLabels[system]!.length ||
+        sizeIndex >= product.sizes.length ||
         !product.availableSizes.contains(sizeIndex)) {
       throw ArgumentError('Selecciona una talla válida');
     }
+    if (!product.sizeSystems.contains(system)) system = product.sizeSystem;
+    final variantId = product.remoteVariantIds[sizeIndex];
     final index = _cart.indexWhere(
-      (item) => item.product.id == product.id && item.sizeIndex == sizeIndex,
+      (item) =>
+          item.product.id == product.id &&
+          (variantId == null
+              ? item.sizeIndex == sizeIndex
+              : item.remoteVariantId == variantId),
     );
     final stock = product.variantStock[sizeIndex];
     final current = index >= 0 ? _cart[index].quantity : 0;
@@ -878,7 +1002,6 @@ class ShopState extends ChangeNotifier {
       _cart.add(item);
     }
     notifyListeners();
-    final variantId = item.remoteVariantId;
     if (variantId == null || !_canSyncCart) return;
     _trackCartRequest(
       _runCartRequest(

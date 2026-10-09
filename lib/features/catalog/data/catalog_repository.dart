@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../../core/api_config.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/shop_models.dart';
@@ -10,6 +12,7 @@ class CatalogVariant {
     required this.color,
     required this.price,
     required this.stock,
+    this.comparePrice,
   });
   factory CatalogVariant.fromJson(Map<String, dynamic> json) => CatalogVariant(
     id: json['id'] as String,
@@ -17,10 +20,14 @@ class CatalogVariant {
     sizeValue: json['sizeValue'] as String,
     color: json['color'] as String,
     price: double.parse(json['price'] as String),
+    comparePrice: double.tryParse(json['comparePrice'] as String? ?? ''),
     stock: json['stock'] as int,
   );
   final String id, sizeSystem, sizeValue, color;
   final double price;
+
+  /// Precio anterior a la oferta; `null` si la variante no está rebajada.
+  final double? comparePrice;
   final int stock;
 }
 
@@ -55,40 +62,53 @@ class CatalogProduct {
   final String? description;
   final List<String> images;
   final List<CatalogVariant> variants;
+
+  /// Usa el color y sistema de talla de la primera variante; las tallas
+  /// quedan ordenadas y cada índice conserva su variante y su stock.
   Product toShopProduct() {
     final firstVariant = variants.isEmpty ? null : variants.first;
-    final prices = variants.map((variant) => variant.price).toList()..sort();
     final color = firstVariant?.color ?? '';
-    final eurLabels = sizeLabels[SizeSystem.eur]!;
-    final remoteVariantIds = <int, String>{};
-    final variantStock = <int, int>{};
-    for (final variant in variants) {
-      if (variant.sizeSystem != 'EUR' || variant.color != color) continue;
-      final sizeIndex = eurLabels.indexOf(variant.sizeValue);
-      if (sizeIndex < 0) continue;
-      remoteVariantIds[sizeIndex] = variant.id;
-      variantStock[sizeIndex] = variant.stock;
-    }
-    final availableSizes =
-        variantStock.entries
-            .where((entry) => entry.value > 0)
-            .map((entry) => entry.key)
-            .toList()
-          ..sort();
+    final system = firstVariant == null
+        ? null
+        : sizeSystemFromApi(firstVariant.sizeSystem);
+    final selected = {
+      for (final variant in variants)
+        if (variant.color == color &&
+            sizeSystemFromApi(variant.sizeSystem) == system)
+          variant.sizeValue: variant,
+    }.values.toList()..sort((a, b) => compareSizes(a.sizeValue, b.sizeValue));
+    final price = selected.isEmpty
+        ? 0.0
+        : selected.map((variant) => variant.price).reduce(math.min);
+    final comparePrices = selected
+        .map((variant) => variant.comparePrice)
+        .whereType<double>()
+        .where((value) => value > price);
     return Product(
       id: slug.hashCode,
       remoteId: id,
-      remoteVariantIds: remoteVariantIds,
-      variantStock: variantStock,
+      remoteVariantIds: {
+        for (final (index, variant) in selected.indexed) index: variant.id,
+      },
+      variantStock: {
+        for (final (index, variant) in selected.indexed) index: variant.stock,
+      },
       brand: brand,
       name: name,
       category: category,
-      price: firstVariant?.price ?? 0,
-      oldPrice: prices.isEmpty ? (firstVariant?.price ?? 0) : prices.last,
+      price: price,
+      oldPrice: comparePrices.fold(price, math.max),
       image: images.isEmpty ? '' : images.first,
       color: color,
-      lowStock: variantStock.values.any((stock) => stock > 0 && stock <= 3),
-      availableSizes: List.unmodifiable(availableSizes),
+      lowStock: selected.any(
+        (variant) => variant.stock > 0 && variant.stock <= 3,
+      ),
+      sizeSystem: system ?? SizeSystem.eur,
+      sizes: List.unmodifiable(selected.map((variant) => variant.sizeValue)),
+      availableSizes: List.unmodifiable([
+        for (final (index, variant) in selected.indexed)
+          if (variant.stock > 0) index,
+      ]),
     );
   }
 }

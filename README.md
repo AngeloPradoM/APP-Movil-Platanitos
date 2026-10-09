@@ -62,7 +62,7 @@ Platanitos es un prototipo funcional de tienda de calzado desarrollado para estu
 | App Flutter | raíz del repositorio (`lib/`, `test/`, `android/`, `web/`) | Interfaz, navegación, estado compartido y consumo de la API |
 | API NestJS | `backend/src/` | Autenticación, catálogo, carrito, favoritos, direcciones, pedidos, puntos, eGift Cards y contenido |
 | Esquema y migraciones | `backend/prisma/` | Modelo de datos (`schema.prisma`), migraciones versionadas y datos de demostración (`seed.ts`) |
-| Script de base de datos | `backend/database/` | `platanitos.sql` crea toda la base con un solo archivo; `seed.sql` contiene los datos de demostración |
+| Script de base de datos | `backend/database/` | `platanitos.sql` crea toda la base con un solo archivo; `seed.sql` contiene los datos de demostración; `catalog.sql` (opcional) agrega un catálogo ampliado de 500 productos |
 
 La app también funciona sin backend en **modo invitado**: el catálogo, las tiendas y el blog usan datos de respaldo locales. Crear cuenta, iniciar sesión y guardar datos en la nube requieren que la API esté levantada.
 
@@ -136,6 +136,8 @@ Más detalle en [`docs/FRONTEND_ARCHITECTURE.md`](docs/FRONTEND_ARCHITECTURE.md)
 | `prisma/seed.ts` | Datos de demostración (productos, tiendas y blog) |
 | `database/platanitos.sql` | **Script completo** de la base (tablas + registro de migraciones + datos) |
 | `scripts/setup-database.mjs` | Comando `npm run db:setup`: crea la base y la deja lista automáticamente |
+| `database/catalog/` | Modelo del catálogo ampliado (marcas, categorías, tipos, precios e imágenes) y su generador |
+| `scripts/seed-catalog.mjs` | Comandos `npm run db:catalog` (carga 500 productos) y `npm run db:catalog:sql` (genera `database/catalog.sql`) |
 | `.env.example` | Plantilla de configuración; se copia como `.env` |
 
 Más detalle en [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md) y [`backend/README.md`](backend/README.md).
@@ -151,6 +153,8 @@ npm run db:sql                                         # regenera database/plata
 ```
 
 Si se agregan datos de demostración, actualizar tanto `prisma/seed.ts` como `database/seed.sql`, y volver a ejecutar `npm run db:sql`.
+
+El catálogo ampliado es independiente: si se modifica `database/catalog/platanitos-catalog.mjs`, ejecutar `npm run db:catalog:sql` para regenerar `database/catalog.sql`.
 
 ## 6. API REST del backend
 
@@ -201,6 +205,7 @@ Los errores internos nunca se muestran al usuario: la app muestra "El sistema es
 - Inicio de sesión con Google/Apple es simulado; no hay OAuth real.
 - El modo invitado guarda bolsa y favoritos solo en memoria.
 - Las imágenes del catálogo se cargan desde Unsplash y requieren Internet; si fallan se muestra un reemplazo.
+- El catálogo ampliado (500 productos) se modeló con información pública de platanitos.com (departamentos, marcas, tipos de producto y rangos de precio); los productos son generados, no copias de fichas reales. La app carga la primera página (20 productos) y solo permite comprar tallas EUR 35–40, por lo que la ropa (tallas S–XL), los accesorios (talla única) y el calzado infantil se ven en la API pero aún no son comprables desde la app.
 - La app se validó en navegador (Chrome) y Android. iOS, macOS, Windows y Linux no se probaron.
 - Las fechas estimadas se calculan desde la fecha del dispositivo.
 
@@ -299,7 +304,7 @@ Estructura que debes ver:
 ```text
 APP-Movil-Platanitos/
 ├── backend/          ← API NestJS, Prisma y script de base de datos
-│   ├── database/     ← platanitos.sql y seed.sql
+│   ├── database/     ← platanitos.sql, seed.sql y catalog.sql (opcional)
 │   ├── prisma/       ← schema.prisma, migraciones y seed.ts
 │   └── .env.example  ← plantilla de configuración
 ├── lib/              ← código de la app Flutter
@@ -501,6 +506,22 @@ Este comando hace 4 cosas y muestra el avance:
 
 Puede ejecutarse varias veces sin duplicar datos. Si el usuario de PostgreSQL no tiene permiso para crear bases, crea `platanitos` en pgAdmin y vuelve a ejecutarlo.
 
+#### Opcional: cargar el catálogo ampliado de 500 productos
+
+Los datos de demostración traen solo 2 productos. Para probar la app con un catálogo grande y variado (calzado, ropa, carteras, accesorios, hogar, tecnología, belleza, juguetes, libros, vinos y más, con 82 marcas y 54 categorías), ejecuta desde `backend/`:
+
+```powershell
+npm run db:catalog
+```
+
+El comando muestra el avance en 4 pasos y termina con un conteo por categoría. Es idempotente (repetirlo actualiza los mismos 500 productos, sin duplicar) y no borra los productos de demostración.
+
+Si prefieres pgAdmin o `psql`, ejecuta el archivo [`backend/database/catalog.sql`](backend/database/catalog.sql) sobre la base `platanitos` **después** de `platanitos.sql`, igual que en el paso 4:
+
+```powershell
+psql -U postgres -d platanitos -v ON_ERROR_STOP=1 -f backend/database/catalog.sql
+```
+
 ### Paso 7. Levantar el backend
 
 ```powershell
@@ -604,6 +625,8 @@ Las pruebas e2e usan la base configurada en `.env`: crean usuarios temporales `e
 | `npm run db:setup` | Crear la base, aplicar migraciones, generar el cliente y cargar datos |
 | `npm run db:seed` | Volver a cargar solo los datos de demostración |
 | `npm run db:sql` | Regenerar `database/platanitos.sql` tras una nueva migración |
+| `npm run db:catalog` | Cargar o actualizar el catálogo ampliado de 500 productos |
+| `npm run db:catalog:sql` | Regenerar `database/catalog.sql` tras cambiar el modelo del catálogo |
 | `npx prisma migrate status` | Ver si la base está al día |
 | `npx prisma studio` | Explorar la base desde el navegador |
 | `npm run test:e2e -- --run` | Pruebas de extremo a extremo |

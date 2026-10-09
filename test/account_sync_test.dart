@@ -244,7 +244,7 @@ Matcher _stateError(String message) =>
     throwsA(isA<StateError>().having((e) => e.message, 'message', message));
 
 final _remoteId = 'producto-remoto'.hashCode;
-final _size40 = sizeLabels[SizeSystem.eur]!.indexOf('40');
+int _size40(Product product) => product.sizes.indexOf('40');
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
@@ -296,7 +296,7 @@ void main() {
     await state.loginRemote(email: 'cliente@test.pe', password: 'secreta');
     final product = state.catalogProducts.single;
 
-    state.addToCart(product, _size40, SizeSystem.eur);
+    state.addToCart(product, _size40(product), SizeSystem.eur);
     final order = await state.checkout(PaymentMethod.wallet);
 
     expect(
@@ -324,7 +324,8 @@ void main() {
     expect(order.status, OrderStatus.dispatch);
 
     await _settle();
-    state.addToCart(state.catalogProducts.single, _size40, SizeSystem.eur);
+    final refreshed = state.catalogProducts.single;
+    state.addToCart(refreshed, _size40(refreshed), SizeSystem.eur);
     backend.failures['POST /orders'] = (
       422,
       'El pago con tarjeta no está disponible en la demostración.',

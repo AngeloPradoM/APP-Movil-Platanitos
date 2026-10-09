@@ -640,6 +640,23 @@ INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_na
 VALUES (gen_random_uuid()::text, '7e359027b17f85ba8ecf42e0c0674b8d60bc672204faa1bb955cb6ecd461e7e0', now(), '20261009020141_address_reference_phone', now(), 1);
 
 -- ---------------------------------------------------------------------
+-- Migración 20261009031301_size_system_alpha_one_size
+-- ---------------------------------------------------------------------
+-- AlterEnum
+-- This migration adds more than one value to an enum.
+-- With PostgreSQL versions 11 and earlier, this is not possible
+-- in a single migration. This can be worked around by creating
+-- multiple migrations, each migration adding only one value to
+-- the enum.
+
+
+ALTER TYPE "SizeSystem" ADD VALUE 'ALPHA';
+ALTER TYPE "SizeSystem" ADD VALUE 'ONE_SIZE';
+
+INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+VALUES (gen_random_uuid()::text, '9738629ebd91944b636396fc7f4aecdc05a28ca8f8848041537e5aa2631f11d8', now(), '20261009031301_size_system_alpha_one_size', now(), 1);
+
+-- ---------------------------------------------------------------------
 -- Datos de demostración
 -- ---------------------------------------------------------------------
 -- Datos de demostración de Platanitos (equivalentes a prisma/seed.ts).

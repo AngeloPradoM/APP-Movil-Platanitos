@@ -310,7 +310,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final onSale = product.oldPrice > product.price;
+    final onSale = product.onSale;
     return Material(
       color: Colors.white,
       clipBehavior: Clip.antiAlias,
@@ -338,7 +338,11 @@ class ProductCard extends StatelessWidget {
                         child: ShopImage(product.image),
                       ),
                       if (onSale)
-                        const Positioned(top: 8, left: 8, child: OfferBadge()),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: OfferBadge(discount: product.discount),
+                        ),
                     ],
                   ),
                 ),
@@ -452,7 +456,8 @@ class ProductCard extends StatelessWidget {
 }
 
 class OfferBadge extends StatelessWidget {
-  const OfferBadge({super.key});
+  const OfferBadge({super.key, this.discount = 0});
+  final int discount;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -460,9 +465,9 @@ class OfferBadge extends StatelessWidget {
       color: AppColors.yellow,
       borderRadius: BorderRadius.circular(6),
     ),
-    child: const Text(
-      'OFERTA',
-      style: TextStyle(
+    child: Text(
+      discount > 0 ? '-$discount%' : 'OFERTA',
+      style: const TextStyle(
         color: AppColors.ink,
         fontSize: 10,
         fontWeight: FontWeight.w800,
@@ -550,36 +555,57 @@ class ProductGrid extends StatelessWidget {
     required this.products,
     required this.onOpen,
     this.favoriteActions = false,
-  });
+  }) : sliver = false;
+
+  /// Versión perezosa para listas largas dentro de un [CustomScrollView].
+  const ProductGrid.sliver({
+    super.key,
+    required this.products,
+    required this.onOpen,
+    this.favoriteActions = false,
+  }) : sliver = true;
   final List<Product> products;
   final ValueChanged<Product> onOpen;
-  final bool favoriteActions;
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      const spacing = 12.0;
-      final scale = MediaQuery.textScalerOf(context).scale(1);
-      final count = (constraints.maxWidth / (160 * scale)).floor().clamp(1, 4);
-      final itemWidth = (constraints.maxWidth - spacing * (count - 1)) / count;
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: products.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: count,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          mainAxisExtent:
-              itemWidth * .9 + (112 + (favoriteActions ? 48 : 0)) * scale,
-        ),
-        itemBuilder: (context, index) => ProductCard(
-          product: products[index],
-          onOpen: () => onOpen(products[index]),
-          favoriteActions: favoriteActions,
-        ),
-      );
-    },
+  final bool favoriteActions, sliver;
+
+  SliverGridDelegate _layout(BuildContext context, double width) {
+    const spacing = 12.0;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final count = (width / (160 * scale)).floor().clamp(1, 4);
+    final itemWidth = (width - spacing * (count - 1)) / count;
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: count,
+      crossAxisSpacing: spacing,
+      mainAxisSpacing: spacing,
+      mainAxisExtent:
+          itemWidth * .9 + (112 + (favoriteActions ? 48 : 0)) * scale,
+    );
+  }
+
+  Widget _card(BuildContext context, int index) => ProductCard(
+    product: products[index],
+    onOpen: () => onOpen(products[index]),
+    favoriteActions: favoriteActions,
   );
+
+  @override
+  Widget build(BuildContext context) => sliver
+      ? SliverLayoutBuilder(
+          builder: (context, constraints) => SliverGrid.builder(
+            itemCount: products.length,
+            gridDelegate: _layout(context, constraints.crossAxisExtent),
+            itemBuilder: _card,
+          ),
+        )
+      : LayoutBuilder(
+          builder: (context, constraints) => GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            gridDelegate: _layout(context, constraints.maxWidth),
+            itemBuilder: _card,
+          ),
+        );
 }
 
 class SearchField extends StatefulWidget {

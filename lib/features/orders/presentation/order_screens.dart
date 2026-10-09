@@ -147,7 +147,7 @@ class OrderProductRow extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                'Talla ${item.size} ${item.system.name.toUpperCase()} · Cantidad ${item.quantity}',
+                '${item.sizeText} · Cantidad ${item.quantity}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 5),

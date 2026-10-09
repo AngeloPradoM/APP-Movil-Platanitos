@@ -343,7 +343,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           ),
                           Text(
-                            'Talla ${item.size} ${item.system.name.toUpperCase()} · Cant. ${item.quantity}',
+                            '${item.sizeText} · Cant. ${item.quantity}',
                             style: const TextStyle(
                               color: AppColors.muted,
                               fontSize: 12,

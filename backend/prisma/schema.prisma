@@ -10,6 +10,8 @@ enum SizeSystem {
   EUR
   US
   CM
+  ALPHA
+  ONE_SIZE
 }
 
 enum CartStatus {

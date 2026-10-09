@@ -33,6 +33,8 @@ Nunca subas `.env` ni pongas credenciales reales en `.env.example`.
 | `npm run db:setup` | Crea la base si no existe, `prisma migrate deploy`, `prisma generate` y seed |
 | `npm run db:seed` | Carga los datos de demostración (idempotente) |
 | `npm run db:sql` | Regenera `database/platanitos.sql` a partir de las migraciones y `database/seed.sql` |
+| `npm run db:catalog` | Carga o actualiza el catálogo ampliado de 500 productos (idempotente, en una transacción) |
+| `npm run db:catalog:sql` | Genera `database/catalog.sql`, el mismo catálogo en SQL para pgAdmin o `psql` |
 | `npm run test` | Pruebas unitarias |
 | `npm run test:e2e -- --run` | Pruebas e2e contra la base configurada en `.env` |
 | `npm run lint` | Análisis estático con oxlint |
@@ -46,6 +48,17 @@ Nunca subas `.env` ni pongas credenciales reales en `.env.example`.
 | `prisma/seed.ts` | Datos de demostración usados por `npm run db:seed` |
 | `database/seed.sql` | Los mismos datos de demostración en SQL |
 | `database/platanitos.sql` | Script completo generado: tablas, registro `_prisma_migrations` y datos |
+| `database/catalog/platanitos-catalog.mjs` | Modelo del catálogo ampliado: plantillas por tipo de producto con categoría, marcas, modelos, rango de precio, tallas, colores e imágenes |
+| `database/catalog/generate-catalog.mjs` | Generador determinista (semilla fija) y constructor del SQL idempotente |
+| `database/catalog.sql` | Catálogo ampliado generado; se ejecuta después de `platanitos.sql` |
+
+El catálogo ampliado se modeló con información pública de platanitos.com
+(sitemaps de categorías, marcas y productos, y precios de las fichas): no copia
+fichas reales, sino que combina tipo, público, modelo y color con el estilo de
+nombre de la tienda. Sus variantes usan el prefijo de SKU `PLT-` (el seed
+original usa `PLAT-`); al recargarlo se desactivan las variantes `PLT-` que el
+modelo ya no genere. Tallas: calzado `EUR`, ropa `ALPHA` y accesorios/hogar
+`ONE_SIZE` ("Única").
 
 Para cambiar el modelo durante el desarrollo:
 

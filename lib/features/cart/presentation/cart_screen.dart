@@ -107,7 +107,7 @@ class CartScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            'Talla: ${item.size} · ${item.system.name.toUpperCase()} · ${item.product.color}',
+                            '${item.sizeText} · ${item.product.color}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 6),
