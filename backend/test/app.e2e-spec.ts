@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
@@ -9,6 +9,7 @@ describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let temporaryEmail: string | undefined;
+  let consumedStock: { variantId: string; quantity: number } | undefined;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -16,6 +17,7 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.init();
     prisma = app.get(PrismaService);
   });
@@ -97,8 +99,131 @@ describe('AppController (e2e)', () => {
       .expect(204);
   });
 
+  it('protects account features and exposes public content', async () => {
+    const server = app.getHttpServer();
+    await Promise.all([
+      request(server).get('/favorites').expect(401),
+      request(server).get('/orders').expect(401),
+      request(server).post('/orders').send({ paymentMethod: 'WALLET' }).expect(401),
+      request(server).get('/loyalty').expect(401),
+      request(server).post('/gift-cards').send({}).expect(401),
+      request(server).patch('/me').send({ name: 'Sin Token' }).expect(401),
+    ]);
+
+    const stores = await request(server).get('/content/stores').expect(200);
+    expect(stores.body).toEqual(expect.any(Array));
+    const posts = await request(server).get('/content/blog').expect(200);
+    expect(posts.body).toEqual(expect.any(Array));
+    if (posts.body.length > 0) {
+      await request(server).get(`/content/blog/${posts.body[0].slug}`).expect(200);
+    }
+    await request(server).get('/content/blog/articulo-inexistente-e2e').expect(404);
+  });
+
+  it('runs favorites, profile, checkout, tracking, loyalty and gift cards for a user', async () => {
+    const server = app.getHttpServer();
+    temporaryEmail = `e2e-flow-${Date.now()}@example.com`;
+    const registration = await request(server)
+      .post('/auth/register')
+      .send({ email: temporaryEmail, name: 'Flujo E2E', password: 'UnaClaveE2E-Segura-123' })
+      .expect(201);
+    const auth = { Authorization: `Bearer ${registration.body.accessToken}` };
+
+    const catalog = await request(server).get('/catalog/products?limit=50').expect(200);
+    const product = catalog.body.data.find((item: { variants: Array<{ stock: number }> }) =>
+      item.variants.some((variant) => variant.stock > 0),
+    );
+    expect(product).toBeDefined();
+    const variant = product.variants.find((item: { stock: number }) => item.stock > 0);
+
+    const favorites = await request(server).put(`/favorites/${product.id}`).set(auth).expect(200);
+    expect(favorites.body.map((item: { id: string }) => item.id)).toEqual([product.id]);
+    await request(server).put(`/favorites/${product.id}`).set(auth).expect(200);
+    const removed = await request(server).delete(`/favorites/${product.id}`).set(auth).expect(200);
+    expect(removed.body).toEqual([]);
+
+    const profile = await request(server)
+      .patch('/me')
+      .set(auth)
+      .send({ name: 'Flujo Editado', phone: '912345678' })
+      .expect(200);
+    expect(profile.body).toMatchObject({ name: 'Flujo Editado', phone: '912345678', email: temporaryEmail });
+    await request(server).patch('/me').set(auth).send({ phone: '123' }).expect(400);
+
+    await request(server).post('/orders').set(auth).send({ paymentMethod: 'WALLET' }).expect(400);
+    await request(server).post('/cart/items').set(auth).send({ variantId: variant.id, quantity: 1 }).expect(201);
+    await request(server).post('/orders').set(auth).send({ paymentMethod: 'CARD' }).expect(422);
+
+    const order = await request(server).post('/orders').set(auth).send({ paymentMethod: 'WALLET' }).expect(201);
+    consumedStock = { variantId: variant.id, quantity: 1 };
+    expect(order.body).toMatchObject({ status: 'PREPARATION', paymentMethod: 'WALLET', shipping: '6.9' });
+    expect(order.body.items).toHaveLength(1);
+    expect(order.body.items[0]).toMatchObject({ variantId: variant.id, quantity: 1, productSlug: product.slug });
+    const emptyCart = await request(server).get('/cart').set(auth).expect(200);
+    expect(emptyCart.body.items).toEqual([]);
+
+    const orders = await request(server).get('/orders').set(auth).expect(200);
+    expect(orders.body.map((item: { publicNumber: string }) => item.publicNumber)).toEqual([order.body.publicNumber]);
+    const delivered = await request(server)
+      .patch(`/orders/${order.body.publicNumber}/status`)
+      .set(auth)
+      .send({ status: 'DELIVERED' })
+      .expect(200);
+    expect(delivered.body.status).toBe('DELIVERED');
+    expect(delivered.body.statusHistory.map((entry: { status: string }) => entry.status)).toEqual([
+      'PREPARATION',
+      'DISPATCH',
+      'TRANSIT',
+      'DELIVERED',
+    ]);
+    await request(server)
+      .patch(`/orders/${order.body.publicNumber}/status`)
+      .set(auth)
+      .send({ status: 'TRANSIT' })
+      .expect(400);
+
+    const purchasePoints = Math.floor(Number(order.body.total));
+    const loyalty = await request(server).get('/loyalty').set(auth).expect(200);
+    expect(loyalty.body).toMatchObject({ points: purchasePoints, lifetimePoints: purchasePoints, walletBalance: '0.00' });
+
+    const recycling = await request(server).post('/loyalty/recycling').set(auth).expect(201);
+    expect(recycling.body.code).toMatch(/^RSK-\d{6}$/);
+    expect(recycling.body.summary.points).toBe(purchasePoints + 50);
+    await request(server).post('/loyalty/recycling').set(auth).expect(400);
+
+    const redeemed = await request(server).post('/loyalty/redeem').set(auth).expect(201);
+    const blocks = Math.floor((purchasePoints + 50) / 100);
+    expect(redeemed.body.points).toBe(purchasePoints + 50 - blocks * 100);
+    expect(redeemed.body.lifetimePoints).toBe(purchasePoints + 50);
+    expect(redeemed.body.walletBalance).toBe((blocks * 5).toFixed(2));
+    await request(server).post('/loyalty/redeem').set(auth).expect(400);
+
+    await request(server)
+      .post('/gift-cards')
+      .set(auth)
+      .send({ amount: 75, recipientName: 'Ana Pérez', recipientEmail: 'ana@example.com' })
+      .expect(400);
+    const giftCard = await request(server)
+      .post('/gift-cards')
+      .set(auth)
+      .send({ amount: 100, recipientName: 'Ana Pérez', recipientEmail: 'ana@example.com', message: '¡Feliz día!' })
+      .expect(201);
+    expect(giftCard.body).toMatchObject({ amount: '100.00', recipientEmail: 'ana@example.com' });
+    expect(giftCard.body.code).toMatch(/^GC-[0-9A-F]{4}-[0-9A-F]{4}$/);
+    const giftCards = await request(server).get('/gift-cards').set(auth).expect(200);
+    expect(giftCards.body).toHaveLength(1);
+  });
+
   afterEach(async () => {
+    if (consumedStock) {
+      await prisma.productVariant.update({
+        where: { id: consumedStock.variantId },
+        data: { stock: { increment: consumedStock.quantity } },
+      });
+      consumedStock = undefined;
+    }
     if (temporaryEmail) {
+      await prisma.order.deleteMany({ where: { user: { email: temporaryEmail } } });
       await prisma.user.delete({ where: { email: temporaryEmail } });
       temporaryEmail = undefined;
     }

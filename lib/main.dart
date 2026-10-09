@@ -29,10 +29,15 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
           catalogRepository: dependencies.catalog,
           authRepository: dependencies.auth,
           cartRepository: dependencies.cart,
+          favoritesRepository: dependencies.favorites,
+          ordersRepository: dependencies.orders,
+          accountRepository: dependencies.account,
+          contentRepository: dependencies.content,
         );
     state.restoreSession().whenComplete(() {
       if (mounted) setState(() {});
     });
+    state.loadContent();
   }
 
   @override

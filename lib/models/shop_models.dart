@@ -66,7 +66,10 @@ class AppUser {
 }
 
 enum MembershipLevel {
-  classic('Clásica', 0, ['Envío estándar a todo el Perú', 'Ofertas por correo']),
+  classic('Clásica', 0, [
+    'Envío estándar a todo el Perú',
+    'Ofertas por correo',
+  ]),
   silver('Plata', 300, [
     'Envío gratis desde S/ 149',
     'Acceso anticipado a campañas',
@@ -146,6 +149,12 @@ extension OrderStatusLabel on OrderStatus {
 }
 
 class OrderItem {
+  OrderItem({
+    required this.product,
+    required this.size,
+    required this.system,
+    required this.quantity,
+  });
   OrderItem.fromCart(CartItem item)
     : product = item.product,
       size = item.size,
@@ -166,12 +175,16 @@ class ShopOrder {
     required this.createdAt,
     required this.shipping,
     this.status = OrderStatus.preparation,
+    this.remote = false,
   });
   final String id;
   final List<OrderItem> items;
   final PaymentMethod payment;
   final DateTime createdAt;
   final double shipping;
+
+  /// Indica que el pedido existe en el backend y su estado se sincroniza.
+  final bool remote;
   OrderStatus status;
   double get subtotal => items.fold(0, (sum, item) => sum + item.subtotal);
   double get total => subtotal + shipping;

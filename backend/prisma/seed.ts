@@ -34,6 +34,53 @@ const catalog = [
   },
 ] as const;
 
+const stores = [
+  { slug: 'jockey-plaza', name: 'Platanitos Jockey Plaza', district: 'Santiago de Surco', address: 'Av. Javier Prado Este 4200, tienda 1-12' },
+  { slug: 'mega-plaza', name: 'Platanitos Mega Plaza', district: 'Independencia', address: 'Av. Alfredo Mendiola 3698, tienda 214' },
+  { slug: 'plaza-san-miguel', name: 'Platanitos Plaza San Miguel', district: 'San Miguel', address: 'Av. La Marina 2000, tienda A-35' },
+  { slug: 'real-plaza-salaverry', name: 'Platanitos Real Plaza Salaverry', district: 'Jesús María', address: 'Av. Gral. Felipe Salaverry 2370, tienda 108' },
+] as const;
+
+const blogPosts = [
+  {
+    slug: 'elegir-talla-perfecta',
+    title: 'Cómo elegir la talla perfecta sin probarte el calzado',
+    category: 'Guías',
+    summary: 'Mide tu pie en casa y compara con nuestra tabla EUR, US y CM.',
+    body: 'Coloca una hoja en el piso, apoya el talón contra la pared y marca la punta del dedo más largo. Mide la distancia en centímetros y busca ese valor en la tabla CM de la ficha del producto. Si estás entre dos tallas, elige la mayor para zapatillas y la menor para sandalias con correas ajustables.',
+    imageUrl: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?fit=crop&q=85&w=800',
+    readMinutes: 3,
+  },
+  {
+    slug: 'tendencias-plataformas-tonos-tierra',
+    title: 'Tendencias de temporada: plataformas y tonos tierra',
+    category: 'Tendencias',
+    summary: 'Las suelas altas y los colores camel dominan esta temporada.',
+    body: 'Las plataformas siguen siendo protagonistas por su comodidad y estilo. Combínalas con prendas en tonos tierra, beige y verde oliva. Para la noche, los tacos cuadrados ofrecen estabilidad sin perder elegancia.',
+    imageUrl: 'https://images.unsplash.com/photo-1591884807537-0bce39888fe0?fit=crop&q=85&w=800',
+    readMinutes: 4,
+  },
+  {
+    slug: 'cuidar-botines-cuero-lluvia',
+    title: 'Cuida tus botines de cuero en temporada de lluvia',
+    category: 'Cuidado',
+    summary: 'Tres pasos sencillos para que tu calzado dure más.',
+    body: 'Limpia el barro con un paño húmedo apenas llegues a casa. Deja secar a temperatura ambiente, nunca cerca de una fuente de calor. Aplica una crema hidratante incolora una vez por semana y usa un spray impermeabilizante antes de salir.',
+    imageUrl: 'https://images.unsplash.com/photo-1605732440685-d0654d81aa30?fit=crop&q=85&w=800',
+    readMinutes: 2,
+  },
+] as const;
+
+async function seedContent() {
+  for (const [sortOrder, store] of stores.entries()) {
+    const data = { ...store, hours: 'Lun a Dom · 10:00 a 22:00', sortOrder, isActive: true };
+    await prisma.store.upsert({ where: { slug: store.slug }, update: data, create: data });
+  }
+  for (const post of blogPosts) {
+    await prisma.blogPost.upsert({ where: { slug: post.slug }, update: post, create: post });
+  }
+}
+
 async function main() {
   for (const item of catalog) {
     const brand = await prisma.brand.upsert({
@@ -66,7 +113,10 @@ async function main() {
       });
     }
   }
-  console.log(`Seed completado: ${catalog.length} productos de demostración.`);
+  await seedContent();
+  console.log(
+    `Seed completado: ${catalog.length} productos, ${stores.length} tiendas y ${blogPosts.length} artículos de demostración.`,
+  );
 }
 
 main().catch((error) => {

@@ -33,7 +33,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       setState(() => processing = false);
       return;
     }
-    final order = state.placeOrder(payment);
+    final ShopOrder order;
+    try {
+      order = await state.checkout(payment);
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() => processing = false);
+      feedback(context, error.message);
+      return;
+    }
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute<void>(builder: (_) => SuccessScreen(order: order)),

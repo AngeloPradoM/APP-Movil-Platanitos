@@ -59,6 +59,22 @@ class AuthRepository {
           body: {'refreshToken': refreshToken},
         ) as Map<String, dynamic>,
       );
+  Future<Map<String, dynamic>> updateProfile({
+    required String accessToken,
+    String? name,
+    String? email,
+    String? phone,
+  }) async => Map<String, dynamic>.from(
+    await _client.patch(
+      '/me',
+      accessToken: accessToken,
+      body: {
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      },
+    ) as Map,
+  );
   Future<void> logout(String refreshToken) async {
     await _client.post('/auth/logout', body: {'refreshToken': refreshToken});
   }

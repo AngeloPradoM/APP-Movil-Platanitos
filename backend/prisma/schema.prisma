@@ -47,6 +47,11 @@ enum SupportTicketStatus {
   CLOSED
 }
 
+enum LoyaltyEntryType {
+  RECYCLING_BONUS
+  REDEMPTION
+}
+
 model User {
   id                 String              @id @default(uuid()) @db.Uuid
   email              String              @unique @db.VarChar(254)
@@ -65,6 +70,8 @@ model User {
   cart               Cart?
   orders             Order[]
   supportTickets     SupportTicket[]
+  loyaltyEntries     LoyaltyEntry[]
+  giftCards          GiftCard[]
 }
 
 model PasswordCredential {
@@ -338,4 +345,67 @@ model SupportTicket {
 
   @@index([userId, status])
   @@index([orderId])
+}
+
+/// Puntos que no provienen de compras (los de compras se calculan desde Order).
+/// points > 0 suma puntos; points < 0 los canjea por saldo en walletAmount.
+model LoyaltyEntry {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  type         LoyaltyEntryType
+  points       Int
+  walletAmount Decimal          @default(0) @db.Decimal(10, 2)
+  description  String           @db.VarChar(160)
+  reference    String?          @unique @db.VarChar(32)
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, type, createdAt])
+}
+
+model GiftCard {
+  id             String   @id @default(uuid()) @db.Uuid
+  purchaserId    String   @db.Uuid
+  code           String   @unique @db.VarChar(24)
+  amount         Decimal  @db.Decimal(10, 2)
+  recipientName  String   @db.VarChar(120)
+  recipientEmail String   @db.VarChar(254)
+  message        String?  @db.VarChar(120)
+  createdAt      DateTime @default(now())
+  purchaser      User     @relation(fields: [purchaserId], references: [id], onDelete: Cascade)
+
+  @@index([purchaserId, createdAt])
+}
+
+model Store {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique @db.VarChar(100)
+  name      String   @db.VarChar(120)
+  district  String   @db.VarChar(80)
+  address   String   @db.VarChar(180)
+  hours     String   @db.VarChar(80)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model BlogPost {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(180)
+  title       String   @db.VarChar(180)
+  category    String   @db.VarChar(40)
+  summary     String   @db.VarChar(255)
+  body        String
+  imageUrl    String   @db.VarChar(2048)
+  readMinutes Int
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, publishedAt])
 }

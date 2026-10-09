@@ -33,6 +33,15 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<dynamic> put(String path, {Object? body, String? accessToken}) async {
+    final response = await _client.put(
+      _uri(path),
+      headers: _headers(accessToken),
+      body: body == null ? null : jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
   Future<dynamic> patch(
     String path, {
     Object? body,

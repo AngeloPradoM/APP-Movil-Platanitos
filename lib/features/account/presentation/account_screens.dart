@@ -101,7 +101,12 @@ class AccountScreen extends StatelessWidget {
       ('eGift Card', Icons.card_giftcard, open(const GiftCardScreen()), false),
       ('Ubícanos', Icons.map_outlined, open(const StoresScreen()), false),
       ('Blog', Icons.menu_book_outlined, open(const BlogScreen()), false),
-      ('Centro de ayuda', Icons.help_outline, open(const SupportScreen()), false),
+      (
+        'Centro de ayuda',
+        Icons.help_outline,
+        open(const SupportScreen()),
+        false,
+      ),
     ];
     return ListView(
       padding: const EdgeInsets.all(18),
@@ -319,8 +324,30 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final form = GlobalKey<FormState>();
-  bool editing = false;
+  bool editing = false, saving = false;
   String name = '', email = '', phone = '', document = '';
+  Future<void> save() async {
+    if (saving || !form.currentState!.validate()) return;
+    setState(() => saving = true);
+    try {
+      await ShopScope.of(context).saveProfile(
+        AppUser(
+          name: name.trim(),
+          document: document,
+          email: email.trim(),
+          phone: phone,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => editing = false);
+      feedback(context, 'Datos actualizados correctamente');
+    } on StateError catch (error) {
+      if (mounted) feedback(context, error.message);
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   void edit() {
     final user = ShopScope.of(context).user;
     setState(() {
@@ -429,23 +456,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 20),
                     FilledButton(
-                      onPressed: () {
-                        if (!form.currentState!.validate()) return;
-                        state.updateUser(
-                          AppUser(
-                            name: name.trim(),
-                            document: document,
-                            email: email.trim(),
-                            phone: phone,
-                          ),
-                        );
-                        setState(() => editing = false);
-                        feedback(context, 'Datos actualizados correctamente');
-                      },
-                      child: const Text('Guardar cambios'),
+                      onPressed: saving ? null : save,
+                      child: Text(saving ? 'Guardando…' : 'Guardar cambios'),
                     ),
                     TextButton(
-                      onPressed: () => setState(() => editing = false),
+                      onPressed: saving
+                          ? null
+                          : () => setState(() => editing = false),
                       child: const Text('Cancelar'),
                     ),
                   ] else ...[
@@ -463,7 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             tileColor: AppColors.softGreen,
             leading: Icon(Icons.verified_user_outlined, color: AppColors.green),
             subtitle: Text(
-              'Tus datos están protegidos y se conservan en memoria durante esta demostración.',
+              'Tus datos están protegidos y se guardan en tu cuenta.',
             ),
           ),
           const SizedBox(height: 20),

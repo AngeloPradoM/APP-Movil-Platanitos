@@ -87,12 +87,18 @@ class WalletScreen extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: canRedeem
-                ? () {
-                    final amount = state.redeemPoints();
-                    feedback(
-                      context,
-                      'Agregamos ${money(amount)} a tu monedero',
-                    );
+                ? () async {
+                    try {
+                      final amount = await state.redeemPoints();
+                      if (context.mounted) {
+                        feedback(
+                          context,
+                          'Agregamos ${money(amount)} a tu monedero',
+                        );
+                      }
+                    } on StateError catch (error) {
+                      if (context.mounted) feedback(context, error.message);
+                    }
                   }
                 : null,
             icon: const Icon(Icons.swap_horiz),
@@ -147,7 +153,9 @@ class LevelProgress extends StatelessWidget {
     final level = MembershipLevel.forPoints(lifetimePoints);
     final next = level.next;
     if (next == null) {
-      return const Text('Alcanzaste el nivel más alto. ¡Gracias por elegirnos!');
+      return const Text(
+        'Alcanzaste el nivel más alto. ¡Gracias por elegirnos!',
+      );
     }
     final progress =
         (lifetimePoints - level.minPoints) / (next.minPoints - level.minPoints);
@@ -269,7 +277,9 @@ class MembershipScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    level == current ? '${level.label} · Tu nivel' : level.label,
+                    level == current
+                        ? '${level.label} · Tu nivel'
+                        : level.label,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
@@ -301,20 +311,37 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   final form = GlobalKey<FormState>();
   double amount = giftCardAmounts[1];
   String name = '', email = '', message = '';
+  bool sending = false;
 
   Future<void> send() async {
-    if (!form.currentState!.validate()) return;
+    if (sending || !form.currentState!.validate()) return;
     if (!await requireLogin(context, AuthPrompt.account) || !mounted) return;
-    feedback(
-      context,
-      'Enviamos una eGift Card de ${money(amount)} a ${email.trim()} (demostración).',
-    );
-    form.currentState!.reset();
-    setState(() {
-      name = '';
-      email = '';
-      message = '';
-    });
+    setState(() => sending = true);
+    try {
+      final code = await ShopScope.of(context).sendGiftCard(
+        amount: amount,
+        recipientName: name.trim(),
+        recipientEmail: email.trim(),
+        message: message.trim(),
+      );
+      if (!mounted) return;
+      await showInfo(
+        context,
+        'eGift Card enviada',
+        'Código: $code\n\nEnviamos ${money(amount)} a ${email.trim()} (demostración, sin cobro ni correo real).',
+      );
+      if (!mounted) return;
+      form.currentState!.reset();
+      setState(() {
+        name = '';
+        email = '';
+        message = '';
+      });
+    } on StateError catch (error) {
+      if (mounted) feedback(context, error.message);
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
   }
 
   @override
@@ -375,9 +402,9 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: send,
+                onPressed: sending ? null : send,
                 icon: const Icon(Icons.card_giftcard),
-                label: const Text('Enviar eGift Card'),
+                label: Text(sending ? 'Enviando…' : 'Enviar eGift Card'),
               ),
             ],
           ),
@@ -406,7 +433,7 @@ class StoresScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
-        ...stores.map(
+        ...ShopScope.of(context).storeLocations.map(
           (store) => Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
@@ -422,7 +449,10 @@ class StoresScreen extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
-                Text(store.district, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  store.district,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 8),
                 Text(store.address),
                 Text(store.hours, style: Theme.of(context).textTheme.bodySmall),
@@ -431,7 +461,9 @@ class StoresScreen extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: () async {
                       await Clipboard.setData(
-                        ClipboardData(text: '${store.address}, ${store.district}'),
+                        ClipboardData(
+                          text: '${store.address}, ${store.district}',
+                        ),
                       );
                       if (context.mounted) {
                         feedback(context, 'Dirección copiada');
@@ -457,7 +489,7 @@ class BlogScreen extends StatelessWidget {
     title: 'Blog',
     child: ListView(
       padding: const EdgeInsets.all(20),
-      children: blogArticles
+      children: ShopScope.of(context).articles
           .map(
             (article) => Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -549,10 +581,14 @@ class ResiklaScreen extends StatelessWidget {
     if (!await requireLogin(context, AuthPrompt.account) || !context.mounted) {
       return;
     }
-    final state = ShopScope.of(context);
-    state.registerRecycling();
-    final code =
-        'RSK-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
+    final String code;
+    try {
+      code = await ShopScope.of(context).registerRecycling();
+    } on StateError catch (error) {
+      if (context.mounted) feedback(context, error.message);
+      return;
+    }
+    if (!context.mounted) return;
     await showInfo(
       context,
       'Tu código Resikla',

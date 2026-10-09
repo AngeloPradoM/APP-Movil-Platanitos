@@ -569,17 +569,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       return EmptyState(
         icon: Icons.favorite_border,
         title: 'Guarda tus favoritos',
-        message:
-            'Inicia sesión para guardar los productos que te gustan y verlos aquí.',
+        message: 'Inicia sesión para guardar los productos que te gustan y verlos aquí.',
         action: 'Iniciar sesión',
         onAction: () => requireLogin(context, AuthPrompt.favorites),
       );
     }
     final filter = CatalogFilter()..sort = sort;
     final result = filter.apply(
-      state.catalogProducts.where(
-        (product) => state.favorites.contains(product.id),
-      ),
+      state.favoriteProducts,
       favorites: state.favorites,
     );
     if (result.isEmpty) {

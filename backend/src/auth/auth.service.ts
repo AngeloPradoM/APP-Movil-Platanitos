@@ -10,6 +10,7 @@ import * as argon2 from 'argon2';
 import { PrismaService } from '../database/prisma.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
 
 type SafeUser = {
   id: string;
@@ -94,6 +95,20 @@ export class AuthService {
       data: { revokedAt: new Date(), lastUsedAt: new Date() },
     });
     return this.issueTokens(this.toSafeUser(session.user));
+  }
+
+  async updateProfile(userId: string, input: UpdateProfileDto): Promise<SafeUser> {
+    if (input.email) {
+      const owner = await this.prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
+      if (owner && owner.id !== userId) {
+        throw new ConflictException('No se pudo actualizar el correo.');
+      }
+    }
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { name: input.name, email: input.email, phone: input.phone },
+    });
+    return this.toSafeUser(user);
   }
 
   async logout(refreshToken: string): Promise<void> {

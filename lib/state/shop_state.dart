@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../core/network/api_client.dart';
 import '../data/mock_data.dart';
+import '../features/account/data/account_repository.dart';
+import '../features/account/data/content_repository.dart';
 import '../features/catalog/data/catalog_repository.dart';
+import '../features/catalog/data/favorites_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/session_storage.dart';
 import '../features/cart/data/cart_repository.dart';
+import '../features/orders/data/orders_repository.dart';
 import '../shared/models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
@@ -64,6 +68,10 @@ class ShopState extends ChangeNotifier {
     this.catalogRepository,
     this.authRepository,
     this.cartRepository,
+    this.favoritesRepository,
+    this.ordersRepository,
+    this.accountRepository,
+    this.contentRepository,
     SessionStorage? sessionStorage,
   }) : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
@@ -89,17 +97,27 @@ class ShopState extends ChangeNotifier {
   }
   AppUser user = demoUser;
   bool signedIn = false;
-  final _favorites = <int>[1, 3, 4];
+  static const _demoFavorites = [1, 3, 4];
+  final _favorites = <int>[..._demoFavorites];
+  final _favoriteProducts = <int, Product>{};
   final _cart = <CartItem>[];
   final _orders = <ShopOrder>[];
   final CatalogRepository? catalogRepository;
   final AuthRepository? authRepository;
   final SessionStorage _sessionStorage;
   final CartRepository? cartRepository;
+  final FavoritesRepository? favoritesRepository;
+  final OrdersRepository? ordersRepository;
+  final AccountRepository? accountRepository;
+  final ContentRepository? contentRepository;
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
   String? _catalogError;
+  LoyaltySummary? _loyalty;
+  List<StoreLocation> _stores = stores;
+  List<BlogArticle> _articles = blogArticles;
+  final _cartRequests = <Future<void>>{};
   int _pendingCartRequests = 0;
   String? _cartError;
   bool _disposed = false;
@@ -115,17 +133,35 @@ class ShopState extends ChangeNotifier {
   static const redemptionValue = 5.0;
   static const recyclingBonus = 50;
   List<WalletMovement> get walletMovements =>
-      List.unmodifiable(_walletMovements);
+      List.unmodifiable(_loyalty?.walletMovements ?? _walletMovements);
   double get walletBalance =>
+      _loyalty?.walletBalance ??
       _walletMovements.fold(0, (sum, movement) => sum + movement.amount);
 
   /// Puntos acumulados en toda la cuenta: 1 punto por cada S/ 1 comprado.
   int get lifetimePoints =>
-      _orders.fold(0, (sum, order) => sum + order.total.floor()) +
-      _bonusPoints;
-  int get points => lifetimePoints - _redeemedPoints;
+      _loyalty?.lifetimePoints ??
+      _orders.fold(0, (sum, order) => sum + order.total.floor()) + _bonusPoints;
+  int get points => _loyalty?.points ?? lifetimePoints - _redeemedPoints;
   MembershipLevel get membership => MembershipLevel.forPoints(lifetimePoints);
+  List<StoreLocation> get storeLocations => List.unmodifiable(_stores);
+  List<BlogArticle> get articles => List.unmodifiable(_articles);
   List<int> get favorites => List.unmodifiable(_favorites);
+
+  /// Favoritos visibles, incluidos los que no llegaron en la página del catálogo.
+  List<Product> get favoriteProducts {
+    final visible = {
+      for (final product in catalogProducts)
+        if (_favorites.contains(product.id)) product.id: product,
+    };
+    for (final entry in _favoriteProducts.entries) {
+      if (_favorites.contains(entry.key)) {
+        visible.putIfAbsent(entry.key, () => entry.value);
+      }
+    }
+    return List.unmodifiable(visible.values);
+  }
+
   List<CartItem> get cart => List.unmodifiable(_cart);
   List<ShopOrder> get orders => List.unmodifiable(_orders);
   List<Product> get catalogProducts =>
@@ -137,6 +173,7 @@ class ShopState extends ChangeNotifier {
   String? get accessToken => _authSession?.accessToken;
   bool get _canSyncCart =>
       signedIn && cartRepository != null && accessToken != null;
+  String? get _sessionToken => signedIn ? accessToken : null;
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _cart.fold(0, (sum, item) => sum + item.subtotal);
   double get shipping => _cart.isEmpty ? 0 : 6.9;
@@ -162,6 +199,7 @@ class ShopState extends ChangeNotifier {
       refreshToken: session.refreshToken,
     );
     await loadRemoteCart();
+    await _loadAccountData();
     final remoteUser = session.user;
     user = AppUser(
       name: remoteUser['name'] as String? ?? user.name,
@@ -199,6 +237,7 @@ class ShopState extends ChangeNotifier {
       refreshToken: session.refreshToken,
     );
     await loadRemoteCart();
+    await _loadAccountData();
     user = AppUser(
       name: session.user['name'] as String? ?? name,
       document:
@@ -231,6 +270,7 @@ class ShopState extends ChangeNotifier {
         refreshToken: session.refreshToken,
       );
       await loadRemoteCart();
+      await _loadAccountData();
       notifyListeners();
     } catch (_) {
       await _sessionStorage.clear();
@@ -414,6 +454,130 @@ class ShopState extends ChangeNotifier {
     super.dispose();
   }
 
+  void _trackCartRequest(Future<void> request) {
+    _cartRequests.add(request);
+    unawaited(request.whenComplete(() => _cartRequests.remove(request)));
+  }
+
+  /// Carga favoritos, pedidos y puntos de la cuenta. Si una consulta falla
+  /// se conservan los datos locales para no bloquear el inicio de sesión.
+  Future<void> _loadAccountData() async {
+    final token = accessToken;
+    if (token == null) return;
+    final favoritesSource = favoritesRepository;
+    final ordersSource = ordersRepository;
+    await Future.wait([
+      if (favoritesSource != null)
+        _keepLocalOnFailure(
+          () async => _applyRemoteFavorites(
+            await favoritesSource.list(accessToken: token),
+          ),
+        ),
+      if (ordersSource != null)
+        _keepLocalOnFailure(
+          () async =>
+              _applyRemoteOrders(await ordersSource.list(accessToken: token)),
+        ),
+      _refreshLoyalty(token),
+    ]);
+    _notifySafely();
+  }
+
+  Future<void> _keepLocalOnFailure(Future<void> Function() request) async {
+    try {
+      await request();
+    } catch (_) {}
+  }
+
+  Future<void> _refreshLoyalty([String? token]) async {
+    final repository = accountRepository;
+    final sessionToken = token ?? _sessionToken;
+    if (repository == null || sessionToken == null) return;
+    await _keepLocalOnFailure(() async {
+      _loyalty = await repository.getLoyalty(accessToken: sessionToken);
+      _notifySafely();
+    });
+  }
+
+  void _applyRemoteFavorites(List<CatalogProduct> remote) {
+    final mapped = remote.map((product) => product.toShopProduct()).toList();
+    _favoriteProducts
+      ..clear()
+      ..addEntries(mapped.map((product) => MapEntry(product.id, product)));
+    // El backend devuelve primero el más reciente; localmente va al final.
+    _favorites
+      ..clear()
+      ..addAll(mapped.reversed.map((product) => product.id));
+  }
+
+  void _applyRemoteOrders(List<RemoteOrder> remote) {
+    _orders
+      ..clear()
+      ..addAll(remote.map(_orderFromRemote).whereType<ShopOrder>());
+  }
+
+  ShopOrder? _orderFromRemote(RemoteOrder order) {
+    final status = OrderStatus.values.asNameMap()[order.status.toLowerCase()];
+    final payment = PaymentMethod.values
+        .asNameMap()[order.paymentMethod.toLowerCase()];
+    if (status == null || payment == null) return null;
+    return ShopOrder(
+      id: order.publicNumber,
+      items: List.unmodifiable(order.items.map(_orderItemFromRemote)),
+      payment: payment,
+      createdAt: order.createdAt,
+      shipping: order.shipping,
+      status: status,
+      remote: true,
+    );
+  }
+
+  OrderItem _orderItemFromRemote(RemoteOrderItem item) {
+    final variantId = item.variantId;
+    final base = variantId == null
+        ? null
+        : _findRemoteVariant(variantId)?.product;
+    return OrderItem(
+      product: Product(
+        id: base?.id ?? (item.productSlug ?? item.productName).hashCode,
+        remoteId: base?.remoteId,
+        brand: base?.brand ?? '',
+        name: item.productName,
+        category: base?.category ?? '',
+        price: item.unitPrice,
+        oldPrice: math.max(base?.oldPrice ?? 0, item.unitPrice),
+        image: item.image ?? base?.image ?? '',
+        color: item.color,
+        availableSizes: const [],
+      ),
+      size: item.sizeValue,
+      system:
+          SizeSystem.values.asNameMap()[item.sizeSystem.toLowerCase()] ??
+          SizeSystem.eur,
+      quantity: item.quantity,
+    );
+  }
+
+  String _requestErrorMessage(Object error) =>
+      error is ApiException && const [400, 409, 422].contains(error.statusCode)
+      ? error.message
+      : _failureMessage;
+
+  /// Tiendas y blog públicos; si el backend no responde quedan los de ejemplo.
+  Future<void> loadContent() async {
+    final repository = contentRepository;
+    if (repository == null) return;
+    await _keepLocalOnFailure(() async {
+      final (remoteStores, remoteArticles) = await (
+        repository.listStores(),
+        repository.listArticles(),
+      ).wait;
+      if (remoteStores.isNotEmpty) _stores = remoteStores;
+      if (remoteArticles.isNotEmpty) _articles = remoteArticles;
+      _notifySafely();
+    });
+  }
+
   void logout() {
     final refreshToken = _authSession?.refreshToken;
     if (refreshToken != null && authRepository != null) {
@@ -424,6 +588,12 @@ class ShopState extends ChangeNotifier {
     signedIn = false;
     _cart.clear();
     _cartError = null;
+    _orders.removeWhere((order) => order.remote);
+    _favorites
+      ..clear()
+      ..addAll(_demoFavorites);
+    _favoriteProducts.clear();
+    _loyalty = null;
     catalog.clear();
     notifyListeners();
   }
@@ -433,17 +603,82 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Guarda nombre, correo y teléfono en el backend cuando hay sesión.
+  Future<void> saveProfile(AppUser value) async {
+    final repository = authRepository;
+    final token = _sessionToken;
+    if (repository == null || token == null) return updateUser(value);
+    final Map<String, dynamic> remote;
+    try {
+      remote = await repository.updateProfile(
+        accessToken: token,
+        name: value.name,
+        email: value.email,
+        phone: value.phone,
+      );
+    } catch (error) {
+      throw StateError(_requestErrorMessage(error));
+    }
+    updateUser(
+      AppUser(
+        name: remote['name'] as String? ?? value.name,
+        document: value.document,
+        email: remote['email'] as String? ?? value.email,
+        phone: remote['phone'] as String? ?? value.phone,
+      ),
+    );
+  }
+
   void toggleFavorite(int id) {
-    _favorites.contains(id) ? _favorites.remove(id) : _favorites.add(id);
+    final adding = !_favorites.contains(id);
+    adding ? _favorites.add(id) : _favorites.remove(id);
     notifyListeners();
+    final repository = favoritesRepository;
+    final token = _sessionToken;
+    final productId = _productById(id)?.remoteId;
+    if (repository == null || token == null || productId == null) return;
+    unawaited(() async {
+      try {
+        _applyRemoteFavorites(
+          adding
+              ? await repository.add(accessToken: token, productId: productId)
+              : await repository.remove(
+                  accessToken: token,
+                  productId: productId,
+                ),
+        );
+      } catch (_) {
+        adding ? _favorites.remove(id) : _favorites.add(id);
+      }
+      _notifySafely();
+    }());
+  }
+
+  Product? _productById(int id) {
+    for (final product in catalogProducts) {
+      if (product.id == id) return product;
+    }
+    return _favoriteProducts[id];
   }
 
   /// Canjea los puntos disponibles en bloques de [pointsPerRedemption]
   /// y devuelve el saldo agregado al monedero.
-  double redeemPoints() {
+  Future<double> redeemPoints() async {
     final blocks = points ~/ pointsPerRedemption;
     if (blocks == 0) {
       throw StateError('Necesitas al menos $pointsPerRedemption puntos');
+    }
+    final repository = accountRepository;
+    final token = _sessionToken;
+    if (repository != null && token != null) {
+      final before = walletBalance;
+      try {
+        _loyalty = await repository.redeemPoints(accessToken: token);
+      } catch (error) {
+        throw StateError(_requestErrorMessage(error));
+      }
+      notifyListeners();
+      return walletBalance - before;
     }
     final redeemed = blocks * pointsPerRedemption;
     final amount = blocks * redemptionValue;
@@ -460,9 +695,54 @@ class ShopState extends ChangeNotifier {
     return amount;
   }
 
-  void registerRecycling() {
-    _bonusPoints += recyclingBonus;
-    notifyListeners();
+  /// Registra la entrega de calzado usado y devuelve el código Resikla.
+  Future<String> registerRecycling() async {
+    final repository = accountRepository;
+    final token = _sessionToken;
+    if (repository == null || token == null) {
+      _bonusPoints += recyclingBonus;
+      notifyListeners();
+      return 'RSK-${math.Random().nextInt(900000) + 100000}';
+    }
+    try {
+      final result = await repository.registerRecycling(accessToken: token);
+      _loyalty = result.summary;
+      notifyListeners();
+      return result.code;
+    } catch (error) {
+      throw StateError(_requestErrorMessage(error));
+    }
+  }
+
+  /// Emite una eGift Card (sin cobro real) y devuelve su código.
+  Future<String> sendGiftCard({
+    required double amount,
+    required String recipientName,
+    required String recipientEmail,
+    String message = '',
+  }) async {
+    final repository = accountRepository;
+    final token = _sessionToken;
+    if (repository == null || token == null) {
+      final random = math.Random();
+      String block() => random
+          .nextInt(0x10000)
+          .toRadixString(16)
+          .padLeft(4, '0')
+          .toUpperCase();
+      return 'GC-${block()}-${block()}';
+    }
+    try {
+      return await repository.sendGiftCard(
+        accessToken: token,
+        amount: amount.round(),
+        recipientName: recipientName,
+        recipientEmail: recipientEmail,
+        message: message,
+      );
+    } catch (error) {
+      throw StateError(_requestErrorMessage(error));
+    }
   }
 
   void updateCatalog() => notifyListeners();
@@ -511,7 +791,7 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
     final variantId = item.remoteVariantId;
     if (variantId == null || !_canSyncCart) return;
-    unawaited(
+    _trackCartRequest(
       _runCartRequest(
         (repository, token) =>
             repository.addItem(accessToken: token, variantId: variantId),
@@ -542,7 +822,7 @@ class ShopState extends ChangeNotifier {
     final itemId = item.remoteItemId;
     if (itemId == null || !_canSyncCart) return;
     final quantity = math.max(item.quantity, 0);
-    unawaited(
+    _trackCartRequest(
       _runCartRequest(
         (repository, token) => repository.updateItem(
           accessToken: token,
@@ -562,7 +842,7 @@ class ShopState extends ChangeNotifier {
     notifyListeners();
     final itemId = item.remoteItemId;
     if (itemId == null || !_canSyncCart) return;
-    unawaited(
+    _trackCartRequest(
       _runCartRequest(
         (repository, token) =>
             repository.removeItem(accessToken: token, itemId: itemId),
@@ -595,21 +875,78 @@ class ShopState extends ChangeNotifier {
     _cart.clear();
     notifyListeners();
     if (remoteItemIds.isNotEmpty && _canSyncCart) {
-      unawaited(_clearRemoteCart(remoteItemIds));
+      _trackCartRequest(_clearRemoteCart(remoteItemIds));
     }
     return order;
   }
 
-  void advanceOrder(ShopOrder order) {
-    if (order.status != OrderStatus.delivered) {
-      order.status = OrderStatus.values[order.status.index + 1];
-      notifyListeners();
+  /// Registra el pedido en el backend cuando toda la bolsa viene del
+  /// catálogo remoto; los productos de demostración usan [placeOrder].
+  Future<ShopOrder> checkout(PaymentMethod payment) async {
+    if (_cart.isEmpty) throw StateError('La bolsa está vacía');
+    final repository = ordersRepository;
+    final token = _sessionToken;
+    if (repository == null ||
+        token == null ||
+        _cart.any((item) => item.remoteVariantId == null)) {
+      return placeOrder(payment);
     }
+    while (_cartRequests.isNotEmpty) {
+      await Future.wait(_cartRequests.toList());
+    }
+    if (_cart.any((item) => item.remoteItemId == null)) await loadRemoteCart();
+    if (_cart.isEmpty || _cart.any((item) => item.remoteItemId == null)) {
+      throw StateError(_cartError ?? _failureMessage);
+    }
+    final RemoteOrder remote;
+    try {
+      remote = await repository.create(
+        accessToken: token,
+        paymentMethod: payment.name.toUpperCase(),
+      );
+    } catch (error) {
+      throw StateError(_requestErrorMessage(error));
+    }
+    final order = _orderFromRemote(remote)!;
+    _orders.insert(0, order);
+    _cart.clear();
+    notifyListeners();
+    unawaited(loadRemoteCatalog());
+    unawaited(_refreshLoyalty());
+    return order;
   }
 
-  void deliverOrder(ShopOrder order) {
-    order.status = OrderStatus.delivered;
+  void advanceOrder(ShopOrder order) {
+    if (order.status == OrderStatus.delivered) return;
+    _setOrderStatus(order, OrderStatus.values[order.status.index + 1]);
+  }
+
+  void deliverOrder(ShopOrder order) =>
+      _setOrderStatus(order, OrderStatus.delivered);
+
+  void _setOrderStatus(ShopOrder order, OrderStatus status) {
+    final previous = order.status;
+    if (previous == status) return;
+    order.status = status;
     notifyListeners();
+    final repository = ordersRepository;
+    final token = _sessionToken;
+    if (!order.remote || repository == null || token == null) return;
+    unawaited(
+      repository
+          .updateStatus(
+            accessToken: token,
+            publicNumber: order.id,
+            status: status.name.toUpperCase(),
+          )
+          .then<void>(
+            (_) {},
+            onError: (Object _) {
+              order.status = previous;
+              _notifySafely();
+            },
+          ),
+    );
   }
 }
 
