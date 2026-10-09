@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
@@ -94,15 +96,48 @@ class _BrandMarkPainter extends CustomPainter {
 }
 
 class ShopImage extends StatelessWidget {
-  const ShopImage(this.url, {super.key, this.fit = BoxFit.cover});
+  const ShopImage(
+    this.url, {
+    super.key,
+    this.fit = BoxFit.cover,
+    this.thumbnail = false,
+  });
   final String url;
   final BoxFit fit;
+
+  /// Descarga y decodifica la foto según el tamaño en que se muestra.
+  final bool thumbnail;
+
+  static final _unsplashWidth = RegExp(r'([?&])w=\d+');
+
   @override
-  Widget build(BuildContext context) => Image.network(
-    url,
+  Widget build(BuildContext context) => thumbnail
+      ? LayoutBuilder(
+          builder: (context, constraints) {
+            final side = [
+              constraints.maxWidth,
+              constraints.maxHeight,
+            ].where((value) => value.isFinite).fold(0.0, math.max);
+            if (side == 0) return _image(url, null);
+            final pixels = side * MediaQuery.devicePixelRatioOf(context) * 1.25;
+            final width = ((pixels / 200).ceil() * 200).clamp(200, 1200);
+            final sized = url.contains('images.unsplash.com/')
+                ? url.replaceFirstMapped(
+                    _unsplashWidth,
+                    (match) => '${match[1]}w=$width',
+                  )
+                : url;
+            return _image(sized, width);
+          },
+        )
+      : _image(url, null);
+
+  Widget _image(String source, int? cacheWidth) => Image.network(
+    source,
     fit: fit,
     width: double.infinity,
     height: double.infinity,
+    cacheWidth: cacheWidth,
     loadingBuilder: (context, child, progress) => progress == null
         ? child
         : const ColoredBox(
@@ -335,7 +370,7 @@ class ProductCard extends StatelessWidget {
                       Semantics(
                         image: true,
                         label: product.name,
-                        child: ShopImage(product.image),
+                        child: ShopImage(product.image, thumbnail: true),
                       ),
                       if (onSale)
                         Positioned(

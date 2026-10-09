@@ -18,15 +18,24 @@ import '../shared/models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, recent, offers }
 
+/// Grupo de productos que se abre desde la portada (categoría, público, ofertas…).
+class ProductCollection {
+  const ProductCollection(this.label, this.matches);
+  final String label;
+  final bool Function(Product product) matches;
+}
+
 class CatalogFilter {
   String query = '';
   String? brand, color, size;
+  ProductCollection? collection;
   double maxPrice = double.infinity;
   ProductSort sort = ProductSort.recommended;
 
   /// Búsqueda, filtros u orden que deben considerar todo el catálogo.
   bool get isActive =>
       query.trim().isNotEmpty ||
+      collection != null ||
       brand != null ||
       color != null ||
       size != null ||
@@ -42,6 +51,7 @@ class CatalogFilter {
               '${p.name} ${p.brand} ${p.category}'.toLowerCase().contains(
                 term,
               ) &&
+              (collection?.matches(p) ?? true) &&
               (brand == null || p.brand == brand) &&
               (color == null || p.color == color) &&
               p.price <= maxPrice &&
@@ -71,6 +81,7 @@ class CatalogFilter {
   }
 
   void clear() {
+    collection = null;
     brand = null;
     color = null;
     size = null;
