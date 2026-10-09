@@ -15,6 +15,8 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "node scripts/setup-database.mjs",
+    "db:sql": "node scripts/generate-database-sql.mjs",
     "lint": "oxlint src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -1,74 +1,64 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Platanitos · Backend (NestJS + Prisma + PostgreSQL)
 
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST de la app Platanitos. La guía completa de instalación (herramientas,
+base de datos, `.env`, ejecución de la app y solución de problemas) está en el
+[README general](../README.md#10-guía-de-instalación-paso-a-paso).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Inicio rápido
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
-```
-
-## Configuración local de PostgreSQL
-
-Cada integrante debe usar su propia instalación local de PostgreSQL. No se
-suben contraseñas, archivos `.env` ni credenciales al repositorio.
-
-1. Instala PostgreSQL y asegúrate de que el servidor esté iniciado.
-2. Crea una base de datos llamada `platanitos` desde pgAdmin o `psql`.
-3. Copia `.env.example` como `.env` dentro de esta carpeta.
-4. Completa `DATABASE_URL` con el usuario y la contraseña de tu instalación.
-
-Ejemplo de PowerShell:
+Desde esta carpeta (`backend/`):
 
 ```powershell
-Copy-Item .env.example .env
+npm install                     # 1. dependencias
+Copy-Item .env.example .env     # 2. configuración: completa DATABASE_URL y JWT_ACCESS_SECRET
+npm run db:setup                # 3. crea la base, aplica migraciones, genera Prisma y carga datos
+npm run start:dev               # 4. API en http://localhost:3000 (prueba /health)
 ```
 
-Edita `.env` localmente. Nunca reemplaces los valores de `.env.example` con
-credenciales reales ni subas `.env` a GitHub.
+Como alternativa al paso 3, puedes crear una base vacía `platanitos` y ejecutar
+[`database/platanitos.sql`](database/platanitos.sql) en pgAdmin o `psql`, y
+luego `npx prisma generate`.
 
-Cuando PostgreSQL esté configurado, las migraciones se ejecutarán desde esta
-carpeta con Prisma. No se debe usar el usuario administrador de PostgreSQL
-para la aplicación en entornos compartidos o de producción.
+La explicación de cada variable de `.env` está en el
+[paso 5 del README general](../README.md#paso-5-configurar-backendenv).
+Nunca subas `.env` ni pongas credenciales reales en `.env.example`.
 
-## Crear las tablas del proyecto
+## Scripts
 
-Después de configurar `backend/.env`, ejecuta:
+| Comando | Descripción |
+| :--- | :--- |
+| `npm run start:dev` | API con recarga automática |
+| `npm run build` | Compila a `dist/` |
+| `npm run start:prod` | Ejecuta la versión compilada |
+| `npm run db:setup` | Crea la base si no existe, `prisma migrate deploy`, `prisma generate` y seed |
+| `npm run db:seed` | Carga los datos de demostración (idempotente) |
+| `npm run db:sql` | Regenera `database/platanitos.sql` a partir de las migraciones y `database/seed.sql` |
+| `npm run test` | Pruebas unitarias |
+| `npm run test:e2e -- --run` | Pruebas e2e contra la base configurada en `.env` |
+| `npm run lint` | Análisis estático con oxlint |
+
+## Base de datos
+
+| Archivo | Uso |
+| :--- | :--- |
+| `prisma/schema.prisma` | Modelo de datos |
+| `prisma/migrations/` | Migraciones versionadas (se aplican con `npx prisma migrate deploy`, que no borra datos) |
+| `prisma/seed.ts` | Datos de demostración usados por `npm run db:seed` |
+| `database/seed.sql` | Los mismos datos de demostración en SQL |
+| `database/platanitos.sql` | Script completo generado: tablas, registro `_prisma_migrations` y datos |
+
+Para cambiar el modelo durante el desarrollo:
 
 ```powershell
-npm install
-npx prisma migrate deploy
-npx prisma generate
-npm run db:seed
+npx prisma migrate dev --name descripcion_del_cambio
+npm run db:sql
 ```
 
-`npm run db:seed` carga productos de demostración de forma idempotente. Puede ejecutarse nuevamente sin duplicar categorías, marcas, productos ni variantes.
+Si agregas datos de demostración, actualiza `prisma/seed.ts` y `database/seed.sql`.
 
-## Configuración por entorno
+## Configuración en producción
 
-La API no contiene URLs de producción en el código. En desarrollo se usa `CORS_ALLOW_LOCALHOST=true` para aceptar los puertos dinámicos de Flutter Web. En producción configura únicamente variables del entorno:
+La API no contiene URLs de producción en el código; todo se define con variables de entorno:
 
 ```env
 NODE_ENV=production
@@ -77,98 +67,12 @@ CORS_ORIGINS=https://app.ejemplo.com
 CORS_ALLOW_LOCALHOST=false
 ```
 
-Flutter recibe la URL del backend al compilar o ejecutar:
+En producción usa un usuario de PostgreSQL propio para la aplicación (no el
+superusuario `postgres`) y un `JWT_ACCESS_SECRET` distinto al de desarrollo.
+La app Flutter recibe la URL del backend al compilar:
 
 ```powershell
-flutter run -d chrome --dart-define=API_BASE_URL=https://api.ejemplo.com
+flutter build web --dart-define=API_BASE_URL=https://api.ejemplo.com
 ```
 
-`migrate deploy` aplica las migraciones versionadas del repositorio y no borra
-las tablas existentes. Para crear una nueva migración durante el desarrollo,
-modifica `prisma/schema.prisma` y ejecuta:
-
-```powershell
-npx prisma migrate dev --name descripcion_del_cambio
-```
-
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Más detalles de la arquitectura en [`ARCHITECTURE.md`](ARCHITECTURE.md).
