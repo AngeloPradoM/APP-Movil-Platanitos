@@ -15,22 +15,75 @@ void enterShop(BuildContext context) => Navigator.of(context)
       (_) => false,
     );
 
-/// Abre el login como paso previo al pago. Devuelve `true` si el usuario
+/// Texto que explica por qué se pide iniciar sesión en medio de la compra.
+class AuthPrompt {
+  const AuthPrompt({
+    required this.eyebrow,
+    required this.heading,
+    required this.description,
+  });
+  final String eyebrow, heading, description;
+
+  static const checkout = AuthPrompt(
+    eyebrow: 'FINALIZA TU COMPRA',
+    heading: 'Inicia sesión para pagar',
+    description:
+        'Necesitas una cuenta para completar el pago. Tu bolsa se conservará.',
+  );
+  static const favorites = AuthPrompt(
+    eyebrow: 'TUS FAVORITOS',
+    heading: 'Inicia sesión para guardar favoritos',
+    description: 'Guarda los productos que te gustan y encuéntralos después.',
+  );
+  static const orders = AuthPrompt(
+    eyebrow: 'TUS PEDIDOS',
+    heading: 'Inicia sesión para ver tus pedidos',
+    description: 'Revisa el estado y el seguimiento de tus compras.',
+  );
+  static const account = AuthPrompt(
+    eyebrow: 'MI CUENTA',
+    heading: 'Inicia sesión para continuar',
+    description:
+        'Accede a tu perfil, pedidos, puntos, monedero y beneficios de membresía.',
+  );
+}
+
+/// Abre el login cuando no hay sesión. Devuelve `true` si el usuario
 /// terminó con una sesión iniciada.
-Future<bool> requireLoginForCheckout(BuildContext context) async {
+Future<bool> requireLogin(BuildContext context, AuthPrompt prompt) async {
   if (ShopScope.of(context).signedIn) return true;
   final authenticated = await Navigator.push<bool>(
     context,
-    MaterialPageRoute<bool>(
-      builder: (_) => const LoginScreen(fromCheckout: true),
-    ),
+    MaterialPageRoute<bool>(builder: (_) => LoginScreen(prompt: prompt)),
   );
   return authenticated == true;
 }
 
+Future<bool> requireLoginForCheckout(BuildContext context) =>
+    requireLogin(context, AuthPrompt.checkout);
+
+Future<void> openWithLogin(
+  BuildContext context,
+  AuthPrompt prompt,
+  WidgetBuilder builder,
+) async {
+  if (!await requireLogin(context, prompt) || !context.mounted) return;
+  Navigator.push(context, MaterialPageRoute<void>(builder: builder));
+}
+
+Future<void> toggleFavoriteWithLogin(BuildContext context, int productId) async {
+  if (!await requireLogin(context, AuthPrompt.favorites) || !context.mounted) {
+    return;
+  }
+  ShopScope.of(context).toggleFavorite(productId);
+}
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.fromCheckout = false});
-  final bool fromCheckout;
+  const LoginScreen({super.key, this.prompt});
+
+  /// Si existe, el login se abrió en medio de un flujo y al terminar
+  /// regresa a él en lugar de reiniciar la tienda.
+  final AuthPrompt? prompt;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -40,16 +93,16 @@ class _LoginScreenState extends State<LoginScreen> {
   String email = '', password = '';
   bool hidden = true;
   bool submitting = false;
+  bool get returnOnSuccess => widget.prompt != null;
 
-  void finish() => widget.fromCheckout
-      ? Navigator.pop(context, true)
-      : enterShop(context);
+  void finish() =>
+      returnOnSuccess ? Navigator.pop(context, true) : enterShop(context);
 
   Future<void> openSignup() async {
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => SignupScreen(fromCheckout: widget.fromCheckout),
+        builder: (_) => SignupScreen(returnOnSuccess: returnOnSuccess),
       ),
     );
     if (created == true && mounted) finish();
@@ -103,14 +156,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => AuthLayout(
-    back: widget.fromCheckout,
-    heading: widget.fromCheckout
-        ? 'Inicia sesión para pagar'
-        : 'Inicia sesión',
-    eyebrow: widget.fromCheckout ? 'FINALIZA TU COMPRA' : 'BIENVENIDA DE NUEVO',
-    description: widget.fromCheckout
-        ? 'Necesitas una cuenta para completar el pago. Tu bolsa se conservará.'
-        : 'Ingresa tus datos para continuar comprando.',
+    back: returnOnSuccess,
+    heading: widget.prompt?.heading ?? 'Inicia sesión',
+    eyebrow: widget.prompt?.eyebrow ?? 'BIENVENIDA DE NUEVO',
+    description:
+        widget.prompt?.description ??
+        'Ingresa tus datos para continuar comprando.',
     children: [
       Form(
         key: form,
@@ -189,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      if (!widget.fromCheckout) ...[
+      if (!returnOnSuccess) ...[
         const SizedBox(height: 12),
         OutlinedButton(
           onPressed: () => enterShop(context),
@@ -334,8 +385,8 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 }
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key, this.fromCheckout = false});
-  final bool fromCheckout;
+  const SignupScreen({super.key, this.returnOnSuccess = false});
+  final bool returnOnSuccess;
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
@@ -379,7 +430,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
       if (!mounted) return;
-      widget.fromCheckout
+      widget.returnOnSuccess
           ? Navigator.pop(context, true)
           : enterShop(context);
     } on ApiException {

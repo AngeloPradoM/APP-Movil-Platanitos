@@ -5,6 +5,7 @@ import '../../../data/mock_data.dart';
 import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/shop_widgets.dart';
+import '../../auth/presentation/auth_screens.dart';
 import '../../cart/presentation/cart_screen.dart';
 
 class ProductScreen extends StatefulWidget {
@@ -90,9 +91,10 @@ class _ProductScreenState extends State<ProductScreen> {
                   right: 12,
                   child: IconButton.filledTonal(
                     tooltip: 'Cambiar favorito',
-                    onPressed: () => state.toggleFavorite(product.id),
+                    onPressed: () =>
+                        toggleFavoriteWithLogin(context, product.id),
                     icon: Icon(
-                      state.favorites.contains(product.id)
+                      state.signedIn && state.favorites.contains(product.id)
                           ? Icons.favorite
                           : Icons.favorite_border,
                       color: AppColors.green,

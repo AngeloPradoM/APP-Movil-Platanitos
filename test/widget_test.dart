@@ -99,6 +99,59 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('Guest account invites login and private sections require it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = ShopState(seedHistory: false);
+    addTearDown(state.dispose);
+    final favoritesBefore = state.favorites;
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.ensureVisible(find.text('Continuar como invitada/o'));
+    await tester.tap(find.text('Continuar como invitada/o'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.byTooltip('Agregar a favoritos').first);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Inicia sesión para guardar favoritos'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(state.favorites, favoritesBefore);
+
+    await tester.tap(find.text('Mi cuenta'));
+    await tester.pump();
+    expect(find.text('Hola, invitada/o'), findsOneWidget);
+    expect(find.text('Cerrar sesión'), findsNothing);
+    expect(find.byIcon(Icons.lock_outline), findsWidgets);
+    await tester.ensureVisible(find.text('Monedero'));
+    await tester.tap(find.text('Monedero'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Inicia sesión para continuar'), findsOneWidget);
+    Finder field(String label) => find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.decoration?.labelText == label,
+    );
+    await tester.enterText(field('Correo electrónico'), 'cliente@example.com');
+    await tester.enterText(field('Contraseña'), 'secreta123');
+    await tester.tap(find.text('Iniciar sesión').last);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(state.signedIn, isTrue);
+    expect(find.text('Saldo disponible'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Cerrar sesión'), findsOneWidget);
+    expect(find.text('Hola, invitada/o'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('Wallet checkout creates order and clears bag', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1;

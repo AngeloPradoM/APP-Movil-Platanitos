@@ -4,6 +4,7 @@ import '../core/app_theme.dart';
 import '../shared/state/shop_state.dart';
 import '../widgets/shop_widgets.dart';
 import '../features/account/presentation/account_screens.dart';
+import '../features/auth/presentation/auth_screens.dart';
 import '../features/cart/presentation/cart_screen.dart';
 import '../features/catalog/presentation/catalog_screens.dart';
 import '../features/orders/presentation/order_screens.dart';
@@ -34,9 +35,10 @@ class _ShopShellState extends State<ShopShell> {
             if (tab == 0)
               IconButton(
                 tooltip: 'Notificaciones y pedidos',
-                onPressed: () => Navigator.push(
+                onPressed: () => openWithLogin(
                   context,
-                  MaterialPageRoute<void>(builder: (_) => const OrdersScreen()),
+                  AuthPrompt.orders,
+                  (_) => const OrdersScreen(),
                 ),
                 icon: const Badge(
                   smallSize: 6,

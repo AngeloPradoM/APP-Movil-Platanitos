@@ -5,6 +5,7 @@ import '../../../data/mock_data.dart';
 import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/shop_widgets.dart';
+import '../../auth/presentation/auth_screens.dart';
 import 'product_screen.dart';
 
 void openProduct(BuildContext context, Product product) => Navigator.push(
@@ -564,6 +565,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    if (!state.signedIn) {
+      return EmptyState(
+        icon: Icons.favorite_border,
+        title: 'Guarda tus favoritos',
+        message:
+            'Inicia sesión para guardar los productos que te gustan y verlos aquí.',
+        action: 'Iniciar sesión',
+        onAction: () => requireLogin(context, AuthPrompt.favorites),
+      );
+    }
     final filter = CatalogFilter()..sort = sort;
     final result = filter.apply(
       state.catalogProducts.where(

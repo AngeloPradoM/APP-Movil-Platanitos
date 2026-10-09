@@ -108,6 +108,23 @@ class ShopState extends ChangeNotifier {
   static const _stockMessage = 'No hay más stock disponible para esta talla.';
   final catalog = CatalogFilter();
   int _orderSequence = 98240;
+  int _bonusPoints = 0;
+  int _redeemedPoints = 0;
+  final _walletMovements = <WalletMovement>[];
+  static const pointsPerRedemption = 100;
+  static const redemptionValue = 5.0;
+  static const recyclingBonus = 50;
+  List<WalletMovement> get walletMovements =>
+      List.unmodifiable(_walletMovements);
+  double get walletBalance =>
+      _walletMovements.fold(0, (sum, movement) => sum + movement.amount);
+
+  /// Puntos acumulados en toda la cuenta: 1 punto por cada S/ 1 comprado.
+  int get lifetimePoints =>
+      _orders.fold(0, (sum, order) => sum + order.total.floor()) +
+      _bonusPoints;
+  int get points => lifetimePoints - _redeemedPoints;
+  MembershipLevel get membership => MembershipLevel.forPoints(lifetimePoints);
   List<int> get favorites => List.unmodifiable(_favorites);
   List<CartItem> get cart => List.unmodifiable(_cart);
   List<ShopOrder> get orders => List.unmodifiable(_orders);
@@ -418,6 +435,33 @@ class ShopState extends ChangeNotifier {
 
   void toggleFavorite(int id) {
     _favorites.contains(id) ? _favorites.remove(id) : _favorites.add(id);
+    notifyListeners();
+  }
+
+  /// Canjea los puntos disponibles en bloques de [pointsPerRedemption]
+  /// y devuelve el saldo agregado al monedero.
+  double redeemPoints() {
+    final blocks = points ~/ pointsPerRedemption;
+    if (blocks == 0) {
+      throw StateError('Necesitas al menos $pointsPerRedemption puntos');
+    }
+    final redeemed = blocks * pointsPerRedemption;
+    final amount = blocks * redemptionValue;
+    _redeemedPoints += redeemed;
+    _walletMovements.insert(
+      0,
+      WalletMovement(
+        description: 'Canje de $redeemed puntos',
+        amount: amount,
+        date: DateTime.now(),
+      ),
+    );
+    notifyListeners();
+    return amount;
+  }
+
+  void registerRecycling() {
+    _bonusPoints += recyclingBonus;
     notifyListeners();
   }
 

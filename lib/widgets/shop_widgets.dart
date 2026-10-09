@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../features/auth/presentation/auth_screens.dart';
 import '../shared/models/shop_models.dart';
 import '../shared/state/shop_state.dart';
 
@@ -167,7 +168,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final favorite = state.favorites.contains(product.id);
+    final favorite = state.signedIn && state.favorites.contains(product.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -214,7 +215,8 @@ class ProductCard extends StatelessWidget {
                         ? 'Quitar de favoritos'
                         : 'Agregar a favoritos',
                     style: IconButton.styleFrom(backgroundColor: Colors.white),
-                    onPressed: () => state.toggleFavorite(product.id),
+                    onPressed: () =>
+                        toggleFavoriteWithLogin(context, product.id),
                     icon: Icon(
                       favorite ? Icons.favorite : Icons.favorite_border,
                       color: AppColors.green,

@@ -9,6 +9,7 @@ import '../../../widgets/shop_widgets.dart';
 import '../../auth/presentation/auth_screens.dart';
 import '../../orders/presentation/order_screens.dart';
 import '../../support/presentation/support_screens.dart';
+import 'account_services_screens.dart';
 
 Future<void> confirmLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(
@@ -44,51 +45,72 @@ class AccountScreen extends StatelessWidget {
   final VoidCallback onFavorites;
   @override
   Widget build(BuildContext context) {
-    final options = <(String, IconData, VoidCallback?)>[
-      ('Monedero', Icons.account_balance_wallet_outlined, null),
-      ('Puntos', Icons.star_outline, null),
+    final state = ShopScope.of(context);
+    VoidCallback open(Widget page, {AuthPrompt? private}) => private == null
+        ? () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => page),
+          )
+        : () => openWithLogin(context, private, (_) => page);
+    final options = <(String, IconData, VoidCallback, bool)>[
+      (
+        'Monedero',
+        Icons.account_balance_wallet_outlined,
+        open(const WalletScreen(), private: AuthPrompt.account),
+        true,
+      ),
+      (
+        'Puntos',
+        Icons.star_outline,
+        open(const PointsScreen(), private: AuthPrompt.account),
+        true,
+      ),
       (
         'Órdenes',
         Icons.inventory_2_outlined,
-        () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const OrdersScreen()),
-        ),
+        open(const OrdersScreen(), private: AuthPrompt.orders),
+        true,
       ),
       (
         'Perfil',
         Icons.person_outline,
-        () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-        ),
+        open(const ProfileScreen(), private: AuthPrompt.account),
+        true,
       ),
       (
         'Configuración',
         Icons.settings_outlined,
-        () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const OfflineScreen()),
-        ),
+        open(const OfflineScreen()),
+        false,
       ),
-      ('Membresía', Icons.workspace_premium_outlined, null),
-      ('Resikla', Icons.recycling, null),
-      ('Favoritos', Icons.favorite_border, onFavorites),
-      ('eGift Card', Icons.card_giftcard, null),
-      ('Ubícanos', Icons.map_outlined, null),
-      ('Blog', Icons.menu_book_outlined, null),
       (
-        'Centro de ayuda',
-        Icons.help_outline,
-        () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const SupportScreen()),
-        ),
+        'Membresía',
+        Icons.workspace_premium_outlined,
+        open(const MembershipScreen(), private: AuthPrompt.account),
+        true,
       ),
+      ('Resikla', Icons.recycling, open(const ResiklaScreen()), false),
+      (
+        'Favoritos',
+        Icons.favorite_border,
+        () async {
+          if (await requireLogin(context, AuthPrompt.favorites)) onFavorites();
+        },
+        true,
+      ),
+      ('eGift Card', Icons.card_giftcard, open(const GiftCardScreen()), false),
+      ('Ubícanos', Icons.map_outlined, open(const StoresScreen()), false),
+      ('Blog', Icons.menu_book_outlined, open(const BlogScreen()), false),
+      ('Centro de ayuda', Icons.help_outline, open(const SupportScreen()), false),
     ];
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        if (state.signedIn)
+          MemberCard(onProfile: open(const ProfileScreen()))
+        else
+          const GuestCard(),
+        const SizedBox(height: 24),
         const Text(
           '¿Qué necesitas hoy?',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
@@ -121,22 +143,29 @@ class AccountScreen extends StatelessWidget {
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(13),
-                  onTap:
-                      option.$3 ??
-                      () => showInfo(
-                        context,
-                        option.$1,
-                        'Esta opción aparece en el prototipo, pero todavía no tiene un servicio definido.',
-                      ),
+                  onTap: option.$3,
                   child: Padding(
                     padding: const EdgeInsets.all(15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.softGreen,
-                          child: Icon(option.$2, color: AppColors.green),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: AppColors.softGreen,
+                              child: Icon(option.$2, color: AppColors.green),
+                            ),
+                            const Spacer(),
+                            if (option.$4 && !state.signedIn)
+                              const Icon(
+                                Icons.lock_outline,
+                                size: 16,
+                                color: AppColors.muted,
+                                semanticLabel: 'Requiere iniciar sesión',
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -152,13 +181,14 @@ class AccountScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        OutlinedButton(
-          onPressed: () => confirmLogout(context),
-          child: const Text(
-            'Cerrar sesión',
-            style: TextStyle(color: AppColors.danger),
+        if (state.signedIn)
+          OutlinedButton(
+            onPressed: () => confirmLogout(context),
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(color: AppColors.danger),
+            ),
           ),
-        ),
         const SizedBox(height: 18),
         const Text(
           'Platanitos App · Versión 1.0',
@@ -166,6 +196,117 @@ class AccountScreen extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: AppColors.muted),
         ),
       ],
+    );
+  }
+}
+
+class GuestCard extends StatelessWidget {
+  const GuestCard({super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppColors.softGreen,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Hola, invitada/o',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Inicia sesión para ver tus pedidos, acumular puntos y guardar tus favoritos.',
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => requireLogin(context, AuthPrompt.account),
+          child: const Text('Iniciar sesión'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<bool>(
+              builder: (_) => const SignupScreen(returnOnSuccess: true),
+            ),
+          ),
+          child: const Text('Crear cuenta'),
+        ),
+      ],
+    ),
+  );
+}
+
+class MemberCard extends StatelessWidget {
+  const MemberCard({super.key, required this.onProfile});
+  final VoidCallback onProfile;
+  @override
+  Widget build(BuildContext context) {
+    final state = ShopScope.of(context), user = state.user;
+    final initials = user.name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .take(2)
+        .map((part) => part.isEmpty ? '' : part[0])
+        .join()
+        .toUpperCase();
+    return Material(
+      color: AppColors.softGreen,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onProfile,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.green,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hola, ${user.name.split(' ').first}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      user.email,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Nivel ${state.membership.label} · ${state.points} puntos',
+                      style: const TextStyle(
+                        color: AppColors.green,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

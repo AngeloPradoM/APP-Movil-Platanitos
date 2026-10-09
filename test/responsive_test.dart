@@ -10,13 +10,14 @@ import 'package:platanitos_app/features/cart/presentation/cart_screen.dart';
 import 'package:platanitos_app/features/checkout/presentation/checkout_screen.dart';
 import 'package:platanitos_app/features/orders/presentation/order_screens.dart';
 import 'package:platanitos_app/features/account/presentation/account_screens.dart';
+import 'package:platanitos_app/features/account/presentation/account_services_screens.dart';
 import 'package:platanitos_app/features/support/presentation/support_screens.dart';
 import 'package:platanitos_app/features/catalog/presentation/product_screen.dart';
 import 'package:platanitos_app/widgets/shop_widgets.dart';
 
 void main() {
   for (final width in [320.0, 430.0, 900.0]) {
-    testWidgets('All 18 screens fit width $width with enlarged text', (
+    testWidgets('All screens fit width $width with enlarged text', (
       tester,
     ) async {
       tester.view.physicalSize = Size(width, 1000);
@@ -59,6 +60,14 @@ void main() {
         const ProfileScreen(),
         const SupportScreen(),
         const OfflineScreen(),
+        const WalletScreen(),
+        const PointsScreen(),
+        const MembershipScreen(),
+        const GiftCardScreen(),
+        const StoresScreen(),
+        const BlogScreen(),
+        BlogArticleScreen(article: blogArticles.first),
+        const ResiklaScreen(),
       ];
       for (var index = 0; index < screens.length; index++) {
         await tester.pumpWidget(
