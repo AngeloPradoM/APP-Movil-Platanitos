@@ -1,6 +1,7 @@
 import 'network/api_client.dart';
 import 'api_config.dart';
 import '../features/account/data/account_repository.dart';
+import '../features/account/data/addresses_repository.dart';
 import '../features/account/data/content_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/cart/data/cart_repository.dart';
@@ -17,6 +18,7 @@ class AppDependencies {
     required this.orders,
     required this.account,
     required this.content,
+    required this.addresses,
   });
 
   factory AppDependencies.local() {
@@ -29,6 +31,7 @@ class AppDependencies {
       orders: OrdersRepository(client: client),
       account: AccountRepository(client: client),
       content: ContentRepository(client: client),
+      addresses: AddressesRepository(client: client),
     );
   }
 
@@ -39,4 +42,5 @@ class AppDependencies {
   final OrdersRepository orders;
   final AccountRepository account;
   final ContentRepository content;
+  final AddressesRepository addresses;
 }

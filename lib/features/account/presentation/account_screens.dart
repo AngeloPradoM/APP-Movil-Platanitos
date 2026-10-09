@@ -6,10 +6,13 @@ import '../../../core/validators.dart';
 import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/shop_widgets.dart';
+import '../../../widgets/line_icons.dart';
 import '../../auth/presentation/auth_screens.dart';
+import '../../cart/presentation/cart_screen.dart';
 import '../../orders/presentation/order_screens.dart';
 import '../../support/presentation/support_screens.dart';
 import 'account_services_screens.dart';
+import 'address_screens.dart';
 
 Future<void> confirmLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(
@@ -75,6 +78,12 @@ class AccountScreen extends StatelessWidget {
         'Perfil',
         Icons.person_outline,
         open(const ProfileScreen(), private: AuthPrompt.account),
+        true,
+      ),
+      (
+        'Direcciones',
+        Icons.location_on_outlined,
+        open(const AddressesScreen(), private: AuthPrompt.account),
         true,
       ),
       (
@@ -173,9 +182,13 @@ class AccountScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          option.$1,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        Flexible(
+                          child: Text(
+                            option.$1,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ],
                     ),
@@ -362,160 +375,309 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context), user = state.user;
-    final initials = user.name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .take(2)
-        .map((part) => part.isEmpty ? '' : part[0])
-        .join()
-        .toUpperCase();
+    final address = state.defaultAddress;
     return PageFrame(
       title: 'Perfil',
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: AppColors.softGreen,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: AppColors.green,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+      actions: [
+        IconButton(
+          tooltip: 'Ver bolsa',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => const CartPage()),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Hola, ${user.name.split(' ').first}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted),
+          icon: Badge(
+            label: Text('${state.cartCount}'),
+            isLabelVisible: state.cartCount > 0,
+            child: const LineIcon(LineIcons.bag),
           ),
-          const SizedBox(height: 6),
-          Text(
-            user.name,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '✓ Datos de demostración',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.green, fontSize: 12),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Form(
-              key: form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+      ],
+      child: ColoredBox(
+        color: AppColors.background,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+          children: [
+            _ProfileCard(
+              child: Row(
                 children: [
-                  const Text(
-                    'Datos personales',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  const CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.softGreen,
+                    child: Icon(
+                      Icons.person_outline,
+                      color: AppColors.darkGreen,
+                      size: 32,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  if (editing) ...[
-                    TextFormField(
-                      initialValue: name,
-                      decoration: const InputDecoration(labelText: 'Nombre'),
-                      validator: Validators.name,
-                      onChanged: (value) => name = value,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: document,
-                      readOnly: true,
-                      decoration: const InputDecoration(labelText: 'Documento'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: email,
-                      decoration: const InputDecoration(labelText: 'Correo'),
-                      validator: Validators.email,
-                      keyboardType: TextInputType.emailAddress,
-                      onChanged: (value) => email = value,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: phone,
-                      decoration: const InputDecoration(labelText: 'Teléfono'),
-                      validator: Validators.phone,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(9),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hola, ${user.name.split(' ').first}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          user.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          '✓ Datos verificados',
+                          style: TextStyle(
+                            color: AppColors.green,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
-                      onChanged: (value) => phone = value,
                     ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: saving ? null : save,
-                      child: Text(saving ? 'Guardando…' : 'Guardar cambios'),
-                    ),
-                    TextButton(
-                      onPressed: saving
-                          ? null
-                          : () => setState(() => editing = false),
-                      child: const Text('Cancelar'),
-                    ),
-                  ] else ...[
-                    ProfileData(label: 'Nombre', value: user.name),
-                    ProfileData(label: 'Documento', value: user.document),
-                    ProfileData(label: 'Correo', value: user.email),
-                    ProfileData(label: 'Teléfono', value: '+51 ${user.phone}'),
-                  ],
+                  ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          const ListTile(
-            tileColor: AppColors.softGreen,
-            leading: Icon(Icons.verified_user_outlined, color: AppColors.green),
-            subtitle: Text(
-              'Tus datos están protegidos y se guardan en tu cuenta.',
+            const SizedBox(height: 22),
+            const Text(
+              'Datos personales',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-          ),
-          const SizedBox(height: 20),
-          if (!editing)
-            OutlinedButton(onPressed: edit, child: const Text('Editar datos')),
-          TextButton(
-            onPressed: () => confirmLogout(context),
-            child: const Text(
-              'Cerrar sesión',
-              style: TextStyle(color: AppColors.danger),
+            const SizedBox(height: 4),
+            const Text(
+              'Revisa la información asociada a tu cuenta.',
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            _ProfileCard(
+              padding: editing
+                  ? const EdgeInsets.all(18)
+                  : const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: editing
+                  ? _editForm()
+                  : Column(
+                      children: [
+                        ProfileData(
+                          icon: Icons.person_outline,
+                          label: 'Nombre completo',
+                          value: user.name,
+                        ),
+                        ProfileData(
+                          icon: Icons.badge_outlined,
+                          label: 'Documento de identidad',
+                          value: user.document,
+                        ),
+                        ProfileData(
+                          icon: Icons.mail_outline,
+                          label: 'Correo electrónico',
+                          value: user.email,
+                        ),
+                        ProfileData(
+                          icon: Icons.phone_outlined,
+                          label: 'Teléfono',
+                          value: '+51 ${_groupPhone(user.phone)}',
+                        ),
+                        ProfileData(
+                          icon: Icons.location_on_outlined,
+                          label: 'Dirección principal',
+                          value: address?.line1 ?? 'Agrega una dirección',
+                          last: true,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AddressesScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.softGreen,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: AppColors.darkGreen),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tus datos están protegidos y solo se usan para gestionar tus pedidos.',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.ink),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!editing) ...[
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                style: primaryButtonStyle,
+                onPressed: edit,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Editar datos'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                style: secondaryButtonStyle.copyWith(
+                  foregroundColor: const WidgetStatePropertyAll(AppColors.ink),
+                ),
+                onPressed: () => confirmLogout(context),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Cerrar sesión'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+
+  static String _groupPhone(String phone) => phone.length == 9
+      ? '${phone.substring(0, 3)} ${phone.substring(3, 6)} ${phone.substring(6)}'
+      : phone;
+
+  Widget _editForm() => Form(
+    key: form,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextFormField(
+          initialValue: name,
+          decoration: const InputDecoration(labelText: 'Nombre'),
+          validator: Validators.name,
+          onChanged: (value) => name = value,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: document,
+          readOnly: true,
+          decoration: const InputDecoration(labelText: 'Documento'),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: email,
+          decoration: const InputDecoration(labelText: 'Correo'),
+          validator: Validators.email,
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (value) => email = value,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: phone,
+          decoration: const InputDecoration(labelText: 'Teléfono'),
+          validator: Validators.phone,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(9),
+          ],
+          onChanged: (value) => phone = value,
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          style: primaryButtonStyle,
+          onPressed: saving ? null : save,
+          child: Text(saving ? 'Guardando…' : 'Guardar cambios'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          style: secondaryButtonStyle,
+          onPressed: saving ? null : () => setState(() => editing = false),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: child,
+  );
 }
 
 class ProfileData extends StatelessWidget {
-  const ProfileData({super.key, required this.label, required this.value});
+  const ProfileData({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.last = false,
+    this.onTap,
+  });
+  final IconData icon;
   final String label, value;
+  final bool last;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.muted, fontSize: 12),
-        ),
-        const SizedBox(height: 5),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const Divider(),
-      ],
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.softGreen,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.darkGreen, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            const Icon(Icons.chevron_right, color: AppColors.muted),
+        ],
+      ),
     ),
   );
 }

@@ -1,30 +1,96 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import '../features/auth/presentation/auth_screens.dart';
 import '../shared/models/shop_models.dart';
 import '../shared/state/shop_state.dart';
 
 class BrandLogo extends StatelessWidget {
-  const BrandLogo({super.key});
+  const BrandLogo({super.key, this.fontSize = 32});
+  final double fontSize;
   @override
-  Widget build(BuildContext context) => const Text.rich(
-    TextSpan(
-      text: 'platanitos',
-      style: TextStyle(
-        color: AppColors.green,
-        fontSize: 29,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -1.4,
+  Widget build(BuildContext context) => Semantics(
+    label: 'platanitos',
+    excludeSemantics: true,
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomPaint(
+            size: Size(fontSize * 36 / 32, fontSize * 44 / 32),
+            painter: const _BrandMarkPainter(),
+          ),
+          SizedBox(width: fontSize / 16),
+          Text(
+            'platanitos',
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: AppColors.ink,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -fontSize / 26,
+              height: 1,
+            ),
+          ),
+        ],
       ),
-      children: [
-        TextSpan(
-          text: '●',
-          style: TextStyle(color: AppColors.yellow, fontSize: 12),
-        ),
-      ],
     ),
   );
+}
+
+/// Isotipo dibujado: hojas de palmera sobre dos plátanos.
+class _BrandMarkPainter extends CustomPainter {
+  const _BrandMarkPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 36, size.height / 44);
+    final outline = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeJoin = StrokeJoin.round
+      ..color = AppColors.ink;
+    const leaves = [
+      (-2.75, Color(0xFF3FAE5A)),
+      (-2.1, Color(0xFF2A8F47)),
+      (-1.35, Color(0xFF3FAE5A)),
+      (-0.55, Color(0xFF2A8F47)),
+    ];
+    for (final (angle, color) in leaves) {
+      canvas
+        ..save()
+        ..translate(18, 17)
+        ..rotate(angle);
+      final leaf = Path()
+        ..moveTo(0, 0)
+        ..quadraticBezierTo(8, -6, 17, 0)
+        ..quadraticBezierTo(8, 5, 0, 0)
+        ..close();
+      canvas
+        ..drawPath(leaf, Paint()..color = color)
+        ..drawPath(leaf, outline)
+        ..restore();
+    }
+    final banana = Path()
+      ..moveTo(10, 20)
+      ..quadraticBezierTo(26, 21, 25, 31)
+      ..quadraticBezierTo(20, 25, 10, 25)
+      ..close();
+    final yellow = Paint()..color = AppColors.yellow;
+    canvas
+      ..drawPath(banana, yellow)
+      ..drawPath(banana, outline)
+      ..save()
+      ..translate(36, 11)
+      ..scale(-1, 1);
+    canvas
+      ..drawPath(banana, yellow)
+      ..drawPath(banana, outline)
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(_BrandMarkPainter oldDelegate) => false;
 }
 
 class ShopImage extends StatelessWidget {
@@ -86,6 +152,69 @@ class PageFrame extends StatelessWidget {
           ),
   );
 }
+
+const softBackground = Color(0xFFF8F9FB);
+const fieldBorderColor = Color(0xFFE2E5EA);
+const hintColor = Color(0xFFA0A6AE);
+
+/// Campo blanco con borde gris que se marca en verde al enfocarse.
+InputDecoration fieldDecoration(String hint, {Widget? suffix}) =>
+    InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: hintColor, fontSize: 14),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: fieldBorderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: fieldBorderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.darkGreen, width: 1.4),
+      ),
+    );
+
+Widget fieldLabel(String text) => Padding(
+  padding: const EdgeInsets.only(bottom: 8),
+  child: Text(
+    text,
+    style: const TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: AppColors.ink,
+    ),
+  ),
+);
+
+final primaryButtonStyle = FilledButton.styleFrom(
+  backgroundColor: AppColors.darkGreen,
+  minimumSize: const Size(0, 48),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  textStyle: const TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+  ),
+);
+
+final secondaryButtonStyle = OutlinedButton.styleFrom(
+  backgroundColor: Colors.white,
+  foregroundColor: AppColors.muted,
+  minimumSize: const Size(0, 48),
+  side: const BorderSide(color: fieldBorderColor),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  textStyle: const TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+  ),
+);
 
 void feedback(BuildContext context, String text) =>
     ScaffoldMessenger.of(context)
@@ -168,128 +297,238 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final favorite = state.signedIn && state.favorites.contains(product.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Semantics(
-                  button: true,
-                  label: 'Ver ${product.name}',
-                  child: InkWell(
-                    onTap: onOpen,
-                    child: ShopImage(product.image),
-                  ),
-                ),
-                Positioned(
-                  top: 10,
-                  left: 9,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.yellow,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: const Text(
-                      'OFERTA',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: IconButton.filledTonal(
-                    tooltip: favorite
-                        ? 'Quitar de favoritos'
-                        : 'Agregar a favoritos',
-                    style: IconButton.styleFrom(backgroundColor: Colors.white),
-                    onPressed: () =>
-                        toggleFavoriteWithLogin(context, product.id),
-                    icon: Icon(
-                      favorite ? Icons.favorite : Icons.favorite_border,
-                      color: AppColors.green,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.brand,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  money(product.oldPrice),
-                  style: const TextStyle(
-                    decoration: TextDecoration.lineThrough,
-                    color: AppColors.muted,
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  money(product.price),
-                  style: const TextStyle(
-                    color: AppColors.green,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-                if (product.lowStock)
-                  const Text(
-                    '¡Pocas unidades!',
-                    style: TextStyle(color: AppColors.darkGreen, fontSize: 11),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        if (favoriteActions)
-          Wrap(
+    final onSale = product.oldPrice > product.price;
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onOpen,
+        overlayColor: _greenOverlay,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextButton(
-                onPressed: () => state.toggleFavorite(product.id),
-                child: const Text(
-                  'Quitar',
-                  style: TextStyle(color: AppColors.danger),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Semantics(
+                        image: true,
+                        label: product.name,
+                        child: ShopImage(product.image),
+                      ),
+                      if (onSale)
+                        const Positioned(top: 8, left: 8, child: OfferBadge()),
+                    ],
+                  ),
                 ),
               ),
-
-              TextButton(onPressed: onOpen, child: const Text('Ver producto')),
+              const SizedBox(height: 10),
+              Text(
+                product.brand.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .3,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                product.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    money(product.price),
+                    style: const TextStyle(
+                      color: AppColors.darkGreen,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (onSale) ...[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        money(product.oldPrice),
+                        maxLines: 1,
+                        overflow: TextOverflow.fade,
+                        softWrap: false,
+                        style: const TextStyle(
+                          decoration: TextDecoration.lineThrough,
+                          color: AppColors.muted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              Visibility(
+                visible: product.lowStock,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: const Row(
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.darkGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: SizedBox.square(dimension: 5),
+                    ),
+                    SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        '¡Pocas unidades!',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.ink, fontSize: 10.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (favoriteActions)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => state.toggleFavorite(product.id),
+                        child: const Text(
+                          'Quitar',
+                          style: TextStyle(color: AppColors.danger),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: onOpen,
+                        child: const Text('Ver producto'),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
-      ],
+        ),
+      ),
     );
   }
+}
+
+class OfferBadge extends StatelessWidget {
+  const OfferBadge({super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: AppColors.yellow,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: const Text(
+      'OFERTA',
+      style: TextStyle(
+        color: AppColors.ink,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
+final _greenOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
+  if (states.contains(WidgetState.pressed)) {
+    return AppColors.green.withValues(alpha: .12);
+  }
+  if (states.contains(WidgetState.hovered) ||
+      states.contains(WidgetState.focused)) {
+    return AppColors.green.withValues(alpha: .06);
+  }
+  return null;
+});
+
+/// Pastilla de filtro: verde sólido cuando está activa y borde gris si no.
+class FilterPill extends StatelessWidget {
+  const FilterPill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    child: Material(
+      color: selected ? AppColors.darkGreen : Colors.white,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? AppColors.darkGreen : const Color(0xFFE2E5EA),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        overlayColor: selected
+            ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
+            : _greenOverlay,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 32),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: selected ? Colors.white : AppColors.ink,
+                  ),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.ink,
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class ProductGrid extends StatelessWidget {
@@ -305,17 +544,20 @@ class ProductGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      const spacing = 12.0;
       final scale = MediaQuery.textScalerOf(context).scale(1);
-      final count = (constraints.maxWidth / (150 * scale)).floor().clamp(1, 4);
+      final count = (constraints.maxWidth / (160 * scale)).floor().clamp(1, 4);
+      final itemWidth = (constraints.maxWidth - spacing * (count - 1)) / count;
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: products.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: count,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 22,
-          mainAxisExtent: 300 + (favoriteActions ? 96 : 0) + (scale - 1) * 130,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+          mainAxisExtent:
+              itemWidth * .9 + (112 + (favoriteActions ? 48 : 0)) * scale,
         ),
         itemBuilder: (context, index) => ProductCard(
           product: products[index],
@@ -333,10 +575,14 @@ class SearchField extends StatefulWidget {
     required this.value,
     required this.onChanged,
     required this.onSubmit,
+    this.trailing,
   });
   final String value;
   final ValueChanged<String> onChanged;
   final VoidCallback onSubmit;
+
+  /// Reemplaza el botón "Buscar" por acciones propias (voz, escáner…).
+  final List<Widget>? trailing;
   @override
   State<SearchField> createState() => _SearchFieldState();
 }
@@ -370,12 +616,15 @@ class _SearchFieldState extends State<SearchField> {
     textInputAction: TextInputAction.search,
     decoration: InputDecoration(
       hintText: '¿Qué estás buscando hoy?',
+      hintStyle: widget.trailing == null ? null : const TextStyle(fontSize: 14),
       prefixIcon: const Icon(Icons.search),
-      suffixIcon: IconButton(
-        tooltip: 'Buscar',
-        onPressed: widget.onSubmit,
-        icon: const Icon(Icons.chevron_right),
-      ),
+      suffixIcon: widget.trailing == null
+          ? IconButton(
+              tooltip: 'Buscar',
+              onPressed: widget.onSubmit,
+              icon: const Icon(Icons.chevron_right),
+            )
+          : Row(mainAxisSize: MainAxisSize.min, children: widget.trailing!),
     ),
   );
 }

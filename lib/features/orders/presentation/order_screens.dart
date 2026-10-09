@@ -323,11 +323,16 @@ class DeliveryScreen extends StatelessWidget {
             'Información de entrega',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
           ),
-          const ListTile(
+          ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.location_on_outlined),
-            title: Text('Dirección'),
-            subtitle: Text('Pendiente de confirmar'),
+            leading: const Icon(Icons.location_on_outlined),
+            title: const Text('Dirección'),
+            subtitle: Text(
+              order.address == null
+                  ? 'Pendiente de confirmar'
+                  : '${order.address!.line1}\n${order.address!.region}'
+                        '${order.address!.reference.isEmpty ? '' : '\nRef.: ${order.address!.reference}'}',
+            ),
           ),
           const ListTile(
             contentPadding: EdgeInsets.zero,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../shared/state/shop_state.dart';
+import '../widgets/line_icons.dart';
 import '../widgets/shop_widgets.dart';
 import '../features/account/presentation/account_screens.dart';
 import '../features/auth/presentation/auth_screens.dart';
@@ -29,8 +30,16 @@ class _ShopShellState extends State<ShopShell> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: tab == 0 ? const BrandLogo() : Text(titles[tab]),
+          leading: tab == 0
+              ? null
+              : IconButton(
+                  tooltip: 'Volver al inicio',
+                  onPressed: () => select(0),
+                  icon: const LineIcon(LineIcons.back),
+                ),
+          title: tab == 0 ? const BrandLogo(fontSize: 26) : Text(titles[tab]),
           centerTitle: tab != 0,
+          titleSpacing: tab == 0 ? 16 : null,
           actions: [
             if (tab == 0)
               IconButton(
@@ -40,11 +49,7 @@ class _ShopShellState extends State<ShopShell> {
                   AuthPrompt.orders,
                   (_) => const OrdersScreen(),
                 ),
-                icon: const Badge(
-                  smallSize: 6,
-                  backgroundColor: AppColors.yellow,
-                  child: Icon(Icons.notifications_outlined),
-                ),
+                icon: const LineIcon(LineIcons.bell),
               ),
             IconButton(
               tooltip: 'Ver bolsa',
@@ -52,9 +57,10 @@ class _ShopShellState extends State<ShopShell> {
               icon: Badge(
                 isLabelVisible: state.cartCount > 0,
                 label: Text('${state.cartCount}'),
-                child: const Icon(Icons.shopping_bag_outlined),
+                child: const LineIcon(LineIcons.bag),
               ),
             ),
+            const SizedBox(width: 6),
           ],
         ),
         body: SafeArea(
@@ -74,34 +80,64 @@ class _ShopShellState extends State<ShopShell> {
             ),
           ),
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: tab,
-          onDestinationSelected: select,
-          backgroundColor: Colors.white,
-          indicatorColor: AppColors.softGreen,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home, color: AppColors.green),
-              label: 'Inicio',
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              height: 64,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              indicatorColor: Colors.transparent,
+              labelTextStyle: WidgetStateProperty.resolveWith(
+                (states) => TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  fontWeight: states.contains(WidgetState.selected)
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  color: states.contains(WidgetState.selected)
+                      ? AppColors.darkGreen
+                      : AppColors.ink,
+                ),
+              ),
+              iconTheme: WidgetStateProperty.resolveWith(
+                (states) => IconThemeData(
+                  size: 24,
+                  color: states.contains(WidgetState.selected)
+                      ? AppColors.darkGreen
+                      : AppColors.ink,
+                ),
+              ),
             ),
-            NavigationDestination(
-              icon: Icon(Icons.grid_view_outlined),
-              label: 'Categorías',
+            child: NavigationBar(
+              selectedIndex: tab,
+              onDestinationSelected: select,
+              destinations: const [
+                NavigationDestination(
+                  icon: LineIcon(LineIcons.home),
+                  label: 'Inicio',
+                ),
+                NavigationDestination(
+                  icon: LineIcon(LineIcons.grid),
+                  label: 'Categorías',
+                ),
+                NavigationDestination(
+                  icon: LineIcon(LineIcons.bag),
+                  label: 'Bolsa',
+                ),
+                NavigationDestination(
+                  icon: LineIcon(LineIcons.heart),
+                  label: 'Favoritos',
+                ),
+                NavigationDestination(
+                  icon: LineIcon(LineIcons.user),
+                  label: 'Mi Cuenta',
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: Icon(Icons.shopping_bag_outlined),
-              label: 'Bolsa',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.favorite_border),
-              label: 'Favoritos',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              label: 'Mi cuenta',
-            ),
-          ],
+          ),
         ),
       ),
     );

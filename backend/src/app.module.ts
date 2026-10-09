@@ -14,6 +14,7 @@ import { OrdersModule } from './orders/orders.module.js';
 import { LoyaltyModule } from './loyalty/loyalty.module.js';
 import { GiftCardsModule } from './gift-cards/gift-cards.module.js';
 import { ContentModule } from './content/content.module.js';
+import { AddressesModule } from './addresses/addresses.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ContentModule } from './content/content.module.js';
     LoyaltyModule,
     GiftCardsModule,
     ContentModule,
+    AddressesModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

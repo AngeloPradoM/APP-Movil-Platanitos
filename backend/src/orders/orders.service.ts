@@ -55,6 +55,10 @@ export class OrdersService {
     });
     const total = subtotal.add(SHIPPING_COST);
     const now = Date.now();
+    const address = await this.prisma.address.findFirst({
+      where: input.addressId ? { id: input.addressId, userId } : { userId, isDefault: true },
+    });
+    if (input.addressId && !address) throw new NotFoundException('Dirección no encontrada');
 
     const order = await this.prisma.$transaction(async (transaction) => {
       for (const item of items) {
@@ -74,6 +78,22 @@ export class OrdersService {
           total,
           estimatedFrom: new Date(now + 6 * DAY_MS),
           estimatedTo: new Date(now + 8 * DAY_MS),
+          addressId: address?.id,
+          addressSnapshot: address
+            ? {
+                create: {
+                  recipient: address.recipient,
+                  line1: address.line1,
+                  district: address.district,
+                  province: address.province,
+                  department: address.department,
+                  postalCode: address.postalCode,
+                  reference: address.reference,
+                  phone: address.phone,
+                  country: address.country,
+                },
+              }
+            : undefined,
           items: { create: items },
           statusHistory: { create: { status: OrderStatus.PREPARATION, note: 'Pedido registrado' } },
           paymentAttempts: {

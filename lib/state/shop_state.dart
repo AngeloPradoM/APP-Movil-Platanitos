@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../data/mock_data.dart';
 import '../features/account/data/account_repository.dart';
+import '../features/account/data/addresses_repository.dart';
 import '../features/account/data/content_repository.dart';
 import '../features/catalog/data/catalog_repository.dart';
 import '../features/catalog/data/favorites_repository.dart';
@@ -72,6 +73,7 @@ class ShopState extends ChangeNotifier {
     this.ordersRepository,
     this.accountRepository,
     this.contentRepository,
+    this.addressesRepository,
     SessionStorage? sessionStorage,
   }) : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
@@ -110,6 +112,9 @@ class ShopState extends ChangeNotifier {
   final OrdersRepository? ordersRepository;
   final AccountRepository? accountRepository;
   final ContentRepository? contentRepository;
+  final AddressesRepository? addressesRepository;
+  final _addresses = <ShippingAddress>[];
+  int _addressSequence = 0;
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
@@ -178,9 +183,18 @@ class ShopState extends ChangeNotifier {
   double get subtotal => _cart.fold(0, (sum, item) => sum + item.subtotal);
   double get shipping => _cart.isEmpty ? 0 : 6.9;
   double get total => subtotal + shipping;
+  List<ShippingAddress> get addresses => List.unmodifiable(_addresses);
+  ShippingAddress? get defaultAddress {
+    for (final address in _addresses) {
+      if (address.isDefault) return address;
+    }
+    return _addresses.isEmpty ? null : _addresses.first;
+  }
+
   void login({AppUser? account}) {
     user = account ?? user;
     signedIn = true;
+    if (_addresses.isEmpty && _authSession == null) _addresses.add(demoAddress);
     notifyListeners();
   }
 
@@ -466,7 +480,14 @@ class ShopState extends ChangeNotifier {
     if (token == null) return;
     final favoritesSource = favoritesRepository;
     final ordersSource = ordersRepository;
+    final addressesSource = addressesRepository;
     await Future.wait([
+      if (addressesSource != null)
+        _keepLocalOnFailure(
+          () async => _applyRemoteAddresses(
+            await addressesSource.list(accessToken: token),
+          ),
+        ),
       if (favoritesSource != null)
         _keepLocalOnFailure(
           () async => _applyRemoteFavorites(
@@ -510,6 +531,72 @@ class ShopState extends ChangeNotifier {
       ..addAll(mapped.reversed.map((product) => product.id));
   }
 
+  void _applyRemoteAddresses(List<ShippingAddress> remote) {
+    _addresses
+      ..clear()
+      ..addAll(remote);
+  }
+
+  /// Crea o actualiza una dirección. Con sesión se guarda en el backend;
+  /// sin ella queda en el dispositivo.
+  Future<void> saveAddress(ShippingAddress address) async {
+    final repository = addressesRepository;
+    final token = _sessionToken;
+    if (repository != null && token != null) {
+      try {
+        _applyRemoteAddresses(
+          address.isRemote
+              ? await repository.update(accessToken: token, address: address)
+              : await repository.create(accessToken: token, address: address),
+        );
+      } catch (error) {
+        throw StateError(_requestErrorMessage(error));
+      }
+      notifyListeners();
+      return;
+    }
+    final index = _addresses.indexWhere((item) => item.id == address.id);
+    final makeDefault =
+        address.isDefault ||
+        _addresses.isEmpty ||
+        (index >= 0 && _addresses[index].isDefault);
+    final saved = address.copyWith(
+      id: index >= 0 ? address.id : 'local-${++_addressSequence}',
+      isDefault: makeDefault,
+    );
+    if (index >= 0) _addresses.removeAt(index);
+    if (makeDefault) {
+      for (var i = 0; i < _addresses.length; i++) {
+        _addresses[i] = _addresses[i].copyWith(isDefault: false);
+      }
+      _addresses.insert(0, saved);
+    } else {
+      _addresses.insert(index >= 0 ? index : _addresses.length, saved);
+    }
+    notifyListeners();
+  }
+
+  Future<void> removeAddress(ShippingAddress address) async {
+    final repository = addressesRepository;
+    final token = _sessionToken;
+    if (repository != null && token != null && address.isRemote) {
+      try {
+        _applyRemoteAddresses(
+          await repository.remove(accessToken: token, id: address.id!),
+        );
+      } catch (error) {
+        throw StateError(_requestErrorMessage(error));
+      }
+      notifyListeners();
+      return;
+    }
+    _addresses.removeWhere((item) => item.id == address.id);
+    if (address.isDefault && _addresses.isNotEmpty) {
+      _addresses[0] = _addresses[0].copyWith(isDefault: true);
+    }
+    notifyListeners();
+  }
+
   void _applyRemoteOrders(List<RemoteOrder> remote) {
     _orders
       ..clear()
@@ -529,6 +616,7 @@ class ShopState extends ChangeNotifier {
       shipping: order.shipping,
       status: status,
       remote: true,
+      address: order.address,
     );
   }
 
@@ -593,6 +681,7 @@ class ShopState extends ChangeNotifier {
       ..clear()
       ..addAll(_demoFavorites);
     _favoriteProducts.clear();
+    _addresses.clear();
     _loyalty = null;
     catalog.clear();
     notifyListeners();
@@ -858,7 +947,7 @@ class ShopState extends ChangeNotifier {
     }
   }
 
-  ShopOrder placeOrder(PaymentMethod payment) {
+  ShopOrder placeOrder(PaymentMethod payment, {ShippingAddress? address}) {
     if (_cart.isEmpty) throw StateError('La bolsa está vacía');
     final order = ShopOrder(
       id: 'PL-${++_orderSequence}',
@@ -866,6 +955,7 @@ class ShopState extends ChangeNotifier {
       payment: payment,
       createdAt: DateTime.now(),
       shipping: shipping,
+      address: address ?? defaultAddress,
     );
     final remoteItemIds = _cart
         .map((item) => item.remoteItemId)
@@ -882,14 +972,31 @@ class ShopState extends ChangeNotifier {
 
   /// Registra el pedido en el backend cuando toda la bolsa viene del
   /// catálogo remoto; los productos de demostración usan [placeOrder].
-  Future<ShopOrder> checkout(PaymentMethod payment) async {
+  Future<ShopOrder> checkout(
+    PaymentMethod payment, {
+    ShippingAddress? address,
+  }) async {
     if (_cart.isEmpty) throw StateError('La bolsa está vacía');
     final repository = ordersRepository;
     final token = _sessionToken;
     if (repository == null ||
         token == null ||
         _cart.any((item) => item.remoteVariantId == null)) {
-      return placeOrder(payment);
+      return placeOrder(payment, address: address);
+    }
+    if (address != null && !address.isRemote) {
+      final local = address;
+      await saveAddress(local);
+      address =
+          _addresses
+              .where(
+                (item) =>
+                    item.line1 == local.line1 &&
+                    item.district == local.district &&
+                    item.label == local.label,
+              )
+              .lastOrNull ??
+          defaultAddress;
     }
     while (_cartRequests.isNotEmpty) {
       await Future.wait(_cartRequests.toList());
@@ -903,6 +1010,7 @@ class ShopState extends ChangeNotifier {
       remote = await repository.create(
         accessToken: token,
         paymentMethod: payment.name.toUpperCase(),
+        addressId: address?.isRemote == true ? address!.id : null,
       );
     } catch (error) {
       throw StateError(_requestErrorMessage(error));

@@ -1,5 +1,7 @@
 import '../../../core/api_config.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/models/shop_models.dart';
+import '../../account/data/addresses_repository.dart';
 
 class RemoteOrderItem {
   const RemoteOrderItem({
@@ -39,6 +41,7 @@ class RemoteOrder {
     required this.shipping,
     required this.createdAt,
     required this.items,
+    this.address,
   });
   factory RemoteOrder.fromJson(Map<String, dynamic> json) => RemoteOrder(
     publicNumber: json['publicNumber'] as String,
@@ -46,6 +49,9 @@ class RemoteOrder {
     paymentMethod: json['paymentMethod'] as String,
     shipping: double.parse(json['shipping'] as String),
     createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+    address: json['address'] is Map
+        ? addressFromJson(Map<String, dynamic>.from(json['address'] as Map))
+        : null,
     items: (json['items'] as List<dynamic>)
         .map(
           (item) =>
@@ -57,6 +63,7 @@ class RemoteOrder {
   final double shipping;
   final DateTime createdAt;
   final List<RemoteOrderItem> items;
+  final ShippingAddress? address;
 }
 
 class OrdersRepository {
@@ -68,11 +75,12 @@ class OrdersRepository {
   Future<RemoteOrder> create({
     required String accessToken,
     required String paymentMethod,
+    String? addressId,
   }) async => _parse(
     await _client.post(
       '/orders',
       accessToken: accessToken,
-      body: {'paymentMethod': paymentMethod},
+      body: {'paymentMethod': paymentMethod, 'addressId': ?addressId},
     ),
   );
 

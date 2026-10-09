@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/line_icons.dart';
+
 abstract final class AppColors {
   static const green = Color(0xFF138447),
       darkGreen = Color(0xFF0B6937),
@@ -36,6 +38,15 @@ ThemeData buildTheme() => ThemeData(
     foregroundColor: AppColors.ink,
     centerTitle: true,
     scrolledUnderElevation: 0,
+    titleTextStyle: TextStyle(
+      fontFamily: 'Inter',
+      color: AppColors.ink,
+      fontSize: 17,
+      fontWeight: FontWeight.w700,
+    ),
+  ),
+  actionIconTheme: ActionIconThemeData(
+    backButtonIconBuilder: (_) => const LineIcon(LineIcons.back),
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,

@@ -209,6 +209,8 @@ model Address {
   province   String   @db.VarChar(80)
   department String   @db.VarChar(80)
   postalCode String?  @db.VarChar(20)
+  reference  String?  @db.VarChar(180)
+  phone      String?  @db.VarChar(20)
   country    String   @default("PE") @db.Char(2)
   isDefault  Boolean  @default(false)
   createdAt  DateTime @default(now())
@@ -281,6 +283,8 @@ model OrderAddressSnapshot {
   province   String  @db.VarChar(80)
   department String  @db.VarChar(80)
   postalCode String? @db.VarChar(20)
+  reference  String? @db.VarChar(180)
+  phone      String? @db.VarChar(20)
   country    String  @db.Char(2)
   order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }

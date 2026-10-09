@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,8 +7,10 @@ import '../../../core/validators.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
+import '../../../widgets/line_icons.dart';
 import '../../../widgets/shop_widgets.dart';
 import '../../../app/shop_shell.dart';
+import '../../cart/presentation/cart_screen.dart';
 
 void enterShop(BuildContext context) => Navigator.of(context)
     .pushAndRemoveUntil(
@@ -43,8 +46,7 @@ class AuthPrompt {
   static const account = AuthPrompt(
     eyebrow: 'MI CUENTA',
     heading: 'Inicia sesión para continuar',
-    description:
-        'Accede a tu perfil, pedidos, puntos, monedero y beneficios de membresía.',
+    description: 'Accede a tu perfil, pedidos, puntos, monedero y beneficios de membresía.',
   );
 }
 
@@ -71,12 +73,42 @@ Future<void> openWithLogin(
   Navigator.push(context, MaterialPageRoute<void>(builder: builder));
 }
 
-Future<void> toggleFavoriteWithLogin(BuildContext context, int productId) async {
+Future<void> toggleFavoriteWithLogin(
+  BuildContext context,
+  int productId,
+) async {
   if (!await requireLogin(context, AuthPrompt.favorites) || !context.mounted) {
     return;
   }
   ShopScope.of(context).toggleFavorite(productId);
 }
+
+Widget _accountSwitch({
+  required String question,
+  required String action,
+  required VoidCallback onPressed,
+}) => Center(
+  child: TextButton(
+    onPressed: onPressed,
+    style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+    child: Text.rich(
+      TextSpan(
+        text: '$question ',
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+        children: [
+          TextSpan(
+            text: action,
+            style: const TextStyle(
+              color: AppColors.darkGreen,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    ),
+  ),
+);
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.prompt});
@@ -154,118 +186,215 @@ class _LoginScreenState extends State<LoginScreen> {
     finish();
   }
 
-  @override
-  Widget build(BuildContext context) => AuthLayout(
-    back: returnOnSuccess,
-    heading: widget.prompt?.heading ?? 'Inicia sesión',
-    eyebrow: widget.prompt?.eyebrow ?? 'BIENVENIDA DE NUEVO',
-    description:
-        widget.prompt?.description ??
-        'Ingresa tus datos para continuar comprando.',
-    children: [
-      Form(
-        key: form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                hintText: 'nombre@correo.com',
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: Validators.email,
-              onChanged: (value) => email = value,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                suffixIcon: IconButton(
-                  tooltip: hidden ? 'Mostrar contraseña' : 'Ocultar contraseña',
-                  onPressed: () => setState(() => hidden = !hidden),
-                  icon: Icon(
-                    hidden
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                  ),
-                ),
-              ),
-              obscureText: hidden,
-              validator: Validators.password,
-              onChanged: (value) => password = value,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const RecoveryScreen(),
-                  ),
-                ),
-                child: const Text('¿Olvidaste tu contraseña?'),
-              ),
-            ),
-            FilledButton(
-              onPressed: submitting ? null : login,
-              child: submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Iniciar sesión'),
-            ),
-          ],
+  Widget _socialButton(String label, Widget icon) => Expanded(
+    child: OutlinedButton.icon(
+      onPressed: () => login(social: true),
+      icon: icon,
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
+        minimumSize: const Size(0, 40),
+        side: const BorderSide(color: fieldBorderColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
       ),
-      const SizedBox(height: 24),
-      const Center(child: Text('o continúa con')),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => login(social: true),
-              child: const Text('G  Google'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => login(social: true),
-              child: const Text('●  Apple'),
-            ),
-          ),
-        ],
-      ),
-      if (!returnOnSuccess) ...[
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => enterShop(context),
-          child: const Text('Continuar como invitada/o'),
-        ),
-      ],
-      const SizedBox(height: 20),
-      TextButton(
-        onPressed: openSignup,
-        child: const Text('¿No tienes cuenta? Regístrate'),
-      ),
-      const Center(
-        child: Text(
-          'Acceso de demostración · Sin autenticación real',
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
-        ),
-      ),
-      const SizedBox(height: 20),
-      const Text(
-        'Al continuar aceptas nuestros Términos y Condiciones.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.muted, fontSize: 12),
-      ),
-    ],
+    ),
   );
+
+  @override
+  Widget build(BuildContext context) {
+    final prompt = widget.prompt;
+    return Scaffold(
+      backgroundColor: softBackground,
+      appBar: returnOnSuccess
+          ? AppBar(backgroundColor: softBackground, elevation: 0)
+          : null,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  sliver: SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(height: returnOnSuccess ? 8 : 48),
+                        const Center(child: BrandLogo()),
+                        const SizedBox(height: 2),
+                        Text(
+                          prompt?.heading ?? 'Iniciar sesión',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF3D4550),
+                          ),
+                        ),
+                        if (prompt != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            prompt.description,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                        const SizedBox(height: 56),
+                        Form(
+                          key: form,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              fieldLabel('Correo electrónico'),
+                              TextFormField(
+                                decoration: fieldDecoration(
+                                  'ejemplo@correo.com',
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                validator: Validators.email,
+                                onChanged: (value) => email = value,
+                              ),
+                              const SizedBox(height: 16),
+                              fieldLabel('Contraseña'),
+                              TextFormField(
+                                decoration: fieldDecoration(
+                                  'Ingresa tu contraseña',
+                                  suffix: IconButton(
+                                    tooltip: hidden
+                                        ? 'Mostrar contraseña'
+                                        : 'Ocultar contraseña',
+                                    onPressed: () =>
+                                        setState(() => hidden = !hidden),
+                                    icon: Icon(
+                                      hidden
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: hintColor,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                obscureText: hidden,
+                                validator: Validators.password,
+                                onChanged: (value) => password = value,
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const RecoveryScreen(),
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.darkGreen,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '¿Olvidaste tu contraseña?',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              FilledButton(
+                                onPressed: submitting ? null : login,
+                                style: primaryButtonStyle,
+                                child: submitting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Iniciar Sesión'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider(color: fieldBorderColor)),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'o ingresa con',
+                                style: TextStyle(
+                                  color: hintColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: fieldBorderColor)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            _socialButton(
+                              'Google',
+                              const Icon(Icons.g_mobiledata_rounded, size: 26),
+                            ),
+                            const SizedBox(width: 12),
+                            _socialButton(
+                              'Apple',
+                              const Icon(Icons.apple, size: 20),
+                            ),
+                          ],
+                        ),
+                        if (!returnOnSuccess) ...[
+                          const SizedBox(height: 8),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => enterShop(context),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.muted,
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                ),
+                              ),
+                              child: const Text('Continuar como invitada/o'),
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                        _accountSwitch(
+                          question: '¿No tienes cuenta?',
+                          action: 'Regístrate',
+                          onPressed: openSignup,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class AuthLayout extends StatelessWidget {
@@ -458,127 +587,261 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  late final privacyLink = TapGestureRecognizer()
+    ..onTap = () => showInfo(
+      context,
+      'Política de Privacidad',
+      'Protegemos tus datos personales y los utilizamos para gestionar tu cuenta, compras y entregas.',
+    );
+
   @override
-  Widget build(BuildContext context) => AuthLayout(
-    back: true,
-    heading: 'Crea tu cuenta',
-    eyebrow: 'ÚNETE A PLATANITOS',
-    description: 'Completa tus datos y disfruta una experiencia hecha para ti.',
-    children: [
-      Form(
-        key: form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Nombre completo'),
-              validator: Validators.name,
-              onChanged: (value) => name = value,
+  void dispose() {
+    privacyLink.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ShopScope.of(context);
+    const gap = SizedBox(height: 14);
+    return Scaffold(
+      backgroundColor: softBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Crear Cuenta',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Ver bolsa',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const CartPage()),
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: documentType,
-              decoration: const InputDecoration(labelText: 'Tipo de documento'),
-              items: ['DNI', 'CE', 'Pasaporte']
-                  .map(
-                    (type) => DropdownMenuItem(value: type, child: Text(type)),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() {
-                documentType = value!;
-                document = '';
-              }),
+            icon: Badge(
+              label: Text('${state.cartCount}'),
+              isLabelVisible: state.cartCount > 0,
+              child: const LineIcon(LineIcons.bag),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: ValueKey(documentType),
-              decoration: const InputDecoration(
-                labelText: 'Número de documento',
-              ),
-              keyboardType: documentType == 'DNI'
-                  ? TextInputType.number
-                  : TextInputType.text,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                  documentType == 'DNI'
-                      ? RegExp(r'\d')
-                      : RegExp(r'[a-zA-Z0-9]'),
-                ),
-                LengthLimitingTextInputFormatter(
-                  documentType == 'DNI' ? 8 : 12,
-                ),
-              ],
-              validator: (value) => Validators.document(value, documentType),
-              onChanged: (value) => document = value,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-              ),
-              validator: Validators.email,
-              keyboardType: TextInputType.emailAddress,
-              onChanged: (value) => email = value,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Teléfono'),
-              validator: Validators.phone,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(9),
-              ],
-              onChanged: (value) => phone = value,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                suffixIcon: IconButton(
-                  tooltip: 'Mostrar u ocultar contraseña',
-                  onPressed: () => setState(() => hidden = !hidden),
-                  icon: Icon(
-                    hidden
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
+              children: [
+                const Text(
+                  'Únete a Platanitos',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
                   ),
                 ),
-              ),
-              obscureText: hidden,
-              validator: Validators.password,
-              onChanged: (value) => password = value,
+                const SizedBox(height: 18),
+                Form(
+                  key: form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      fieldLabel('Nombre completo'),
+                      TextFormField(
+                        decoration: fieldDecoration('Nombres y Apellidos'),
+                        textCapitalization: TextCapitalization.words,
+                        validator: Validators.name,
+                        onChanged: (value) => name = value,
+                      ),
+                      gap,
+                      fieldLabel('Tipo de documento'),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 108,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: documentType,
+                              isExpanded: true,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 20,
+                              ),
+                              decoration: fieldDecoration('Tipo').copyWith(
+                                contentPadding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  13,
+                                  8,
+                                  13,
+                                ),
+                              ),
+                              items: ['DNI', 'CE', 'Pasaporte']
+                                  .map(
+                                    (type) => DropdownMenuItem(
+                                      value: type,
+                                      child: Text(
+                                        type,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) => setState(() {
+                                documentType = value!;
+                                document = '';
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              key: ValueKey(documentType),
+                              decoration:
+                                  fieldDecoration(
+                                    'Documento de identidad',
+                                  ).copyWith(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 13,
+                                    ),
+                                  ),
+                              keyboardType: documentType == 'DNI'
+                                  ? TextInputType.number
+                                  : TextInputType.text,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  documentType == 'DNI'
+                                      ? RegExp(r'\d')
+                                      : RegExp(r'[a-zA-Z0-9]'),
+                                ),
+                                LengthLimitingTextInputFormatter(
+                                  documentType == 'DNI' ? 8 : 12,
+                                ),
+                              ],
+                              validator: (value) =>
+                                  Validators.document(value, documentType),
+                              onChanged: (value) => document = value,
+                            ),
+                          ),
+                        ],
+                      ),
+                      gap,
+                      fieldLabel('Correo electrónico'),
+                      TextFormField(
+                        decoration: fieldDecoration('correo@ejemplo.com'),
+                        validator: Validators.email,
+                        keyboardType: TextInputType.emailAddress,
+                        onChanged: (value) => email = value,
+                      ),
+                      gap,
+                      fieldLabel('Teléfono'),
+                      TextFormField(
+                        decoration: fieldDecoration('987 654 321'),
+                        validator: Validators.phone,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(9),
+                        ],
+                        onChanged: (value) => phone = value,
+                      ),
+                      gap,
+                      fieldLabel('Contraseña'),
+                      TextFormField(
+                        decoration: fieldDecoration(
+                          'Mínimo 8 caracteres',
+                          suffix: IconButton(
+                            tooltip: hidden
+                                ? 'Mostrar contraseña'
+                                : 'Ocultar contraseña',
+                            onPressed: () => setState(() => hidden = !hidden),
+                            icon: Icon(
+                              hidden
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: hintColor,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        obscureText: hidden,
+                        validator: Validators.password,
+                        onChanged: (value) => password = value,
+                      ),
+                      const SizedBox(height: 16),
+                      MergeSemantics(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: privacy,
+                                activeColor: AppColors.darkGreen,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                onChanged: (value) =>
+                                    setState(() => privacy = value!),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  text: 'Acepto la ',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    height: 1.5,
+                                    color: AppColors.ink,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Política de Privacidad',
+                                      recognizer: privacyLink,
+                                      style: const TextStyle(
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: ' y el Tratamiento de mis Datos Personales.',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      FilledButton(
+                        onPressed: submitting ? null : register,
+                        style: primaryButtonStyle,
+                        child: Text(
+                          submitting ? 'Creando cuenta…' : 'Crear Cuenta',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _accountSwitch(
+                  question: '¿Ya tienes cuenta?',
+                  action: 'Inicia Sesión',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: privacy,
-              onChanged: (value) => setState(() => privacy = value!),
-              title: const Text(
-                'Acepto la Política de Privacidad y el Tratamiento de Datos Personales.',
-                style: TextStyle(fontSize: 12),
-              ),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            TextButton(
-              onPressed: () => showInfo(
-                context,
-                'Política de Privacidad',
-                'Protegemos tus datos personales y los utilizamos para gestionar tu cuenta, compras y entregas. En esta demostración se conservan únicamente en memoria.',
-              ),
-              child: const Text('Leer Política de Privacidad'),
-            ),
-            FilledButton(
-              onPressed: submitting ? null : register,
-              child: Text(submitting ? 'Creando cuenta…' : 'Crear cuenta'),
-            ),
-          ],
+          ),
         ),
       ),
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('¿Ya tienes cuenta? Inicia sesión'),
-      ),
-    ],
-  );
+    );
+  }
 }

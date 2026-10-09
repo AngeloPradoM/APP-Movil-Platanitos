@@ -104,6 +104,8 @@ describe('AppController (e2e)', () => {
     await Promise.all([
       request(server).get('/favorites').expect(401),
       request(server).get('/orders').expect(401),
+      request(server).get('/addresses').expect(401),
+      request(server).post('/addresses').send({}).expect(401),
       request(server).post('/orders').send({ paymentMethod: 'WALLET' }).expect(401),
       request(server).get('/loyalty').expect(401),
       request(server).post('/gift-cards').send({}).expect(401),
@@ -150,13 +152,60 @@ describe('AppController (e2e)', () => {
     expect(profile.body).toMatchObject({ name: 'Flujo Editado', phone: '912345678', email: temporaryEmail });
     await request(server).patch('/me').set(auth).send({ phone: '123' }).expect(400);
 
+    const home = {
+      label: 'Casa',
+      recipient: 'Flujo Editado',
+      line1: 'Av. Arequipa 1234, dpto 501',
+      district: 'Miraflores',
+      province: 'Lima',
+      department: 'Lima',
+      reference: 'Frente al parque',
+      phone: '912345678',
+    };
+    await request(server).post('/addresses').set(auth).send({ ...home, line1: 'Av' }).expect(400);
+    await request(server).post('/addresses').set(auth).send({ ...home, phone: '123' }).expect(400);
+    const firstList = await request(server).post('/addresses').set(auth).send(home).expect(201);
+    expect(firstList.body).toHaveLength(1);
+    expect(firstList.body[0]).toMatchObject({ ...home, isDefault: true });
+    const homeId = firstList.body[0].id;
+    const secondList = await request(server)
+      .post('/addresses')
+      .set(auth)
+      .send({ ...home, label: 'Trabajo', line1: 'Calle Las Begonias 415', district: 'San Isidro', isDefault: true })
+      .expect(201);
+    expect(secondList.body.map((item: { label: string; isDefault: boolean }) => [item.label, item.isDefault])).toEqual([
+      ['Trabajo', true],
+      ['Casa', false],
+    ]);
+    const workId = secondList.body[0].id;
+    const updated = await request(server)
+      .put(`/addresses/${homeId}`)
+      .set(auth)
+      .send({ ...home, reference: 'Puerta verde', isDefault: true })
+      .expect(200);
+    expect(updated.body[0]).toMatchObject({ id: homeId, reference: 'Puerta verde', isDefault: true });
+
     await request(server).post('/orders').set(auth).send({ paymentMethod: 'WALLET' }).expect(400);
     await request(server).post('/cart/items').set(auth).send({ variantId: variant.id, quantity: 1 }).expect(201);
     await request(server).post('/orders').set(auth).send({ paymentMethod: 'CARD' }).expect(422);
+    await request(server)
+      .post('/orders')
+      .set(auth)
+      .send({ paymentMethod: 'WALLET', addressId: '00000000-0000-4000-8000-000000000000' })
+      .expect(404);
 
-    const order = await request(server).post('/orders').set(auth).send({ paymentMethod: 'WALLET' }).expect(201);
+    const order = await request(server)
+      .post('/orders')
+      .set(auth)
+      .send({ paymentMethod: 'WALLET', addressId: workId })
+      .expect(201);
     consumedStock = { variantId: variant.id, quantity: 1 };
     expect(order.body).toMatchObject({ status: 'PREPARATION', paymentMethod: 'WALLET', shipping: '6.9' });
+    expect(order.body.address).toMatchObject({ line1: 'Calle Las Begonias 415', district: 'San Isidro' });
+
+    const afterDelete = await request(server).delete(`/addresses/${homeId}`).set(auth).expect(200);
+    expect(afterDelete.body).toEqual([expect.objectContaining({ id: workId, isDefault: true })]);
+    await request(server).delete(`/addresses/${homeId}`).set(auth).expect(404);
     expect(order.body.items).toHaveLength(1);
     expect(order.body.items[0]).toMatchObject({ variantId: variant.id, quantity: 1, productSlug: product.slug });
     const emptyCart = await request(server).get('/cart').set(auth).expect(200);

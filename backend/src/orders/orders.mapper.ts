@@ -17,6 +17,7 @@ export const orderInclude = {
     },
   },
   statusHistory: { orderBy: { createdAt: 'asc' as const } },
+  addressSnapshot: true,
 } satisfies Prisma.OrderInclude;
 
 type OrderWithRelations = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -34,6 +35,17 @@ export function mapOrder(order: OrderWithRelations) {
     estimatedFrom: order.estimatedFrom,
     estimatedTo: order.estimatedTo,
     createdAt: order.createdAt,
+    address: order.addressSnapshot
+      ? {
+          recipient: order.addressSnapshot.recipient,
+          line1: order.addressSnapshot.line1,
+          district: order.addressSnapshot.district,
+          province: order.addressSnapshot.province,
+          department: order.addressSnapshot.department,
+          reference: order.addressSnapshot.reference,
+          phone: order.addressSnapshot.phone,
+        }
+      : null,
     items: order.items.map((item) => ({
       id: item.id,
       variantId: item.variantId,

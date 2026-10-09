@@ -33,6 +33,7 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
           ordersRepository: dependencies.orders,
           accountRepository: dependencies.account,
           contentRepository: dependencies.content,
+          addressesRepository: dependencies.addresses,
         );
     state.restoreSession().whenComplete(() {
       if (mounted) setState(() {});

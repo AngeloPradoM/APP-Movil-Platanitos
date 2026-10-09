@@ -10,7 +10,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const PlatanitosApp());
-    await tester.tap(find.text('Iniciar sesión').last);
+    await tester.tap(find.text('Iniciar Sesión'));
     await tester.pump();
     expect(find.text('Ingresa un correo electrónico válido.'), findsOneWidget);
     expect(find.text('Usa al menos 8 caracteres.'), findsOneWidget);
@@ -84,17 +84,17 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Inicia sesión para pagar'), findsOneWidget);
     expect(find.text('Continuar como invitada/o'), findsNothing);
-    expect(find.text('Elige cómo pagar'), findsNothing);
+    expect(find.text('Dirección de envío'), findsNothing);
     Finder field(String label) => find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == label,
+      (widget) => widget is TextField && widget.decoration?.hintText == label,
     );
-    await tester.enterText(field('Correo electrónico'), 'cliente@example.com');
-    await tester.enterText(field('Contraseña'), 'secreta123');
-    await tester.tap(find.text('Iniciar sesión').last);
+    await tester.enterText(field('ejemplo@correo.com'), 'cliente@example.com');
+    await tester.enterText(field('Ingresa tu contraseña'), 'secreta123');
+    await tester.tap(find.text('Iniciar Sesión'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(state.signedIn, isTrue);
-    expect(find.text('Elige cómo pagar'), findsOneWidget);
+    expect(find.text('Dirección de envío'), findsOneWidget);
     expect(state.cartCount, 1);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -115,7 +115,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    await tester.tap(find.byTooltip('Agregar a favoritos').first);
+    await tester.tap(find.text('Categorías'));
+    await tester.pump();
+    await tester.tap(find.text(products[0].name).first);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byTooltip('Cambiar favorito'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Inicia sesión para guardar favoritos'), findsOneWidget);
@@ -123,8 +128,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(state.favorites, favoritesBefore);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-    await tester.tap(find.text('Mi cuenta'));
+    await tester.tap(find.text('Mi Cuenta'));
     await tester.pump();
     expect(find.text('Hola, invitada/o'), findsOneWidget);
     expect(find.text('Cerrar sesión'), findsNothing);
@@ -135,11 +143,11 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Inicia sesión para continuar'), findsOneWidget);
     Finder field(String label) => find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == label,
+      (widget) => widget is TextField && widget.decoration?.hintText == label,
     );
-    await tester.enterText(field('Correo electrónico'), 'cliente@example.com');
-    await tester.enterText(field('Contraseña'), 'secreta123');
-    await tester.tap(find.text('Iniciar sesión').last);
+    await tester.enterText(field('ejemplo@correo.com'), 'cliente@example.com');
+    await tester.enterText(field('Ingresa tu contraseña'), 'secreta123');
+    await tester.tap(find.text('Iniciar Sesión'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(state.signedIn, isTrue);
@@ -147,8 +155,13 @@ void main() {
     await tester.pageBack();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Cerrar sesión'), findsOneWidget);
     expect(find.text('Hola, invitada/o'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Cerrar sesión'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Cerrar sesión'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -167,11 +180,10 @@ void main() {
     await tester.tap(find.text('Ir a Pagar'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    await tester.scrollUntilVisible(
-      find.text('Pagar S/ 96.80'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.tap(find.text('Continuar'));
+    await tester.pump();
+    await tester.tap(find.text('Continuar al pago'));
+    await tester.pump();
     await tester.tap(find.text('Pagar S/ 96.80'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
