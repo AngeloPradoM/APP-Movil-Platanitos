@@ -1,0 +1,135 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service.js';
+import { ProductQueryDto } from './dto/product-query.dto.js';
+import { mapProduct, ProductWithRelations } from './catalog.mapper.js';
+
+@Injectable()
+export class CatalogService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async listProducts(query: ProductQueryDto) {
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 20);
+    const where: Prisma.ProductWhereInput = {
+      isActive: true,
+      ...(query.q
+        ? {
+            OR: [
+              { name: { contains: query.q.trim(), mode: 'insensitive' } },
+              { description: { contains: query.q.trim(), mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(query.category
+        ? { category: { slug: query.category.trim(), isActive: true } }
+        : {}),
+      ...(query.brand ? { brand: { slug: query.brand.trim(), isActive: true } } : {}),
+      ...(query.color || query.sizeSystem || query.minPrice || query.maxPrice
+        ? {
+            variants: {
+              some: {
+                isActive: true,
+                ...(query.color ? { color: { equals: query.color.trim(), mode: 'insensitive' } } : {}),
+                ...(query.sizeSystem ? { sizeSystem: query.sizeSystem as never } : {}),
+                ...(query.minPrice || query.maxPrice
+                  ? {
+                      price: {
+                        ...(query.minPrice ? { gte: new Prisma.Decimal(query.minPrice) } : {}),
+                        ...(query.maxPrice ? { lte: new Prisma.Decimal(query.maxPrice) } : {}),
+                      },
+                    }
+                  : {}),
+              },
+            },
+          }
+        : {}),
+    };
+
+    const orderBy = { createdAt: 'desc' as const };
+
+    const [total, products] = await this.prisma.$transaction([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        orderBy,
+        ...(query.sort === 'newest'
+          ? { skip: (page - 1) * limit, take: limit }
+          : {}),
+        include: {
+          brand: { select: { name: true, slug: true } },
+          category: { select: { name: true, slug: true } },
+          images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+          variants: {
+            where: { isActive: true },
+            orderBy: { price: 'asc' },
+            select: { id: true, sku: true, sizeSystem: true, sizeValue: true, color: true, price: true, comparePrice: true, stock: true },
+          },
+        },
+      }),
+    ]);
+
+    const orderedProducts = [...products].sort((a, b) => {
+      if (query.sort === 'newest') return 0;
+      const aPrice = Number(a.variants[0]?.price ?? 0);
+      const bPrice = Number(b.variants[0]?.price ?? 0);
+      return query.sort === 'price_asc' ? aPrice - bPrice : bPrice - aPrice;
+    });
+    const paginatedProducts = query.sort === 'newest'
+      ? orderedProducts
+      : orderedProducts.slice((page - 1) * limit, page * limit);
+
+    return {
+      data: paginatedProducts.map((product) => mapProduct(product as unknown as ProductWithRelations)),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /** Solo categorías con productos activos, con su conteo y la foto del más reciente. */
+  async listCategories() {
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true, products: { some: { isActive: true } } },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: { select: { products: { where: { isActive: true } } } },
+        products: {
+          where: { isActive: true, images: { some: {} } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } } },
+        },
+      },
+    });
+    return categories.map(({ _count, products, ...category }) => ({
+      ...category,
+      productCount: _count.products,
+      image: products[0]?.images[0]?.url ?? null,
+    }));
+  }
+
+  listBrands() {
+    return this.prisma.brand.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, slug: true },
+    });
+  }
+
+  async getProductBySlug(slug: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { slug, isActive: true },
+      include: {
+        brand: { select: { name: true, slug: true } },
+        category: { select: { name: true, slug: true } },
+        images: { orderBy: { sortOrder: 'asc' } },
+        variants: { where: { isActive: true }, orderBy: { price: 'asc' } },
+      },
+    });
+
+    if (!product) throw new NotFoundException('Producto no encontrado');
+    return mapProduct(product as unknown as ProductWithRelations);
+  }
+}

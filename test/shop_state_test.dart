@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platanitos_app/data/mock_data.dart';
-import 'package:platanitos_app/models/shop_models.dart';
-import 'package:platanitos_app/state/shop_state.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
+import 'package:platanitos_app/shared/state/shop_state.dart';
 import 'package:platanitos_app/core/validators.dart';
 
 void main() {
@@ -61,15 +61,37 @@ void main() {
     expect(state.favorites, isNot(contains(2)));
     final filter = CatalogFilter()
       ..query = 'platanitos'
-      ..color = 'Blanco'
-      ..maxPrice = 100;
+      ..colors.add('Blanco')
+      ..price = PriceRange.all.first;
     expect(filter.apply(products).single.id, 1);
-    filter.color = 'Negro';
+    filter.colors
+      ..clear()
+      ..add('Negro');
     expect(filter.apply(products), isEmpty);
     filter.clear();
     filter.sort = ProductSort.cheapest;
     expect(filter.apply(products).first.id, 4);
   });
+  test(
+    'Purchases and recycling earn points that redeem into the wallet',
+    () async {
+      final state = ShopState();
+      addTearDown(state.dispose);
+      expect(state.lifetimePoints, 86);
+      await expectLater(state.redeemPoints(), throwsStateError);
+      expect(await state.registerRecycling(), startsWith('RSK-'));
+      expect(state.points, 136);
+      expect(await state.redeemPoints(), 5.0);
+      expect(state.walletBalance, 5.0);
+      expect(state.walletMovements.single.description, 'Canje de 100 puntos');
+      expect(state.points, 36);
+      expect(state.lifetimePoints, 136);
+      expect(state.membership, MembershipLevel.classic);
+      expect(MembershipLevel.forPoints(300), MembershipLevel.silver);
+      expect(MembershipLevel.forPoints(1200), MembershipLevel.gold);
+      expect(MembershipLevel.gold.next, isNull);
+    },
+  );
   test('Registration validates Peruvian document and phone', () {
     expect(Validators.document('12345678', 'DNI'), isNull);
     expect(Validators.document('123', 'DNI'), isNotNull);

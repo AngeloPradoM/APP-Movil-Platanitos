@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platanitos_app/core/app_theme.dart';
 import 'package:platanitos_app/main.dart';
-import 'package:platanitos_app/models/shop_models.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
 import 'package:platanitos_app/data/mock_data.dart';
-import 'package:platanitos_app/state/shop_state.dart';
-import 'package:platanitos_app/screens/checkout_screen.dart';
-import 'package:platanitos_app/screens/account_screens.dart';
-import 'package:platanitos_app/screens/auth_screens.dart';
+import 'package:platanitos_app/shared/state/shop_state.dart';
+import 'package:platanitos_app/features/checkout/presentation/checkout_screen.dart';
+import 'package:platanitos_app/features/account/presentation/account_screens.dart';
+import 'package:platanitos_app/features/auth/presentation/auth_screens.dart';
 
 Finder field(String label) => find.byWidgetPredicate(
   (widget) => widget is TextField && widget.decoration?.labelText == label,
@@ -30,9 +30,15 @@ void main() {
     'Card error can switch method without losing cart and cash completes',
     (tester) async {
       final state = ShopState(seedHistory: false)
+        ..login()
         ..addToCart(products[1], 3, SizeSystem.eur);
       addTearDown(state.dispose);
       await mount(tester, state, const CheckoutScreen());
+      expect(find.text(state.defaultAddress!.line1), findsOneWidget);
+      await tester.tap(find.text('Continuar'));
+      await tester.pump();
+      await tester.tap(find.text('Continuar al pago'));
+      await tester.pump();
       await tester.tap(find.text('Tarjeta de Crédito / Débito'));
       await tester.pump();
       expect(
@@ -69,6 +75,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pump(const Duration(seconds: 1));
       expect(state.orders.single.payment, PaymentMethod.cash);
+      expect(state.orders.single.address?.line1, demoAddress.line1);
       expect(state.cart, isEmpty);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -108,16 +115,21 @@ void main() {
       addTearDown(state.dispose);
       await tester.pumpWidget(PlatanitosApp(state: state));
       await tester.enterText(find.byType(TextField).first, 'Botines');
-      await tester.tap(find.byTooltip('Buscar').first);
+      await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pump();
       expect(find.text('Resultados para “Botines”'), findsOneWidget);
-      expect(find.text('1 productos'), findsOneWidget);
+      expect(find.text('1 producto'), findsOneWidget);
+      await tester.tap(find.text('Inicio'));
+      await tester.pump();
       await tester.enterText(find.byType(TextField).first, 'noexiste');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pump();
       await tester.ensureVisible(find.text('Limpiar búsqueda y filtros'));
       await tester.tap(find.text('Limpiar búsqueda y filtros'));
       await tester.pump();
       expect(state.catalog.query, isEmpty);
+      await tester.tap(find.text('Inicio'));
+      await tester.pump();
       expect(
         tester.widget<TextField>(find.byType(TextField).first).controller!.text,
         isEmpty,

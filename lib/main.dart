@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
-import 'screens/auth_screens.dart';
-import 'screens/shop_shell.dart';
-import 'state/shop_state.dart';
+import 'core/app_dependencies.dart';
+import 'features/auth/presentation/auth_screens.dart';
+import 'app/shop_shell.dart';
+import 'shared/state/shop_state.dart';
 
 void main() => runApp(const PlatanitosApp());
 
@@ -15,7 +16,31 @@ class PlatanitosApp extends StatefulWidget {
 }
 
 class _PlatanitosAppState extends State<PlatanitosApp> {
-  late final ShopState state = widget.state ?? ShopState();
+  late final ShopState state;
+  bool restoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final dependencies = AppDependencies.local();
+    state =
+        widget.state ??
+        ShopState(
+          catalogRepository: dependencies.catalog,
+          authRepository: dependencies.auth,
+          cartRepository: dependencies.cart,
+          favoritesRepository: dependencies.favorites,
+          ordersRepository: dependencies.orders,
+          accountRepository: dependencies.account,
+          contentRepository: dependencies.content,
+          addressesRepository: dependencies.addresses,
+        );
+    state.restoreSession().whenComplete(() {
+      if (mounted) setState(() {});
+    });
+    state.loadContent();
+  }
+
   @override
   void dispose() {
     if (widget.state == null) state.dispose();
@@ -29,7 +54,9 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
       title: 'Platanitos',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: state.signedIn ? const ShopShell() : const LoginScreen(),
+      home: restoring
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : (state.signedIn ? const ShopShell() : const LoginScreen()),
     ),
   );
 }

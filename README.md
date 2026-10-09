@@ -1,261 +1,652 @@
 ﻿# Platanitos — Aplicación móvil de comercio electrónico
 
-**Proyecto académico universitario · Desarrollo de aplicaciones con Flutter y Dart**
+**Proyecto académico universitario · Flutter + NestJS + PostgreSQL**
+
+> ¿Quieres ejecutar el proyecto en tu computadora? Ve directamente a la
+> [Guía de instalación paso a paso](#10-guía-de-instalación-paso-a-paso), al final de este documento.
 
 ## 1. Presentación del proyecto
 
-Platanitos es una aplicación de comercio electrónico desarrollada como prototipo académico para estudiar diseño de interfaces, navegación, gestión de estado y validación de flujos de compra. Reconstruye en Flutter las 18 pantallas del prototipo de referencia, preservando el proyecto existente y separando sus responsabilidades en módulos.
+Platanitos es un prototipo funcional de tienda de calzado desarrollado para estudiar diseño de interfaces, navegación, gestión de estado, consumo de APIs y persistencia en base de datos. La aplicación Flutter se conecta a una API REST propia (NestJS) que guarda usuarios, carritos, favoritos, direcciones y pedidos en PostgreSQL.
 
 | Aspecto | Descripción |
 | :--- | :--- |
 | Categoría | Proyecto estudiantil universitario |
-| Área de formación | Desarrollo de software y aplicaciones móviles |
+| Área de formación | Desarrollo de software, aplicaciones móviles e interacción hombre-máquina |
 | Nombre del paquete | `platanitos_app` |
-| Versión de la aplicación | `1.0.0+1` — versión 1.0.0, compilación 1 |
-| Tecnologías principales | Flutter y Dart |
-| Plataforma de desarrollo documentada | Windows; ejecución web y preparación del entorno Android |
-| Objetivo académico | Implementar una experiencia de compra con arquitectura mantenible, estado compartido y pruebas automatizadas |
-| Modalidad | Prototipo funcional con datos y operaciones simulados |
-
-La implementación utiliza Flutter y Dart. El código React del prototipo se empleó únicamente como referencia visual y funcional.
+| Versión de la aplicación | `1.0.0+1` |
+| Frontend | Flutter y Dart (web y Android) |
+| Backend | NestJS 12 (Node.js) con Prisma 7 |
+| Base de datos | PostgreSQL |
+| Modalidad | Prototipo funcional: pagos, envíos y seguimiento son simulados |
 
 ## 2. Índice
 
+**Descripción del proyecto**
+
 1. [Presentación del proyecto](#1-presentación-del-proyecto)
 2. [Índice](#2-índice)
-3. [Herramientas y versiones](#3-herramientas-y-versiones)
-4. [Instalación y configuración en Windows](#4-instalación-y-configuración-en-windows)
-5. [Ejecución del proyecto](#5-ejecución-del-proyecto)
-6. [Guía de uso de la demostración](#6-guía-de-uso-de-la-demostración)
-7. [Arquitectura y organización](#7-arquitectura-y-organización)
-8. [Cobertura funcional](#8-cobertura-funcional)
+3. [Componentes del sistema](#3-componentes-del-sistema)
+4. [Herramientas y versiones verificadas](#4-herramientas-y-versiones-verificadas)
+5. [Arquitectura y organización](#5-arquitectura-y-organización)
+6. [API REST del backend](#6-api-rest-del-backend)
+7. [Cobertura funcional](#7-cobertura-funcional)
+8. [Guía de uso de la demostración](#8-guía-de-uso-de-la-demostración)
 9. [Alcance y limitaciones](#9-alcance-y-limitaciones)
-10. [Validación y pruebas](#10-validación-y-pruebas)
 
-## 3. Herramientas y versiones
+**Puesta en marcha**
 
-**Fecha de verificación: 6 de octubre de 2026.** Las versiones corresponden al entorno local y a los archivos del proyecto; no representan una lista de versiones más recientes. Los paquetes resueltos se verificaron en `pubspec.lock`.
+10. [Guía de instalación paso a paso](#10-guía-de-instalación-paso-a-paso)
+    - [Paso 1. Instalar las herramientas necesarias](#paso-1-instalar-las-herramientas-necesarias)
+    - [Paso 2. Clonar el repositorio](#paso-2-clonar-el-repositorio)
+    - [Paso 3. Instalar las dependencias](#paso-3-instalar-las-dependencias)
+    - [Paso 4. Crear la base de datos con el script](#paso-4-crear-la-base-de-datos-con-el-script)
+    - [Paso 5. Configurar `backend/.env`](#paso-5-configurar-backendenv)
+    - [Paso 6. Preparar Prisma (cliente, migraciones y datos)](#paso-6-preparar-prisma-cliente-migraciones-y-datos)
+    - [Paso 7. Levantar el backend](#paso-7-levantar-el-backend)
+    - [Paso 8. Ejecutar la app Flutter (navegador y Android)](#paso-8-ejecutar-la-app-flutter-navegador-y-android)
+    - [Paso 9. Verificar que todo funciona](#paso-9-verificar-que-todo-funciona)
+    - [Paso 10. Solución de problemas](#paso-10-solución-de-problemas)
 
-### 3.1. Entorno de desarrollo
+## 3. Componentes del sistema
 
-| Categoría | Herramienta | Versión verificada | Uso en el proyecto | Fuente de verificación |
-| :--- | :--- | :--- | :--- | :--- |
-| Editor | Visual Studio Code | `1.140.0` | Edición, ejecución y depuración | Metadatos de `Code.exe` |
-| Framework | Flutter SDK | `3.47.6`, canal `stable` | Interfaces y compilación multiplataforma | `flutter.version.json` del SDK local |
-| Lenguaje | Dart SDK | `3.13.5` | Lógica, modelos y pruebas | SDK incluido con Flutter |
-| Depuración | Dart DevTools | `2.60.0` | Inspección y diagnóstico | `flutter.version.json` |
-| Control de versiones | Git para Windows | `2.54.0.windows.1` | Historial y trabajo por ramas | `git --version` |
-| Extensión de VS Code | Flutter | `3.144.0` | Integración del editor con Flutter | Directorio local `dart-code.flutter-3.144.0` |
-| Extensión de VS Code | Dart | `3.144.0` | Análisis y soporte del lenguaje | Directorio local `dart-code.dart-code-3.144.0` |
-| Herramientas Android | Android Studio | Directorio de versión `2026.2.1`; build `262.9437.185.2621.16467767` | Administración del SDK y emuladores | `product-info.json` |
-| Herramientas Android | Android SDK Build-Tools | `36.0.0` | Herramientas de construcción Android | `source.properties` |
-| Herramientas Android | Android SDK Platform-Tools | `37.0.1` | Comunicación con dispositivos mediante ADB | `source.properties` |
-| Herramientas Android | Android SDK Command-line Tools | `23.0`, carpeta `latest` | Gestión del SDK y sus licencias | `source.properties` |
-| Plataforma Android instalada | Android SDK Platform | API `37.0`, revisión `2` | Plataforma presente en el entorno local | `platforms/android-37.0/source.properties` |
+```text
+┌────────────────────┐   HTTP/JSON (JWT)   ┌────────────────────┐   Prisma   ┌──────────────┐
+│  App Flutter       │ ──────────────────▶ │  API NestJS        │ ─────────▶ │  PostgreSQL  │
+│  (Chrome/Android)  │ ◀────────────────── │  puerto 3000       │ ◀───────── │  "platanitos"│
+└────────────────────┘                     └────────────────────┘            └──────────────┘
+```
 
-### 3.2. Configuración y dependencias del proyecto
+| Componente | Carpeta | Responsabilidad |
+| :--- | :--- | :--- |
+| App Flutter | raíz del repositorio (`lib/`, `test/`, `android/`, `web/`) | Interfaz, navegación, estado compartido y consumo de la API |
+| API NestJS | `backend/src/` | Autenticación, catálogo, carrito, favoritos, direcciones, pedidos, puntos, eGift Cards y contenido |
+| Esquema y migraciones | `backend/prisma/` | Modelo de datos (`schema.prisma`), migraciones versionadas y datos de demostración (`seed.ts`) |
+| Script de base de datos | `backend/database/` | `platanitos.sql` crea toda la base con un solo archivo; `seed.sql` contiene los datos de demostración; `catalog.sql` (opcional) agrega un catálogo ampliado de 500 productos |
 
-| Categoría | Componente | Versión o configuración | Observación |
+La app también funciona sin backend en **modo invitado**: el catálogo, las tiendas y el blog usan datos de respaldo locales. Crear cuenta, iniciar sesión y guardar datos en la nube requieren que la API esté levantada.
+
+## 4. Herramientas y versiones verificadas
+
+**Fecha de verificación: 8 de octubre de 2026.** Son las versiones del entorno donde se desarrolló y probó el proyecto. Versiones iguales o superiores dentro de la misma versión mayor deberían funcionar.
+
+### 4.1. Entorno de desarrollo
+
+| Categoría | Herramienta | Versión verificada | Uso en el proyecto |
 | :--- | :--- | :--- | :--- |
-| Aplicación | Platanitos | `1.0.0+1` | Declarada en `pubspec.yaml` |
-| Compatibilidad del lenguaje | Restricción de Dart | `^3.13.5` | Rango declarado; no es una segunda instalación de Dart |
-| Interfaz | `cupertino_icons` | `1.0.9` | Versión resuelta; restricción declarada `^1.0.8` |
-| Análisis estático | `flutter_lints` | `6.0.0` | Dependencia de desarrollo |
-| Pruebas | `flutter_test` | Incluido en Flutter `3.47.6` | Paquete del SDK, sin versión independiente que instalar |
-| Compilación Android | Android Gradle Plugin | `9.1.0` | Declarado en `android/settings.gradle.kts` |
-| Compilación Android | Kotlin Gradle Plugin | `2.4.0` | Declarado en `android/settings.gradle.kts` |
-| Compilación Android | Gradle Wrapper | `9.3.1` | Declarado en `gradle-wrapper.properties` |
-| Compatibilidad Android | Java y Kotlin JVM | Nivel `17` | Objetivo de compilación; no identifica el JDK instalado |
-| Plataforma de compilación | `compileSdk` / `targetSdk` | API `36` / API `36` | Valores heredados del SDK Flutter instalado |
-| Compatibilidad de dispositivos | `minSdk` | API `24` | Valor heredado de Flutter |
-| Herramientas nativas | NDK configurado | `28.2.13676358` | Valor heredado de Flutter; instalación no verificada |
+| Editor | Visual Studio Code | `1.140.0` | Edición, ejecución y depuración |
+| Framework móvil | Flutter SDK | `3.47.6`, canal `stable` | Interfaz y compilación web/Android |
+| Lenguaje | Dart SDK | `3.13.5` | Incluido con Flutter |
+| Entorno de ejecución | Node.js | `24.4.1` | Ejecuta la API (mínimo recomendado: 20 LTS) |
+| Gestor de paquetes | npm | `11.4.2` | Dependencias del backend |
+| Base de datos | PostgreSQL | 14 o superior | Requerido por `gen_random_uuid()` y Prisma 7 |
+| Control de versiones | Git para Windows | `2.54.0.windows.1` | Clonar y gestionar el proyecto |
+| Herramientas Android | Android Studio | `2026.2.1` | SDK Manager y emuladores |
+| Herramientas Android | Android SDK Build-Tools / Platform-Tools | `36.0.0` / `37.0.1` | Compilación y comunicación ADB |
 
-**Preparación de Android:** la plataforma instalada verificada es API 37.0, mientras que el proyecto utiliza API 36 para compilar. Antes de una compilación Android, comprobar e instalar API 36 en **SDK Platforms**. Disponer de una API superior no sustituye automáticamente la plataforma solicitada por `compileSdk`.
+### 4.2. Dependencias principales del proyecto
 
-Las versiones de compilación son las configuradas en el proyecto. La validación realizada hasta esta etapa corresponde a web y pruebas Flutter; no confirma una compilación Android completa.
-
-## 4. Instalación y configuración en Windows
-
-### 4.1. Herramientas necesarias
-
-| Herramienta | Requisito para esta guía | Finalidad | Descarga o referencia oficial |
+| Parte | Paquete | Versión | Uso |
 | :--- | :--- | :--- | :--- |
-| Visual Studio Code | Obligatorio para seguir el flujo de esta guía | Editor de desarrollo | [Descargar VS Code](https://code.visualstudio.com/) |
-| Flutter SDK | Obligatorio | Framework y herramientas de ejecución | [Instalación de Flutter con VS Code](https://docs.flutter.dev/install/quick) |
-| Git | Obligatorio | Descargar Flutter y gestionar el proyecto | [Git para Windows](https://git-scm.com/downloads/win) |
-| Extensiones Flutter y Dart | Obligatorias para la integración descrita con VS Code | Soporte del framework y del lenguaje | [Flutter](https://marketplace.visualstudio.com/items?itemName=Dart-Code.flutter) · [Dart](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code) |
-| Android Studio | Requerido en esta guía para preparar Android | SDK Manager y Device Manager | [Descargar Android Studio](https://developer.android.com/studio?hl=es-419) |
-| Android SDK | Obligatorio para ejecutar o compilar en Android | Plataformas y herramientas Android | Administrado desde Android Studio |
-| Chrome | Necesario para `flutter run -d chrome` | Ejecución web de la demostración | Navegador instalado en el equipo |
-| Visual Studio con C++ | Solo para una aplicación nativa de Windows | Compilación de escritorio Windows | Instalador de Visual Studio |
+| Flutter | `http` | `1.6.0` | Llamadas a la API |
+| Flutter | `flutter_secure_storage` | `11.2.0` | Guarda los tokens de sesión de forma segura |
+| Flutter | `cupertino_icons` / `flutter_lints` | `1.0.9` / `6.0.0` | Íconos y análisis estático |
+| Backend | `@nestjs/core` | `12.1.2` | Framework de la API |
+| Backend | `prisma` / `@prisma/client` | `7.10.0` | Migraciones y acceso a datos |
+| Backend | `pg` / `@prisma/adapter-pg` | `8.23.1` / `7.10.0` | Conexión con PostgreSQL |
+| Backend | `argon2`, `@nestjs/jwt`, `passport-jwt` | `0.45.1`, `12.x`, `4.x` | Contraseñas cifradas y sesiones JWT |
+| Backend | `helmet`, `@nestjs/throttler`, `class-validator` | `8.x`, `6.x`, `0.15.x` | Seguridad, límite de peticiones y validación |
+| Backend (pruebas) | `vitest`, `supertest` | `4.x`, `7.x` | Pruebas unitarias y e2e |
 
-Android Studio y Android SDK son requisitos del flujo Android de esta guía. Para probar únicamente la versión web, basta con el entorno Flutter y un navegador compatible.
+### 4.3. Configuración Android del proyecto
 
-### 4.2. Instalar Flutter desde Visual Studio Code
+| Componente | Valor | Observación |
+| :--- | :--- | :--- |
+| `compileSdk` / `targetSdk` | API `36` | Instalar **Android SDK Platform 36** en SDK Manager |
+| `minSdk` | API `24` | Android 7.0 o superior |
+| Android Gradle Plugin / Kotlin / Gradle | `9.1.0` / `2.4.0` / `9.3.1` | Declarados en `android/` |
+| Java/Kotlin JVM | Nivel `17` | Lo provee Android Studio |
 
-1. Instalar Git y Visual Studio Code en Windows.
-2. Abrir VS Code y acceder a **Extensiones** con `Ctrl + Shift + X`.
-3. Buscar **Flutter**, publicado por **Dart Code**, e instalarlo. Esta extensión incorpora el soporte de Dart; comprobar que ambas extensiones estén habilitadas.
-4. Crear la carpeta `C:\dev` desde el Explorador de archivos.
-5. Abrir la paleta de comandos con `Ctrl + Shift + P` y seleccionar **Flutter: New Project**.
-6. Si el SDK no está instalado, elegir **Download SDK** y seleccionar `C:\dev` como carpeta de destino. Al terminar la descarga, comprobar que la raíz efectiva del SDK sea `C:\dev\flutter`, sin carpetas `flutter` anidadas.
-7. Pulsar **Clone Flutter** y esperar a que concluya la descarga.
-8. Seleccionar **Add SDK to PATH** cuando VS Code muestre esa opción.
-9. Reiniciar VS Code y abrir una terminal nueva.
+## 5. Arquitectura y organización
 
-El comando **Flutter: New Project** se utiliza aquí para acceder al instalador del SDK. Una vez instalado Flutter, cancelar la creación de una nueva aplicación y abrir la carpeta del proyecto existente `APP-Movil-Platanitos`.
+### 5.1. App Flutter (`lib/`)
 
-Si Flutter ya está instalado en `C:\dev\flutter`, utilizar esa instalación y configurar **Flutter: Change SDK** cuando sea necesario. El proyecto ya define `dart.flutterSdkPath` en `.vscode/settings.json`.
-
-### 4.3. Configurar la variable PATH
-
-| Concepto | Ruta del entorno documentado |
+| Carpeta | Contenido |
 | :--- | :--- |
-| Raíz del SDK Flutter | `C:\dev\flutter` |
-| Carpeta de ejecutables que se agrega a PATH | `C:\dev\flutter\bin` |
-| Android SDK habitual en Windows | `%LOCALAPPDATA%\Android\Sdk` |
+| `lib/app` | Contenedor principal con la barra de navegación inferior |
+| `lib/core` | Tema y colores (`AppColors`), validaciones, navegación, cliente HTTP y `ApiConfig` (URL de la API) |
+| `lib/features/<módulo>` | Un módulo por flujo: `auth`, `catalog`, `cart`, `checkout`, `orders`, `account`, `support`. Cada uno separa `data/` (repositorios que llaman a la API) y `presentation/` (pantallas) |
+| `lib/models` y `lib/shared` | Modelos tipados (producto, carrito, pedido, dirección, usuario) |
+| `lib/state` | `ShopState`: estado compartido con `ChangeNotifier`; trabaja en local y sincroniza con la API cuando hay sesión |
+| `lib/data/mock_data.dart` | Datos de respaldo cuando el backend no responde |
+| `lib/widgets` | Componentes reutilizables (tarjetas, botones, íconos de línea, línea de tiempo del pedido) |
 
-Para agregar Flutter al PATH del usuario:
+Más detalle en [`docs/FRONTEND_ARCHITECTURE.md`](docs/FRONTEND_ARCHITECTURE.md).
 
-1. Buscar **Ver la configuración avanzada del sistema** en el menú Inicio.
-2. Abrir **Propiedades del sistema → Opciones avanzadas → Variables de entorno**.
-3. En **Variables de usuario**, seleccionar **Path** y pulsar **Editar**.
-4. Pulsar **Nuevo** e introducir `C:\dev\flutter\bin`.
-5. Conservar las entradas existentes, evitar duplicados y confirmar los cambios con **Aceptar**.
-6. Cerrar las terminales abiertas y reiniciar VS Code.
+### 5.2. Backend (`backend/`)
 
-Comprobar la configuración en una terminal nueva:
+| Carpeta o archivo | Contenido |
+| :--- | :--- |
+| `src/auth` | Registro, login, refresh y logout con JWT; perfil en `/me` |
+| `src/catalog`, `src/cart`, `src/favorites`, `src/addresses`, `src/orders` | Módulos de negocio (controlador + servicio + DTOs validados) |
+| `src/loyalty`, `src/gift-cards`, `src/content` | Puntos, eGift Cards, tiendas y blog |
+| `src/database` | `PrismaService` (conexión a PostgreSQL) |
+| `prisma/schema.prisma` | Modelo de datos (23 tablas) |
+| `prisma/migrations/` | Migraciones versionadas aplicadas con `prisma migrate deploy` |
+| `prisma/seed.ts` | Datos de demostración (productos, tiendas y blog) |
+| `database/platanitos.sql` | **Script completo** de la base (tablas + registro de migraciones + datos) |
+| `scripts/setup-database.mjs` | Comando `npm run db:setup`: crea la base y la deja lista automáticamente |
+| `database/catalog/` | Modelo del catálogo ampliado (marcas, categorías, tipos, precios e imágenes) y su generador |
+| `scripts/seed-catalog.mjs` | Comandos `npm run db:catalog` (carga 500 productos) y `npm run db:catalog:sql` (genera `database/catalog.sql`) |
+| `.env.example` | Plantilla de configuración; se copia como `.env` |
+
+Más detalle en [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md) y [`backend/README.md`](backend/README.md).
+
+### 5.3. Mantener el script de base de datos
+
+`backend/database/platanitos.sql` se genera a partir de las migraciones y de `backend/database/seed.sql`. Cuando el equipo cambie el modelo de datos:
+
+```powershell
+cd backend
+npx prisma migrate dev --name descripcion_del_cambio   # crea la nueva migración
+npm run db:sql                                         # regenera database/platanitos.sql
+```
+
+Si se agregan datos de demostración, actualizar tanto `prisma/seed.ts` como `database/seed.sql`, y volver a ejecutar `npm run db:sql`.
+
+El catálogo ampliado es independiente: si se modifica `database/catalog/platanitos-catalog.mjs`, ejecutar `npm run db:catalog:sql` para regenerar `database/catalog.sql`.
+
+## 6. API REST del backend
+
+Base local: `http://localhost:3000`. Las rutas marcadas con 🔒 requieren el encabezado `Authorization: Bearer <token>` que la app obtiene al iniciar sesión.
+
+| Módulo | Método y ruta | Descripción |
+| :--- | :--- | :--- |
+| Salud | `GET /health` | Comprueba que la API está activa |
+| Autenticación | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | Crear cuenta, iniciar sesión, renovar y cerrar sesión |
+| Perfil 🔒 | `GET /me`, `PATCH /me` | Ver y editar nombre, correo y teléfono |
+| Catálogo | `GET /catalog/categories`, `GET /catalog/brands`, `GET /catalog/products`, `GET /catalog/products/:slug` | Productos, filtros y detalle |
+| Carrito 🔒 | `GET /cart`, `POST /cart/items`, `POST /cart/sync`, `PATCH /cart/items/:itemId`, `DELETE /cart/items/:itemId` | Bolsa persistente |
+| Favoritos 🔒 | `GET /favorites`, `PUT /favorites/:productId`, `DELETE /favorites/:productId` | Lista de favoritos |
+| Direcciones 🔒 | `GET /addresses`, `POST /addresses`, `PUT /addresses/:id`, `DELETE /addresses/:id` | Hasta 10 direcciones escritas por usuario, una principal |
+| Pedidos 🔒 | `POST /orders`, `GET /orders`, `GET /orders/:publicNumber`, `PATCH /orders/:publicNumber/status` | Crear pedido (con `addressId` opcional), historial y estado simulado |
+| Puntos 🔒 | `GET /loyalty`, `POST /loyalty/redeem`, `POST /loyalty/recycling` | Puntos, canje por saldo y bono Resikla |
+| eGift Cards 🔒 | `GET /gift-cards`, `POST /gift-cards` | Emisión simulada |
+| Contenido | `GET /content/stores`, `GET /content/blog`, `GET /content/blog/:slug` | Tiendas y artículos |
+
+Los errores internos nunca se muestran al usuario: la app muestra "El sistema está fallando en este momento. Intenta más tarde."
+
+## 7. Cobertura funcional
+
+- **Cuenta:** crear cuenta, iniciar sesión, recuperar contraseña (simulado), modo invitado y cierre de sesión. La sesión se renueva sola con el *refresh token*.
+- **Catálogo:** inicio con banners y categorías, búsqueda, filtros por talla, marca, color y precio, ordenamiento y detalle con tallas EUR/US/CM.
+- **Bolsa y favoritos:** sincronizados con el backend cuando hay sesión; locales en modo invitado.
+- **Direcciones:** formulario para **escribir** la dirección (tipo, quién recibe, teléfono, dirección, departamento, provincia, distrito y referencia), lista "Mis direcciones" y dirección principal.
+- **Checkout en 3 pasos:** Envío (elegir o agregar dirección) → Entrega (fecha estimada y resumen) → Pago (Yape/Plin con QR decorativo, tarjeta con error simulado o efectivo en agentes).
+- **Pedidos:** compra finalizada, seguimiento con línea de tiempo, detalle de entrega con la dirección real y pedido entregado; historial "En curso / Historial".
+- **Mi Cuenta:** perfil editable, direcciones, monedero, puntos, membresía, Resikla, eGift Card, tiendas (Ubícanos), blog y centro de ayuda.
+- **Accesibilidad y diseño:** fuente Inter, colores centralizados en `AppColors`, estados *hover/pressed*, pantallas adaptables de 320 a 900 px y texto ampliado al 140 %.
+
+## 8. Guía de uso de la demostración
+
+1. Abre la app y elige **Crear cuenta** (nombre, correo y contraseña de al menos 8 caracteres) o **Continuar como invitada/o**.
+2. Busca productos desde el inicio o Categorías; filtra por talla, marca, color y precio.
+3. En el detalle elige una talla y agrégala a la bolsa. En la bolsa cambia cantidades; el envío cuesta S/ 6.90.
+4. Pulsa **Ir a Pagar** (como invitado se pedirá iniciar sesión). Escribe una dirección de envío, revisa la entrega y elige el método de pago.
+5. La tarjeta usa datos ficticios y simula un error para probar el cambio de método; Yape/Plin y efectivo completan la compra.
+6. Desde **Seguir mi pedido** puedes simular el siguiente estado y la entrega. Los pedidos entregados pasan a **Historial**.
+7. En **Mi Cuenta → Perfil** edita tus datos; en **Mi Cuenta → Direcciones** administra tus direcciones.
+
+## 9. Alcance y limitaciones
+
+- Los pagos son **simulados**: no hay pasarela real y el QR de Yape/Plin es decorativo.
+- Envíos, transportista y seguimiento son ilustrativos; el estado del pedido se avanza manualmente.
+- La ubicación se **escribe** a mano; no se usa Google Maps ni geolocalización.
+- Inicio de sesión con Google/Apple es simulado; no hay OAuth real.
+- El modo invitado guarda bolsa y favoritos solo en memoria.
+- Las imágenes del catálogo se cargan desde Unsplash y requieren Internet; si fallan se muestra un reemplazo.
+- El catálogo ampliado (500 productos) se modeló con información pública de platanitos.com (departamentos, marcas, tipos de producto y rangos de precio); los productos son generados, no copias de fichas reales. La app carga la primera página (20 productos) y solo permite comprar tallas EUR 35–40, por lo que la ropa (tallas S–XL), los accesorios (talla única) y el calzado infantil se ven en la API pero aún no son comprables desde la app.
+- La app se validó en navegador (Chrome) y Android. iOS, macOS, Windows y Linux no se probaron.
+- Las fechas estimadas se calculan desde la fecha del dispositivo.
+
+---
+
+## 10. Guía de instalación paso a paso
+
+Sigue los pasos **en orden**. Los comandos son para **PowerShell en Windows**; cuando cambian en macOS/Linux se indica.
+
+| Paso | Qué harás | Tiempo aproximado |
+| :--- | :--- | :--- |
+| 1 | Instalar Git, Node.js, PostgreSQL, Flutter y Android Studio | 30–60 min (solo la primera vez) |
+| 2 | Clonar el repositorio | 1 min |
+| 3 | Instalar dependencias (npm y Flutter) | 3–5 min |
+| 4 | Crear la base de datos con el script | 2 min |
+| 5 | Configurar `backend/.env` | 5 min |
+| 6 | Preparar Prisma | 1 min |
+| 7 | Levantar el backend | 1 min |
+| 8 | Ejecutar la app en Chrome o Android | 2–5 min |
+| 9 | Verificar que todo funciona | 5 min |
+| 10 | Solución de problemas (si algo falla) | — |
+
+### Paso 1. Instalar las herramientas necesarias
+
+#### 1.1. Lista de herramientas
+
+| Herramienta | ¿Obligatoria? | Para qué | Descarga |
+| :--- | :--- | :--- | :--- |
+| Git | Sí | Clonar el repositorio | [git-scm.com](https://git-scm.com/downloads/win) |
+| Node.js 20 LTS o superior (incluye npm) | Sí | Ejecutar el backend | [nodejs.org](https://nodejs.org/) |
+| PostgreSQL 14 o superior (incluye pgAdmin 4) | Sí | Base de datos | [postgresql.org/download](https://www.postgresql.org/download/windows/) |
+| Flutter SDK 3.47 (canal stable) | Sí | Ejecutar la app | [docs.flutter.dev](https://docs.flutter.dev/install/quick) |
+| Google Chrome | Para la versión web | Ejecutar la app en el navegador | [google.com/chrome](https://www.google.com/chrome/) |
+| Android Studio + Android SDK API 36 | Para Android | Emulador y compilación Android | [developer.android.com/studio](https://developer.android.com/studio?hl=es-419) |
+| Visual Studio Code + extensiones Flutter y Dart | Recomendado | Editor | [code.visualstudio.com](https://code.visualstudio.com/) |
+
+#### 1.2. Instalar Node.js
+
+1. Descarga el instalador **LTS** desde [nodejs.org](https://nodejs.org/) y ejecútalo con las opciones por defecto.
+2. Abre una terminal **nueva** y comprueba:
+
+```powershell
+node --version   # v20 o superior
+npm --version
+```
+
+#### 1.3. Instalar PostgreSQL
+
+1. Descarga el instalador de [postgresql.org](https://www.postgresql.org/download/windows/) (versión 14 o superior).
+2. En el asistente deja marcados **PostgreSQL Server**, **pgAdmin 4** y **Command Line Tools**.
+3. Cuando pida la contraseña del superusuario `postgres`, escribe una y **anótala**: la usarás en el paso 5.
+4. Deja el puerto en **5432** y termina la instalación.
+5. (Opcional) Para usar `psql` desde la terminal, agrega `C:\Program Files\PostgreSQL\<versión>\bin` a la variable PATH.
+
+#### 1.4. Instalar Flutter (desde VS Code)
+
+1. Instala Git y VS Code. En VS Code abre **Extensiones** (`Ctrl + Shift + X`) e instala **Flutter** (de Dart Code); se instala también **Dart**.
+2. Crea la carpeta `C:\dev`.
+3. Abre la paleta (`Ctrl + Shift + P`) → **Flutter: New Project** → **Download SDK** → elige `C:\dev`. La raíz del SDK debe quedar en `C:\dev\flutter`.
+4. Acepta **Add SDK to PATH**. Si no aparece, agrega manualmente `C:\dev\flutter\bin` en **Variables de entorno → Variables de usuario → Path**.
+5. Cancela la creación del proyecto nuevo, cierra VS Code y abre una terminal nueva:
 
 ```powershell
 flutter --version
 flutter doctor
 ```
 
-Para consultar qué ejecutable se está utilizando:
+#### 1.5. Preparar Android (solo si usarás Android)
 
-```powershell
-Get-Command flutter
-```
-
-La configuración del SDK apunta a la raíz `C:\dev\flutter`; el PATH apunta a su subcarpeta `bin`.
-
-### 4.4. Instalar Android Studio y preparar el SDK
-
-1. Descargar Android Studio desde su [página oficial](https://developer.android.com/studio?hl=es-419).
-2. Completar el asistente con la instalación **Standard** y los componentes del SDK que indique.
-3. En la pantalla de bienvenida, abrir **More Actions → SDK Manager**. Con un proyecto abierto, utilizar **Tools → SDK Manager**.
-4. En **SDK Platforms**, instalar la plataforma **API 36** que utiliza la configuración actual del proyecto.
-5. En **SDK Tools**, comprobar los componentes siguientes:
-
-| Componente | Utilidad |
-| :--- | :--- |
-| Android SDK Command-line Tools | Administración del SDK y de las licencias |
-| Android SDK Platform-Tools | Detección y comunicación con dispositivos |
-| Android SDK Build-Tools | Construcción de la aplicación Android |
-| Android Emulator | Ejecución en un dispositivo virtual, cuando se utilice emulador |
-| NDK (Side by side) y CMake | Herramientas de compilación nativa cuando el proyecto las requiera |
-
-Pulsar **Apply → OK** y esperar a que finalice la instalación. Para ejecutar en un dispositivo virtual, crear uno desde **Device Manager** e instalar su imagen de sistema. Como alternativa, conectar un teléfono con depuración USB habilitada.
-
-Registrar la ruta del SDK y revisar el entorno desde PowerShell:
+1. Instala [Android Studio](https://developer.android.com/studio?hl=es-419) con la instalación **Standard**.
+2. Abre **More Actions → SDK Manager**:
+   - En **SDK Platforms** marca **Android API 36**.
+   - En **SDK Tools** marca **Android SDK Command-line Tools**, **Platform-Tools**, **Build-Tools** y **Android Emulator**.
+3. Pulsa **Apply** y espera la descarga.
+4. Crea un emulador en **More Actions → Virtual Device Manager** (por ejemplo, Pixel con API 36).
+5. Registra el SDK y acepta las licencias:
 
 ```powershell
 flutter config --android-sdk "$env:LOCALAPPDATA\Android\Sdk"
-flutter doctor
-flutter devices
-```
-
-Si se utiliza **CMD**, la sintaxis equivalente para configurar la ruta es:
-
-```cmd
-flutter config --android-sdk "%LOCALAPPDATA%\Android\Sdk"
-```
-
-### 4.5. Resolver avisos de flutter doctor
-
-Los avisos aportados como ejemplo describen una instalación que carecía de Command-line Tools y de licencias aceptadas. En la revisión local de este README, Command-line Tools ya está presente; usar la salida actual de `flutter doctor` para determinar qué tareas siguen pendientes.
-
-| Aviso | Causa habitual | Acción | Plataforma afectada |
-| :--- | :--- | :--- | :--- |
-| `cmdline-tools component is missing` | Falta Android SDK Command-line Tools | Instalarlo desde SDK Manager → SDK Tools | Android |
-| `Android license status unknown` | Licencias pendientes o herramientas incompletas | Instalar Command-line Tools y ejecutar el comando de licencias | Android |
-| No se encuentra Android SDK | Ruta ausente o incorrecta | Configurar la ruta con `flutter config --android-sdk` | Android |
-| Falta la plataforma de compilación | API requerida por `compileSdk` no instalada | Instalar API 36 desde SDK Platforms | Android |
-| No aparece un dispositivo Android | Emulador apagado o teléfono sin depuración | Iniciar el emulador o habilitar depuración USB; ejecutar `flutter devices` | Android |
-| Faltan componentes de Visual Studio | Herramientas de C++ incompletas | Instalar **Desktop development with C++**, MSVC, CMake y Windows SDK según el diagnóstico | Windows nativo |
-
-Para revisar y aceptar las licencias de Android, ejecutar el siguiente comando y responder a las solicitudes después de leer sus términos:
-
-```powershell
 flutter doctor --android-licenses
+flutter doctor
 ```
 
-Después, verificar nuevamente:
+`flutter doctor` debe mostrar ✓ en **Flutter**, **Android toolchain** y **Chrome**. El aviso de **Visual Studio (C++)** solo importa para compilar una app de escritorio Windows y puede ignorarse.
+
+### Paso 2. Clonar el repositorio
 
 ```powershell
-flutter doctor -v
-flutter devices
+cd $HOME\Desktop
+git clone https://github.com/AngeloPradoM/APP-Movil-Platanitos.git
+cd APP-Movil-Platanitos
 ```
 
-**Visual Studio Code y Visual Studio son herramientas diferentes.** El aviso de Visual Studio/C++ no impide desarrollar esta aplicación para Android o web; debe resolverse si se desea compilar una versión nativa de Windows.
+Estructura que debes ver:
 
-La instalación guiada y los procedimientos de Android se basan en la [documentación de instalación de Flutter](https://docs.flutter.dev/install/quick) y la [configuración oficial para Android](https://docs.flutter.dev/platform-integration/android/setup).
+```text
+APP-Movil-Platanitos/
+├── backend/          ← API NestJS, Prisma y script de base de datos
+│   ├── database/     ← platanitos.sql, seed.sql y catalog.sql (opcional)
+│   ├── prisma/       ← schema.prisma, migraciones y seed.ts
+│   └── .env.example  ← plantilla de configuración
+├── lib/              ← código de la app Flutter
+├── android/, web/    ← plataformas
+└── README.md
+```
 
-## 5. Ejecución del proyecto
+### Paso 3. Instalar las dependencias
 
-SDK: `C:\dev\flutter` (ejecutables en `C:\dev\flutter\bin`).
+#### 3.1. Backend (Node.js)
+
+```powershell
+cd backend
+npm install
+cd ..
+```
+
+`npm install` respeta las versiones de `package-lock.json`. No uses `npm update` ni `npm audit fix --force`: cambiarían versiones probadas.
+
+#### 3.2. App Flutter
+
+Desde la raíz del repositorio:
 
 ```powershell
 flutter pub get
+```
+
+### Paso 4. Crear la base de datos con el script
+
+El archivo [`backend/database/platanitos.sql`](backend/database/platanitos.sql) crea **todo** en un solo paso:
+
+- los tipos y las 23 tablas del sistema con sus índices y relaciones;
+- la tabla `_prisma_migrations`, para que Prisma sepa que las migraciones ya están aplicadas;
+- los datos de demostración: 2 productos con 4 variantes, 4 tiendas y 3 artículos del blog.
+
+Debe ejecutarse sobre una base de datos **vacía** llamada `platanitos`. Si las tablas ya existen, el script se detiene sin modificar nada. Elige **una** de las tres opciones.
+
+#### Opción A — pgAdmin (recomendada si no usas la terminal)
+
+1. Abre **pgAdmin 4** y conéctate al servidor con la contraseña de `postgres`.
+2. Clic derecho en **Databases → Create → Database…**
+3. En **Database** escribe `platanitos` y pulsa **Save**.
+4. Clic derecho sobre la base `platanitos` → **Query Tool**.
+5. Pulsa el ícono **Open File** y elige `backend/database/platanitos.sql`.
+6. Pulsa **Execute** (o `F5`). Debe terminar con el mensaje `COMMIT` / "Query returned successfully".
+7. Comprueba en **platanitos → Schemas → public → Tables** que aparecen 24 tablas (23 del sistema + `_prisma_migrations`). Si no las ves, clic derecho → **Refresh**.
+
+#### Opción B — Terminal con `psql`
+
+```powershell
+psql -U postgres -c "CREATE DATABASE platanitos;"
+psql -U postgres -d platanitos -v ON_ERROR_STOP=1 -f backend/database/platanitos.sql
+```
+
+`psql` pedirá la contraseña de `postgres`. La última línea debe ser `COMMIT`.
+
+#### Opción C — Automática con Node.js
+
+Si prefieres no usar pgAdmin ni `psql`, salta este paso: en el paso 6 el comando `npm run db:setup` crea la base, las tablas y los datos por ti.
+
+### Paso 5. Configurar `backend/.env`
+
+El backend lee su configuración del archivo `backend/.env`. Ese archivo contiene contraseñas, **no se sube a GitHub** (está en `.gitignore`) y cada integrante crea el suyo.
+
+#### 5.1. Crear el archivo
+
+```powershell
+cd backend
+Copy-Item .env.example .env
+```
+
+En macOS/Linux: `cp .env.example .env`. Luego abre `backend/.env` con VS Code o el Bloc de notas.
+
+#### 5.2. Qué significa cada variable
+
+| Variable | ¿Cambiarla? | Valor por defecto | Explicación |
+| :--- | :--- | :--- | :--- |
+| `PORT` | No | `3000` | Puerto de la API. La app Flutter usa 3000 por defecto; si lo cambias, también debes pasar `API_BASE_URL` (paso 8). |
+| `HOST` | Solo para celular físico | `127.0.0.1` | Interfaz de red donde escucha la API. `127.0.0.1` = solo tu PC (sirve para Chrome y el emulador). `0.0.0.0` = también otros dispositivos de tu Wi-Fi (necesario para un celular real). |
+| `NODE_ENV` | No | `development` | `development` en tu PC. `production` solo al desplegar en un servidor (desactiva el CORS automático de localhost). |
+| `CORS_ORIGINS` | No (en local) | `http://localhost:8080,http://127.0.0.1:8080` | Lista, separada por comas y sin espacios, de las páginas web que pueden llamar a la API. En un servidor real se pone el dominio de la app web. |
+| `CORS_ALLOW_LOCALHOST` | No | `true` | `true` acepta cualquier puerto de `localhost`. Es necesario porque `flutter run -d chrome` usa un puerto distinto en cada ejecución. Usa `false` en producción. |
+| `DATABASE_URL` | **Sí** | `postgresql://USUARIO:CONTRASENA@127.0.0.1:5432/platanitos` | Dirección de conexión a PostgreSQL (ver 5.3). |
+| `JWT_ACCESS_SECRET` | **Sí** | `CAMBIAR_POR_…` | Clave secreta con la que se firman las sesiones (ver 5.4). Mínimo 32 caracteres aleatorios. |
+| `JWT_ACCESS_TTL` | No | `15m` | Duración del token de acceso (`15m` = 15 minutos, `1h` = 1 hora). La app lo renueva sola. |
+| `JWT_REFRESH_TTL_DAYS` | No | `30` | Días que dura la sesión antes de pedir iniciar sesión otra vez. |
+
+Solo **dos variables son obligatorias de cambiar**: `DATABASE_URL` y `JWT_ACCESS_SECRET`.
+
+#### 5.3. Cómo armar `DATABASE_URL`
+
+```text
+postgresql://USUARIO:CONTRASENA@HOST:PUERTO/NOMBRE_BASE
+```
+
+| Parte | Qué poner | Valor habitual |
+| :--- | :--- | :--- |
+| `USUARIO` | Usuario de PostgreSQL | `postgres` |
+| `CONTRASENA` | La contraseña que elegiste al instalar PostgreSQL (paso 1.3) | — |
+| `HOST` | Dónde corre PostgreSQL | `127.0.0.1` (tu misma PC) |
+| `PUERTO` | Puerto de PostgreSQL | `5432` |
+| `NOMBRE_BASE` | Base creada en el paso 4 | `platanitos` |
+
+Ejemplo: si tu contraseña es `MiClave2026`, la línea queda:
+
+```env
+DATABASE_URL=postgresql://postgres:MiClave2026@127.0.0.1:5432/platanitos
+```
+
+**Si la contraseña tiene caracteres especiales**, hay que codificarlos o la conexión fallará:
+
+| Carácter | Se escribe | Carácter | Se escribe |
+| :---: | :---: | :---: | :---: |
+| `@` | `%40` | `?` | `%3F` |
+| `:` | `%3A` | `%` | `%25` |
+| `/` | `%2F` | espacio | `%20` |
+| `#` | `%23` | `&` | `%26` |
+
+Por ejemplo, `Mi@Clave#1` se escribe `Mi%40Clave%231`. Para obtenerlo automáticamente:
+
+```powershell
+node -e "console.log(encodeURIComponent('Mi@Clave#1'))"
+```
+
+#### 5.4. Cómo generar `JWT_ACCESS_SECRET`
+
+Ejecuta este comando y copia el resultado:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+Pégalo en el `.env`:
+
+```env
+JWT_ACCESS_SECRET=pega_aqui_el_texto_generado
+```
+
+No lo compartas. Si lo cambias, todas las sesiones abiertas se invalidan y hay que volver a iniciar sesión.
+
+#### 5.5. `HOST` y CORS según dónde ejecutes la app
+
+| Dónde corre la app | `HOST` | `CORS_ALLOW_LOCALHOST` | URL que usa la app |
+| :--- | :--- | :--- | :--- |
+| Chrome (web) en tu PC | `127.0.0.1` | `true` | `http://localhost:3000` (automático) |
+| Emulador Android | `127.0.0.1` | no aplica | `http://10.0.2.2:3000` (automático; `10.0.2.2` es tu PC vista desde el emulador) |
+| Celular Android físico por Wi-Fi | `0.0.0.0` | no aplica | `http://<IP-de-tu-PC>:3000` (se indica con `API_BASE_URL`, paso 8.3) |
+
+CORS solo afecta al navegador; las apps Android no lo usan.
+
+#### 5.6. Ejemplo completo
+
+```env
+PORT=3000
+HOST=127.0.0.1
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+CORS_ALLOW_LOCALHOST=true
+DATABASE_URL=postgresql://postgres:MiClave2026@127.0.0.1:5432/platanitos
+JWT_ACCESS_SECRET=q3Vb7m1x...texto_generado_en_el_paso_5.4...Zp9
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL_DAYS=30
+```
+
+#### 5.7. Comprobar que `.env` no se subirá
+
+```powershell
+git check-ignore -v backend/.env
+```
+
+Debe responder `backend/.gitignore:4:.env  backend/.env`. Nunca pongas contraseñas reales en `.env.example`.
+
+### Paso 6. Preparar Prisma (cliente, migraciones y datos)
+
+Todos los comandos se ejecutan dentro de `backend/`.
+
+**Si creaste la base con el script (opción A o B del paso 4):**
+
+```powershell
+npx prisma generate
+npx prisma migrate status
+```
+
+- `prisma generate` crea el cliente de Prisma que usa el backend (es obligatorio, aunque la base ya exista).
+- `migrate status` debe terminar con **"Database schema is up to date!"**.
+
+**Si elegiste la opción C (automática):**
+
+```powershell
+npm run db:setup
+```
+
+Este comando hace 4 cosas y muestra el avance:
+
+1. Crea la base indicada en `DATABASE_URL` si no existe.
+2. Aplica las migraciones (`prisma migrate deploy`).
+3. Genera el cliente de Prisma (`prisma generate`).
+4. Carga los datos de demostración (`npm run db:seed`).
+
+Puede ejecutarse varias veces sin duplicar datos. Si el usuario de PostgreSQL no tiene permiso para crear bases, crea `platanitos` en pgAdmin y vuelve a ejecutarlo.
+
+#### Opcional: cargar el catálogo ampliado de 500 productos
+
+Los datos de demostración traen solo 2 productos. Para probar la app con un catálogo grande y variado (calzado, ropa, carteras, accesorios, hogar, tecnología, belleza, juguetes, libros, vinos y más, con 82 marcas y 54 categorías), ejecuta desde `backend/`:
+
+```powershell
+npm run db:catalog
+```
+
+El comando muestra el avance en 4 pasos y termina con un conteo por categoría. Es idempotente (repetirlo actualiza los mismos 500 productos, sin duplicar) y no borra los productos de demostración.
+
+Si prefieres pgAdmin o `psql`, ejecuta el archivo [`backend/database/catalog.sql`](backend/database/catalog.sql) sobre la base `platanitos` **después** de `platanitos.sql`, igual que en el paso 4:
+
+```powershell
+psql -U postgres -d platanitos -v ON_ERROR_STOP=1 -f backend/database/catalog.sql
+```
+
+### Paso 7. Levantar el backend
+
+```powershell
+cd backend
+npm run start:dev
+```
+
+Espera el mensaje **"Nest application successfully started"** y deja esa terminal abierta. Comprueba en el navegador:
+
+- [http://localhost:3000/health](http://localhost:3000/health) → `{"status":"ok","service":"platanitos-backend",...}`
+- [http://localhost:3000/catalog/products](http://localhost:3000/catalog/products) → lista de productos de demostración.
+
+Para una ejecución sin recarga automática: `npm run build` y luego `npm run start:prod`.
+
+### Paso 8. Ejecutar la app Flutter (navegador y Android)
+
+Abre **otra terminal** en la raíz del repositorio (el backend sigue corriendo en la primera).
+
+La app decide a qué URL llamar así:
+
+| Plataforma | URL por defecto | Cómo cambiarla |
+| :--- | :--- | :--- |
+| Web (Chrome) | `http://localhost:3000` | `--dart-define=API_BASE_URL=...` |
+| Android | `http://10.0.2.2:3000` | `--dart-define=API_BASE_URL=...` |
+
+`API_BASE_URL` va sin `/` al final. Está definida en `lib/core/api_config.dart`.
+
+#### 8.1. Navegador (Chrome)
+
+```powershell
 flutter run -d chrome
 ```
 
-También puede ejecutarse en un dispositivo Android/iOS configurado. Android requiere Internet para descargar las imágenes HTTPS del catálogo.
+#### 8.2. Emulador Android
 
-## 6. Guía de uso de la demostración
+1. Inicia el emulador desde **Android Studio → Virtual Device Manager → ▶**.
+2. Verifica que aparezca y ejecuta la app:
 
-- Inicia sesión con un correo válido y cualquier contraseña de al menos ocho caracteres, o con Google/Apple simulados.
-- Busca productos por nombre, categoría o marca. Combina talla EUR, marca, color y precio; ordena por precio.
-- Selecciona una talla EUR/US/CM y agrega productos a la bolsa. Las tallas equivalentes se agrupan por producto.
-- Cambia cantidades, elimina productos y comprueba subtotal y envío S/ 6.90.
-- Yape/Plin y agentes generan pedidos simulados. Tarjeta usa campos ficticios de solo lectura y simula un error para comprobar reintento y cambio de método.
-- Los pedidos nuevos conservan productos, tallas, cantidades, precio, método y total aunque cambie la bolsa. Seguimiento permite simular estados y entrega; los entregados aparecen en Historial.
-- Cuenta → Perfil permite editar nombre, correo y teléfono; los cambios permanecen al navegar. Cuenta → Configuración muestra el estado offline simulado.
+```powershell
+flutter devices
+flutter run -d emulator-5554
+```
 
-## 7. Arquitectura y organización
+(usa el identificador que muestre `flutter devices`). No hace falta `API_BASE_URL`: el emulador llega a tu PC con `10.0.2.2`.
 
-- `lib/models`: entidades tipadas de producto, usuario, carrito y pedido.
-- `lib/data/mock_data.dart`: catálogo, usuario y URLs de referencia.
-- `lib/state/shop_state.dart`: única fuente del estado compartido mediante ChangeNotifier/InheritedNotifier, sin paquetes adicionales.
-- `lib/core`: tema, validaciones y navegación al inicio.
-- `lib/screens`: pantallas agrupadas por flujo.
-- `lib/widgets`: imágenes con loading/fallback, tarjetas, grid, resumen, búsqueda y timeline.
-- `assets/fonts`: Inter local y licencia SIL Open Font License.
+#### 8.3. Celular Android físico
 
-Los mocks y operaciones de ShopState pueden sustituirse por un repositorio/servicio sin alterar los modelos usados por las pantallas. Los estados temporales de formularios y checkout permanecen locales.
+1. En el celular activa **Opciones de desarrollador** (toca 7 veces **Número de compilación**) y luego **Depuración USB**. Conéctalo por USB y acepta el permiso.
+2. PC y celular deben estar en la **misma red Wi-Fi**.
+3. En `backend/.env` cambia `HOST=0.0.0.0` y reinicia el backend (`Ctrl + C` y `npm run start:dev`).
+4. Averigua la IP de tu PC con `ipconfig` (línea **Dirección IPv4**, por ejemplo `192.168.1.50`).
+5. Permite el puerto 3000 en el Firewall de Windows (PowerShell **como administrador**, una sola vez):
 
-## 8. Cobertura funcional
+```powershell
+New-NetFirewallRule -DisplayName "Platanitos API 3000" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow
+```
 
-Implementadas: login, recovery, signup, home, catalog, detail, cart, favorites, checkout, success, orders, tracking, delivery, delivered, profile (Mi Cuenta), accountProfile (Perfil), support y offline.
+6. Prueba desde el navegador del celular `http://192.168.1.50:3000/health`. Si responde, ejecuta:
 
-Colores del CSS centralizados en AppColors. Se conserva Inter, tarjetas redondeadas, banner Cyber Days, etiquetas de oferta, galería, barra inferior y timeline. Los grids adaptan sus columnas al ancho y escala de texto; no se fuerza un ancho móvil de 430 px.
+```powershell
+flutter devices
+flutter run -d <id-del-celular> --dart-define=API_BASE_URL=http://192.168.1.50:3000
+```
 
-Se corrigieron inconsistencias del prototipo: precio único de S/ 89.90 para Zapatilla Plataforma, carrito por producto/talla, filtros sobre datos reales mock, identificador único por compra, resumen inmutable del pedido y perfil compartido. El botón de volver al inicio restablece la pestaña Inicio.
+Las compilaciones **debug** permiten HTTP hacia tu PC (`android/app/src/debug/AndroidManifest.xml`). Una versión **release** necesitará la API publicada con HTTPS.
 
-Monedero, Puntos, Membresía, Resikla, eGift Card, Ubícanos y Blog son opciones sin servicio en el prototipo; muestran un mensaje explicativo y no integran sistemas externos.
+### Paso 9. Verificar que todo funciona
 
-## 9. Alcance y limitaciones
+#### 9.1. Prueba manual
 
-Sesión, favoritos, bolsa, perfil y pedidos se guardan únicamente en memoria y se reinician al cerrar la app. Existe un pedido histórico de demostración. No hay backend, OAuth, cobros, geolocalización, notificaciones ni tracking real. QR decorativo, no válido para pagos. Las imágenes Unsplash necesitan red; los errores muestran un fallback. Las fechas nuevas se calculan desde la fecha del dispositivo.
+1. `http://localhost:3000/health` responde `"status":"ok"`.
+2. En la app, pulsa **Crear cuenta** (contraseña de al menos 8 caracteres). Debes entrar al inicio con tu nombre.
+3. Agrega un producto a la bolsa, ve a **Ir a Pagar**, escribe una dirección y paga con Yape/Plin.
+4. En pgAdmin, la tabla `Order` de la base `platanitos` debe tener tu pedido y `Address` tu dirección.
+5. Cierra sesión y vuelve a entrar: pedidos, favoritos y direcciones siguen ahí.
 
-## 10. Validación y pruebas
+#### 9.2. Pruebas automáticas
+
+App Flutter (desde la raíz):
 
 ```powershell
 flutter analyze
 flutter test
-flutter build web --no-web-resources-cdn
 ```
 
-Pruebas de estado: cantidades, tallas equivalentes, totales, snapshots de pedidos, estados, favoritos, filtros y validaciones. Pruebas de widgets: login, talla obligatoria, checkout, error de tarjeta, edición de perfil y búsqueda. Pruebas responsive: las 18 pantallas a 320, 430 y 900 px con texto ampliado al 140 %.
+Backend (desde `backend/`, con PostgreSQL encendido):
 
-Comprobaciones realizadas: pub get correcto, analyze sin incidencias, 14 pruebas aprobadas, compilación web completada y arranque con flutter run -d web-server. Se revisaron capturas de login, Home, catálogo y detalle en Chrome; las imágenes de red se mostraron correctamente. No se ejecutó una compilación Android/iOS ni una comparación pixel a pixel contra un render React.
+```powershell
+npm run build
+npm run test:e2e -- --run
+```
+
+Las pruebas e2e usan la base configurada en `.env`: crean usuarios temporales `e2e-…@example.com` y los eliminan al terminar.
+
+#### 9.3. Comandos útiles del backend
+
+| Comando | Para qué |
+| :--- | :--- |
+| `npm run start:dev` | Levantar la API con recarga automática |
+| `npm run build` / `npm run start:prod` | Compilar y ejecutar la versión compilada |
+| `npm run db:setup` | Crear la base, aplicar migraciones, generar el cliente y cargar datos |
+| `npm run db:seed` | Volver a cargar solo los datos de demostración |
+| `npm run db:sql` | Regenerar `database/platanitos.sql` tras una nueva migración |
+| `npm run db:catalog` | Cargar o actualizar el catálogo ampliado de 500 productos |
+| `npm run db:catalog:sql` | Regenerar `database/catalog.sql` tras cambiar el modelo del catálogo |
+| `npx prisma migrate status` | Ver si la base está al día |
+| `npx prisma studio` | Explorar la base desde el navegador |
+| `npm run test:e2e -- --run` | Pruebas de extremo a extremo |
+
+### Paso 10. Solución de problemas
+
+| Síntoma | Causa probable | Solución |
+| :--- | :--- | :--- |
+| La app dice "El sistema está fallando en este momento" al iniciar sesión o crear cuenta | El backend no está corriendo o la app apunta a otra URL | Repite el paso 7 y abre `/health`. En celular físico revisa `API_BASE_URL` (paso 8.3). |
+| `db:setup` muestra "Usuario o contraseña de PostgreSQL incorrectos" | `DATABASE_URL` mal escrita | Revisa usuario y contraseña (paso 5.3); codifica los caracteres especiales. |
+| "No se pudo conectar a PostgreSQL" o `ECONNREFUSED` | El servicio de PostgreSQL está detenido o el puerto no es 5432 | Abre `services.msc`, inicia **postgresql-x64-NN** y verifica el puerto en `DATABASE_URL`. |
+| `Environment variable not found: DATABASE_URL` o "Falta DATABASE_URL" | No existe `backend/.env` o se ejecutó el comando fuera de `backend/` | Crea el archivo (paso 5.1) y ejecuta los comandos dentro de `backend/`. |
+| El backend no arranca y menciona `JWT_ACCESS_SECRET` | Variable vacía o comentada | Genérala con el comando del paso 5.4. |
+| El script SQL dice "La base de datos ya tiene las tablas de Platanitos" | Ya se ejecutó antes | No hace falta repetirlo. Para empezar de cero, borra la base `platanitos`, créala vacía y ejecuta el script otra vez. |
+| `prisma migrate deploy` devuelve `P3005` (schema is not empty) | Las tablas se crearon sin registrar las migraciones | Borra y recrea la base con `platanitos.sql` o con `npm run db:setup`. |
+| `@prisma/client did not initialize yet` o falta `.prisma/client` | No se generó el cliente | `npx prisma generate` dentro de `backend/`. |
+| `EADDRINUSE: address already in use :::3000` | Otro programa usa el puerto 3000 | Cierra la otra terminal del backend o cambia `PORT` y pasa `API_BASE_URL` con el nuevo puerto. |
+| En Chrome, la consola muestra un error de CORS | `CORS_ALLOW_LOCALHOST=false` o el origen no está permitido | Usa `CORS_ALLOW_LOCALHOST=true` en desarrollo o agrega el origen a `CORS_ORIGINS`. |
+| El emulador Android no se conecta | Backend apagado o se usó `localhost` | El emulador usa `10.0.2.2` automáticamente; no pases `API_BASE_URL=http://localhost:3000`. |
+| El celular físico no se conecta | `HOST` sigue en `127.0.0.1`, otra red Wi-Fi o firewall | `HOST=0.0.0.0`, misma Wi-Fi, regla de firewall y prueba `/health` desde el celular (paso 8.3). |
+| `psql` no se reconoce como comando | La carpeta `bin` de PostgreSQL no está en PATH | Usa pgAdmin (opción A) o agrega `C:\Program Files\PostgreSQL\<versión>\bin` al PATH. |
+| `flutter doctor` muestra "Android license status unknown" | Licencias sin aceptar | `flutter doctor --android-licenses`. |
+| No aparecen imágenes de productos | Sin conexión a Internet | Las imágenes vienen de Unsplash; conéctate a Internet. |

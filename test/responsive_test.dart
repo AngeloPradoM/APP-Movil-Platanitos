@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platanitos_app/core/app_theme.dart';
 import 'package:platanitos_app/data/mock_data.dart';
-import 'package:platanitos_app/models/shop_models.dart';
-import 'package:platanitos_app/state/shop_state.dart';
-import 'package:platanitos_app/screens/auth_screens.dart';
-import 'package:platanitos_app/screens/catalog_screens.dart';
-import 'package:platanitos_app/screens/cart_screen.dart';
-import 'package:platanitos_app/screens/checkout_screen.dart';
-import 'package:platanitos_app/screens/order_screens.dart';
-import 'package:platanitos_app/screens/account_screens.dart';
-import 'package:platanitos_app/screens/support_screens.dart';
-import 'package:platanitos_app/screens/product_screen.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
+import 'package:platanitos_app/shared/state/shop_state.dart';
+import 'package:platanitos_app/features/auth/presentation/auth_screens.dart';
+import 'package:platanitos_app/features/catalog/presentation/catalog_screens.dart';
+import 'package:platanitos_app/features/cart/presentation/cart_screen.dart';
+import 'package:platanitos_app/features/checkout/presentation/checkout_screen.dart';
+import 'package:platanitos_app/features/orders/presentation/order_screens.dart';
+import 'package:platanitos_app/features/account/presentation/account_screens.dart';
+import 'package:platanitos_app/features/account/presentation/account_services_screens.dart';
+import 'package:platanitos_app/features/support/presentation/support_screens.dart';
+import 'package:platanitos_app/features/catalog/presentation/product_screen.dart';
 import 'package:platanitos_app/widgets/shop_widgets.dart';
 
 void main() {
   for (final width in [320.0, 430.0, 900.0]) {
-    testWidgets('All 18 screens fit width $width with enlarged text', (
+    testWidgets('All screens fit width $width with enlarged text', (
       tester,
     ) async {
       tester.view.physicalSize = Size(width, 1000);
@@ -36,7 +37,19 @@ void main() {
           title: 'Inicio',
           child: HomeScreen(onCatalog: () {}),
         ),
-        const PageFrame(title: 'Calzado', child: CatalogScreen()),
+        const PageFrame(title: 'Catálogo', child: CatalogScreen()),
+        const PageFrame(title: 'Categorías', child: CategoriesScreen()),
+        CategoryScreen(
+          title: 'Calzado',
+          categories: categoriesFromProducts(products),
+        ),
+        Scaffold(
+          body: FilterPanel(
+            filter: CatalogFilter()..brands.add('VIZZANO'),
+            source: (state) => state.catalogProducts,
+            onApply: () {},
+          ),
+        ),
         ProductScreen(product: products[0]),
         PageFrame(
           title: 'Mi Bolsa',
@@ -59,6 +72,14 @@ void main() {
         const ProfileScreen(),
         const SupportScreen(),
         const OfflineScreen(),
+        const WalletScreen(),
+        const PointsScreen(),
+        const MembershipScreen(),
+        const GiftCardScreen(),
+        const StoresScreen(),
+        const BlogScreen(),
+        BlogArticleScreen(article: blogArticles.first),
+        const ResiklaScreen(),
       ];
       for (var index = 0; index < screens.length; index++) {
         await tester.pumpWidget(
