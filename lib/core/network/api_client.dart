@@ -33,6 +33,27 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<dynamic> patch(
+    String path, {
+    Object? body,
+    String? accessToken,
+  }) async {
+    final response = await _client.patch(
+      _uri(path),
+      headers: _headers(accessToken),
+      body: body == null ? null : jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
+  Future<dynamic> delete(String path, {String? accessToken}) async {
+    final response = await _client.delete(
+      _uri(path),
+      headers: _headers(accessToken),
+    );
+    return _decode(response);
+  }
+
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
   Map<String, String> _headers(String? accessToken) => {
     'Accept': 'application/json',

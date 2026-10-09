@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:platanitos_app/core/network/api_client.dart';
 import 'package:platanitos_app/features/catalog/data/catalog_repository.dart';
+import 'package:platanitos_app/shared/models/shop_models.dart';
 
 class _FakeClient extends http.BaseClient {
   @override
@@ -50,5 +51,17 @@ void main() {
     expect(page.products.single.id, 'product-uuid');
     expect(page.products.single.variants.single.price, 199.90);
     expect(page.products.single.toShopProduct().remoteId, 'product-uuid');
+  });
+
+  test('traduce la talla remota al índice de sizeLabels con su stock', () async {
+    final repository = CatalogRepository(client: ApiClient(baseUrl: 'http://test', client: _FakeClient()));
+    final product = (await repository.listProducts()).products.single.toShopProduct();
+    final sizeIndex = sizeLabels[SizeSystem.eur]!.indexOf('40');
+
+    expect(sizeIndex, 5);
+    expect(product.availableSizes, [sizeIndex]);
+    expect(product.remoteVariantIds[sizeIndex], 'variant-uuid');
+    expect(product.variantStock[sizeIndex], 3);
+    expect(product.lowStock, isTrue);
   });
 }

@@ -29,6 +29,18 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    if (state.cart.isEmpty && state.cartSyncing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.cart.isEmpty && state.cartError != null) {
+      return EmptyState(
+        icon: Icons.cloud_off,
+        title: 'No pudimos cargar tu bolsa',
+        message: state.cartError!,
+        action: 'Reintentar',
+        onAction: state.loadRemoteCart,
+      );
+    }
     if (state.cart.isEmpty) {
       return EmptyState(
         icon: Icons.shopping_bag_outlined,
@@ -41,6 +53,32 @@ class CartScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        if (state.cartSyncing)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: LinearProgressIndicator(),
+          ),
+        if (state.cartError != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(child: Text(state.cartError!)),
+                IconButton(
+                  tooltip: 'Cerrar aviso',
+                  onPressed: state.clearCartError,
+                  icon: const Icon(Icons.close, size: 18),
+                ),
+              ],
+            ),
+          ),
         ...state.cart.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 20),

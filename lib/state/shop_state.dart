@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../core/network/api_client.dart';
 import '../data/mock_data.dart';
 import '../features/catalog/data/catalog_repository.dart';
 import '../features/auth/data/auth_repository.dart';
@@ -96,6 +100,12 @@ class ShopState extends ChangeNotifier {
   List<Product> _remoteProducts = const [];
   bool _catalogLoading = false;
   String? _catalogError;
+  int _pendingCartRequests = 0;
+  String? _cartError;
+  bool _disposed = false;
+  static const _failureMessage =
+      'El sistema está fallando en este momento. Intenta más tarde.';
+  static const _stockMessage = 'No hay más stock disponible para esta talla.';
   final catalog = CatalogFilter();
   int _orderSequence = 98240;
   List<int> get favorites => List.unmodifiable(_favorites);
@@ -105,7 +115,11 @@ class ShopState extends ChangeNotifier {
       _remoteProducts.isEmpty ? products : List.unmodifiable(_remoteProducts);
   bool get catalogLoading => _catalogLoading;
   String? get catalogError => _catalogError;
+  bool get cartSyncing => _pendingCartRequests > 0;
+  String? get cartError => _cartError;
   String? get accessToken => _authSession?.accessToken;
+  bool get _canSyncCart =>
+      signedIn && cartRepository != null && accessToken != null;
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _cart.fold(0, (sum, item) => sum + item.subtotal);
   double get shipping => _cart.isEmpty ? 0 : 6.9;
@@ -130,7 +144,7 @@ class ShopState extends ChangeNotifier {
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
     );
-    await syncCartRemote();
+    await loadRemoteCart();
     final remoteUser = session.user;
     user = AppUser(
       name: remoteUser['name'] as String? ?? user.name,
@@ -167,7 +181,7 @@ class ShopState extends ChangeNotifier {
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
     );
-    await syncCartRemote();
+    await loadRemoteCart();
     user = AppUser(
       name: session.user['name'] as String? ?? name,
       document:
@@ -199,28 +213,188 @@ class ShopState extends ChangeNotifier {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
       );
-      await syncCartRemote();
+      await loadRemoteCart();
       notifyListeners();
     } catch (_) {
       await _sessionStorage.clear();
     }
   }
 
-  Future<void> syncCartRemote() async {
+  /// Fusiona el carrito local con el guardado en el servidor sumando
+  /// cantidades por variante, sin superar el stock disponible.
+  Future<void> loadRemoteCart() async {
     final repository = cartRepository;
     final token = accessToken;
     if (repository == null || token == null) return;
-    final items = _cart
-        .where((item) => item.remoteVariantId != null)
-        .map(
-          (item) => {
-            'variantId': item.remoteVariantId,
-            'quantity': item.quantity,
-          },
-        )
-        .toList(growable: false);
-    if (items.isEmpty) return;
-    await repository.sync(accessToken: token, items: items);
+    if (_remoteProducts.isEmpty) await loadRemoteCatalog();
+    _beginCartRequest();
+    try {
+      var remote = await repository.getCart(accessToken: token);
+      final pending = _pendingLocalQuantities(remote);
+      if (pending.isNotEmpty) {
+        remote = await repository.sync(
+          accessToken: token,
+          items: [
+            for (final entry in pending.entries)
+              {'variantId': entry.key, 'quantity': entry.value},
+          ],
+        );
+      }
+      _applyRemoteCart(remote);
+    } catch (error) {
+      _cartError = _cartErrorMessage(error);
+    } finally {
+      _endCartRequest();
+    }
+  }
+
+  Map<String, int> _pendingLocalQuantities(RemoteCart remote) {
+    final remoteByVariant = {
+      for (final item in remote.items) item.variantId: item,
+    };
+    final local = <String, int>{};
+    final stockByVariant = <String, int>{};
+    for (final item in _cart) {
+      final variantId = item.remoteVariantId;
+      if (variantId == null || item.remoteItemId != null) continue;
+      local[variantId] = (local[variantId] ?? 0) + item.quantity;
+      final stock =
+          remoteByVariant[variantId]?.stock ??
+          item.product.variantStock[item.sizeIndex];
+      if (stock != null) stockByVariant[variantId] = stock;
+    }
+    final pending = <String, int>{};
+    for (final entry in local.entries) {
+      final alreadyRemote = remoteByVariant[entry.key]?.quantity ?? 0;
+      final stock = stockByVariant[entry.key];
+      final allowed = stock == null
+          ? entry.value
+          : math.min(entry.value, stock - alreadyRemote);
+      final quantity = math.min(allowed, 20);
+      if (quantity > 0) pending[entry.key] = quantity;
+    }
+    return pending;
+  }
+
+  void _applyRemoteCart(RemoteCart remote) {
+    final systems = {
+      for (final item in _cart)
+        if (item.remoteVariantId != null) item.remoteVariantId!: item.system,
+    };
+    _cart.removeWhere((item) => item.remoteVariantId != null);
+    for (final remoteItem in remote.items) {
+      final match = _findRemoteVariant(remoteItem.variantId);
+      final sizeIndex =
+          match?.sizeIndex ??
+          sizeLabels[SizeSystem.eur]!.indexOf(remoteItem.sizeValue);
+      if (sizeIndex < 0) continue;
+      _cart.add(
+        CartItem(
+          product: match?.product ?? _productFromCart(remoteItem, sizeIndex),
+          sizeIndex: sizeIndex,
+          system: systems[remoteItem.variantId] ?? SizeSystem.eur,
+          quantity: remoteItem.quantity,
+          remoteItemId: remoteItem.id,
+        ),
+      );
+    }
+  }
+
+  ({Product product, int sizeIndex})? _findRemoteVariant(String variantId) {
+    for (final product in _remoteProducts) {
+      for (final entry in product.remoteVariantIds.entries) {
+        if (entry.value == variantId) {
+          return (product: product, sizeIndex: entry.key);
+        }
+      }
+    }
+    return null;
+  }
+
+  Product _productFromCart(RemoteCartItem item, int sizeIndex) => Product(
+    id: item.productSlug.hashCode,
+    remoteVariantIds: {sizeIndex: item.variantId},
+    variantStock: {sizeIndex: item.stock},
+    brand: '',
+    name: item.productName,
+    category: '',
+    price: item.price,
+    oldPrice: item.price,
+    image: '',
+    color: item.color,
+    lowStock: item.stock > 0 && item.stock <= 3,
+    availableSizes: item.stock > 0 ? [sizeIndex] : const [],
+  );
+
+  Future<void> _runCartRequest(
+    Future<RemoteCart> Function(CartRepository repository, String token)
+    request, {
+    required VoidCallback revert,
+  }) async {
+    final repository = cartRepository;
+    final token = accessToken;
+    if (repository == null || token == null) return;
+    _beginCartRequest();
+    try {
+      _applyRemoteCart(await request(repository, token));
+    } catch (error) {
+      revert();
+      _cartError = _cartErrorMessage(error);
+    } finally {
+      _endCartRequest();
+    }
+  }
+
+  Future<void> _clearRemoteCart(List<String> itemIds) async {
+    final repository = cartRepository;
+    final token = accessToken;
+    if (repository == null || token == null) return;
+    _beginCartRequest();
+    try {
+      for (final itemId in itemIds) {
+        await repository.removeItem(accessToken: token, itemId: itemId);
+      }
+    } catch (error) {
+      _cartError = _cartErrorMessage(error);
+    } finally {
+      _endCartRequest();
+    }
+  }
+
+  void _beginCartRequest() {
+    _pendingCartRequests++;
+    _cartError = null;
+    _notifySafely();
+  }
+
+  void _endCartRequest() {
+    _pendingCartRequests--;
+    _notifySafely();
+  }
+
+  String _cartErrorMessage(Object error) {
+    if (error is ApiException &&
+        error.statusCode == 400 &&
+        error.message.toLowerCase().contains('stock')) {
+      return _stockMessage;
+    }
+    return _failureMessage;
+  }
+
+  void clearCartError() {
+    if (_cartError == null) return;
+    _cartError = null;
+    notifyListeners();
+  }
+
+  void _notifySafely() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   void logout() {
@@ -232,6 +406,7 @@ class ShopState extends ChangeNotifier {
     _sessionStorage.clear();
     signedIn = false;
     _cart.clear();
+    _cartError = null;
     catalog.clear();
     notifyListeners();
   }
@@ -276,26 +451,87 @@ class ShopState extends ChangeNotifier {
     final index = _cart.indexWhere(
       (item) => item.product.id == product.id && item.sizeIndex == sizeIndex,
     );
+    final stock = product.variantStock[sizeIndex];
+    final current = index >= 0 ? _cart[index].quantity : 0;
+    if (stock != null && current + 1 > stock) {
+      throw ArgumentError(_stockMessage);
+    }
+    final CartItem item;
     if (index >= 0) {
-      _cart[index].quantity++;
+      item = _cart[index];
+      item.quantity++;
     } else {
-      _cart.add(
-        CartItem(product: product, sizeIndex: sizeIndex, system: system),
-      );
+      item = CartItem(product: product, sizeIndex: sizeIndex, system: system);
+      _cart.add(item);
     }
     notifyListeners();
+    final variantId = item.remoteVariantId;
+    if (variantId == null || !_canSyncCart) return;
+    unawaited(
+      _runCartRequest(
+        (repository, token) =>
+            repository.addItem(accessToken: token, variantId: variantId),
+        revert: () {
+          if (index >= 0) {
+            item.quantity--;
+          } else {
+            _cart.remove(item);
+          }
+        },
+      ),
+    );
   }
 
   void changeQuantity(CartItem item, int delta) {
     if (!_cart.contains(item)) return;
+    final previous = item.quantity;
+    final stock = item.product.variantStock[item.sizeIndex];
+    if (delta > 0 && stock != null && previous + delta > stock) {
+      _cartError = _stockMessage;
+      notifyListeners();
+      return;
+    }
+    final position = _cart.indexOf(item);
     item.quantity += delta;
     if (item.quantity <= 0) _cart.remove(item);
     notifyListeners();
+    final itemId = item.remoteItemId;
+    if (itemId == null || !_canSyncCart) return;
+    final quantity = math.max(item.quantity, 0);
+    unawaited(
+      _runCartRequest(
+        (repository, token) => repository.updateItem(
+          accessToken: token,
+          itemId: itemId,
+          quantity: quantity,
+        ),
+        revert: () => _restoreItem(item, previous, position),
+      ),
+    );
   }
 
   void removeItem(CartItem item) {
+    final position = _cart.indexOf(item);
+    if (position < 0) return;
+    final previous = item.quantity;
     _cart.remove(item);
     notifyListeners();
+    final itemId = item.remoteItemId;
+    if (itemId == null || !_canSyncCart) return;
+    unawaited(
+      _runCartRequest(
+        (repository, token) =>
+            repository.removeItem(accessToken: token, itemId: itemId),
+        revert: () => _restoreItem(item, previous, position),
+      ),
+    );
+  }
+
+  void _restoreItem(CartItem item, int quantity, int position) {
+    item.quantity = quantity;
+    if (!_cart.contains(item)) {
+      _cart.insert(math.min(position, _cart.length), item);
+    }
   }
 
   ShopOrder placeOrder(PaymentMethod payment) {
@@ -307,9 +543,16 @@ class ShopState extends ChangeNotifier {
       createdAt: DateTime.now(),
       shipping: shipping,
     );
+    final remoteItemIds = _cart
+        .map((item) => item.remoteItemId)
+        .whereType<String>()
+        .toList(growable: false);
     _orders.insert(0, order);
     _cart.clear();
     notifyListeners();
+    if (remoteItemIds.isNotEmpty && _canSyncCart) {
+      unawaited(_clearRemoteCart(remoteItemIds));
+    }
     return order;
   }
 

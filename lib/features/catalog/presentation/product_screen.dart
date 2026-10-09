@@ -54,7 +54,12 @@ class _ProductScreenState extends State<ProductScreen> {
             );
             return;
           }
-          state.addToCart(product, sizeIndex!, system);
+          try {
+            state.addToCart(product, sizeIndex!, system);
+          } on ArgumentError catch (error) {
+            feedback(context, '${error.message}');
+            return;
+          }
           feedback(context, 'Producto agregado a tu bolsa');
         },
         icon: const Icon(Icons.shopping_bag_outlined),

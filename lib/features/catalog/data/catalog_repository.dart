@@ -58,29 +58,37 @@ class CatalogProduct {
   Product toShopProduct() {
     final firstVariant = variants.isEmpty ? null : variants.first;
     final prices = variants.map((variant) => variant.price).toList()..sort();
-    final remoteVariantIds = <int, String>{
-      for (var index = 0; index < variants.length; index++)
-        index: variants[index].id,
-    };
+    final color = firstVariant?.color ?? '';
+    final eurLabels = sizeLabels[SizeSystem.eur]!;
+    final remoteVariantIds = <int, String>{};
+    final variantStock = <int, int>{};
+    for (final variant in variants) {
+      if (variant.sizeSystem != 'EUR' || variant.color != color) continue;
+      final sizeIndex = eurLabels.indexOf(variant.sizeValue);
+      if (sizeIndex < 0) continue;
+      remoteVariantIds[sizeIndex] = variant.id;
+      variantStock[sizeIndex] = variant.stock;
+    }
+    final availableSizes =
+        variantStock.entries
+            .where((entry) => entry.value > 0)
+            .map((entry) => entry.key)
+            .toList()
+          ..sort();
     return Product(
       id: slug.hashCode,
       remoteId: id,
       remoteVariantIds: remoteVariantIds,
+      variantStock: variantStock,
       brand: brand,
       name: name,
       category: category,
       price: firstVariant?.price ?? 0,
       oldPrice: prices.isEmpty ? (firstVariant?.price ?? 0) : prices.last,
       image: images.isEmpty ? '' : images.first,
-      color: firstVariant?.color ?? '',
-      lowStock:
-          firstVariant != null &&
-          firstVariant.stock > 0 &&
-          firstVariant.stock <= 3,
-      availableSizes: variants
-          .map((variant) => int.tryParse(variant.sizeValue))
-          .whereType<int>()
-          .toList(growable: false),
+      color: color,
+      lowStock: variantStock.values.any((stock) => stock > 0 && stock <= 3),
+      availableSizes: List.unmodifiable(availableSizes),
     );
   }
 }
