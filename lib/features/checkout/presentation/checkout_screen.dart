@@ -799,65 +799,65 @@ class SuccessScreen extends StatelessWidget {
   const SuccessScreen({super.key, required this.order});
   final ShopOrder order;
   @override
-  Widget build(BuildContext context) => PageFrame(
-    title: 'Compra finalizada',
-    child: ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 40),
-      children: [
-        const CircleAvatar(
-          radius: 42,
-          backgroundColor: AppColors.green,
-          child: Icon(Icons.check, color: Colors.white, size: 48),
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'COMPRA FINALIZADA',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.green,
-            letterSpacing: 1.5,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 56, 20, 24),
+            children: [
+              const OrderCheckBadge(),
+              const SizedBox(height: 22),
+              const Text(
+                '¡Gracias por tu compra!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Tu orden ha sido procesada con éxito.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 26),
+              OrderReceipt(order: order),
+              if (order.payment == PaymentMethod.cash) ...[
+                const SizedBox(height: 12),
+                OrderCard(
+                  color: AppColors.softGreen,
+                  child: Text(
+                    'Código de pago simulado: ${order.id}\nVálido por 24 horas.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 22),
+              const OrderFootnote(
+                'Hemos enviado un correo electrónico de confirmación con los detalles y la factura de tu pedido.',
+              ),
+              const SizedBox(height: 22),
+              OutlinedButton(
+                style: outlineGreenButtonStyle,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => TrackingScreen(order: order),
+                  ),
+                ),
+                child: const Text('Seguir mi pedido'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                style: primaryButtonStyle,
+                onPressed: () => goHome(context),
+                child: const Text('Volver al Inicio'),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        const Text(
-          '¡Gracias por tu compra!',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Tu orden ha sido procesada con éxito.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        OrderReceipt(order: order),
-        if (order.payment == PaymentMethod.cash)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(
-              'Código de pago simulado: ${order.id}\nVálido por 24 horas.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        const SizedBox(height: 28),
-        FilledButton.icon(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) => TrackingScreen(order: order),
-            ),
-          ),
-          icon: const Icon(Icons.inventory_2_outlined),
-          label: const Text('Seguir mi pedido'),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => goHome(context),
-          child: const Text('Volver al Inicio'),
-        ),
-      ],
+      ),
     ),
   );
 }

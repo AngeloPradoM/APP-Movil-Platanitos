@@ -216,6 +216,19 @@ final secondaryButtonStyle = OutlinedButton.styleFrom(
   ),
 );
 
+final outlineGreenButtonStyle = OutlinedButton.styleFrom(
+  backgroundColor: Colors.white,
+  foregroundColor: AppColors.darkGreen,
+  minimumSize: const Size(0, 48),
+  side: const BorderSide(color: AppColors.darkGreen, width: 1.2),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  textStyle: const TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+  ),
+);
+
 void feedback(BuildContext context, String text) =>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -671,65 +684,149 @@ class OrderTimeline extends StatelessWidget {
   const OrderTimeline({super.key, required this.order});
   final ShopOrder order;
   @override
-  Widget build(BuildContext context) => Column(
-    children: List.generate(4, (index) {
-      final complete = index <= order.status.index;
-      final label = ['Preparación', 'Despacho', 'En camino', 'Entrega'][index];
-      return IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 42,
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: complete
-                        ? AppColors.green
-                        : AppColors.background,
-                    child: Icon(
-                      complete ? Icons.check : Icons.circle_outlined,
-                      color: complete ? Colors.white : AppColors.muted,
-                      size: 18,
-                    ),
-                  ),
-                  if (index < 3)
-                    Expanded(
-                      child: Container(
-                        width: 2,
-                        color: complete ? AppColors.green : AppColors.border,
+  Widget build(BuildContext context) {
+    final steps = [
+      (
+        'Preparación',
+        Icons.inventory_2_outlined,
+        'Pago confirmado con ${order.payment.shortLabel}',
+        'Pago confirmado con ${order.payment.shortLabel}',
+      ),
+      (
+        'Despacho',
+        Icons.outbox_outlined,
+        'Salió del almacén',
+        'Pendiente de salir del almacén',
+      ),
+      (
+        'En camino',
+        Icons.local_shipping_outlined,
+        'En ruta hacia tu dirección',
+        'Pendiente de iniciar el traslado',
+      ),
+      (
+        'Entrega',
+        Icons.home_outlined,
+        'Pedido entregado',
+        'Pendiente de confirmación',
+      ),
+    ];
+    return Column(
+      children: List.generate(steps.length, (index) {
+        final (label, icon, doneText, pendingText) = steps[index];
+        final current = index == order.status.index;
+        final done = index < order.status.index;
+        final reached = current || done;
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 28,
+                child: Column(
+                  children: [
+                    Container(
+                      width: current ? 28 : 22,
+                      height: current ? 28 : 22,
+                      margin: EdgeInsets.symmetric(vertical: current ? 0 : 3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: current
+                            ? AppColors.darkGreen
+                            : done
+                            ? AppColors.softGreen
+                            : Colors.white,
+                        border: Border.all(
+                          color: reached
+                              ? AppColors.darkGreen
+                              : fieldBorderColor,
+                          width: 1.4,
+                        ),
+                      ),
+                      child: Icon(
+                        current ? icon : (done ? Icons.check : Icons.circle),
+                        color: current
+                            ? Colors.white
+                            : done
+                            ? AppColors.darkGreen
+                            : fieldBorderColor,
+                        size: current ? 15 : (done ? 13 : 6),
                       ),
                     ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 0, 25),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      index == order.status.index
-                          ? 'Estado actual'
-                          : complete
-                          ? 'Completado'
-                          : 'Pendiente',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    if (index < steps.length - 1)
+                      Expanded(
+                        child: Container(
+                          width: 1.4,
+                          color: done ? AppColors.darkGreen : fieldBorderColor,
+                        ),
+                      ),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    }),
-  );
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    current ? 2 : 3,
+                    0,
+                    index < steps.length - 1 ? 18 : 0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontWeight: reached
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                fontSize: 13.5,
+                                color: current
+                                    ? AppColors.darkGreen
+                                    : AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          if (current)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.softGreen,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Actual',
+                                style: TextStyle(
+                                  color: AppColors.darkGreen,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        reached ? doneText : pendingText,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
 }

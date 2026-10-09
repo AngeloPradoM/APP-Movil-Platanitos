@@ -135,6 +135,11 @@ extension PaymentLabel on PaymentMethod {
     PaymentMethod.card => 'Tarjeta de Crédito / Débito',
     PaymentMethod.cash => 'Pago en Efectivo (Agentes)',
   };
+  String get shortLabel => switch (this) {
+    PaymentMethod.wallet => 'Yape / Plin',
+    PaymentMethod.card => 'Tarjeta',
+    PaymentMethod.cash => 'Efectivo',
+  };
 }
 
 enum OrderStatus { preparation, dispatch, transit, delivered }
@@ -228,8 +233,25 @@ class ShopOrder {
   double get subtotal => items.fold(0, (sum, item) => sum + item.subtotal);
   double get total => subtotal + shipping;
   String get estimate {
+    const months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
     final start = createdAt.add(const Duration(days: 6));
     final end = start.add(const Duration(days: 2));
-    return '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')} – ${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}';
+    final endMonth = months[end.month - 1];
+    return start.month == end.month
+        ? '${start.day}-${end.day} de $endMonth'
+        : '${start.day} de ${months[start.month - 1]} - ${end.day} de $endMonth';
   }
 }
