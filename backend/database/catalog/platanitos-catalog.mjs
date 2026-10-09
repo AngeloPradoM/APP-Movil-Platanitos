@@ -93,7 +93,15 @@ export const IMAGES = {
   maleta: 'photo-1565026057447-bc90a3dceb87',
 };
 
-export const imageUrl = (key) => `https://images.unsplash.com/${IMAGES[key]}?fit=crop&q=85&w=800`;
+export const imageUrl = (key, view = '') => `https://images.unsplash.com/${IMAGES[key]}?fit=crop&q=85&w=800${view}`;
+
+// Vistas de la galería generadas con parámetros de Unsplash sobre la foto principal.
+export const IMAGE_VIEWS = [
+  { suffix: '', label: null },
+  { suffix: '&flip=h', label: 'vista lateral' },
+  { suffix: '&crop=focalpoint&fp-x=0.42&fp-y=0.55&fp-z=1.8', label: 'detalle' },
+  { suffix: '&crop=focalpoint&fp-x=0.6&fp-y=0.45&fp-z=2.3', label: 'detalle de acabados' },
+];
 
 // tier: 1 = económica, 2 = intermedia, 3 = premium (ubica el precio dentro del rango).
 // dama: la tienda usa "Dama" en lugar de "Mujer" en los nombres de esa marca.

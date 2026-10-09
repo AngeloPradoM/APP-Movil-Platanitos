@@ -22,7 +22,7 @@ class _ShopShellState extends State<ShopShell> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final titles = ['Inicio', 'Calzado', 'Mi Bolsa', 'Favoritos', 'Mi Cuenta'];
+    final titles = ['Inicio', 'Catálogo', 'Mi Bolsa', 'Favoritos', 'Mi Cuenta'];
     return PopScope(
       canPop: tab == 0,
       onPopInvokedWithResult: (didPop, result) {

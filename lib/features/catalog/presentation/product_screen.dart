@@ -1,7 +1,9 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_theme.dart';
-import '../../../data/mock_data.dart';
 import '../../../shared/models/shop_models.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/line_icons.dart';
@@ -23,7 +25,30 @@ class _ProductScreenState extends State<ProductScreen> {
       ? 0
       : null;
   int imageIndex = 0;
+  List<String>? _images;
   bool get oneSize => widget.product.sizeSystem == SizeSystem.oneSize;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_images != null) return;
+    final state = ShopScope.of(context);
+    _images = state.galleryOf(widget.product);
+    state.loadGallery(widget.product).then((images) {
+      if (!mounted || listEquals(images, _images)) return;
+      setState(() {
+        _images = images;
+        imageIndex = math.min(imageIndex, images.length - 1);
+      });
+    });
+  }
+
+  void _showImage(int index) => gallery.animateToPage(
+    index,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
+
   @override
   void dispose() {
     gallery.dispose();
@@ -33,7 +58,7 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context), product = widget.product;
-    final images = [product.image, ...galleryImages];
+    final images = _images ?? product.gallery;
     final soldOut = product.availableSizes.isEmpty;
     return PageFrame(
       title: 'Detalle',
@@ -130,11 +155,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         label: 'Imagen ${index + 1} de ${images.length}',
                         child: InkResponse(
                           radius: 14,
-                          onTap: () => gallery.animateToPage(
-                            index,
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOut,
-                          ),
+                          onTap: () => _showImage(index),
                           child: Padding(
                             padding: const EdgeInsets.all(6),
                             child: AnimatedContainer(
@@ -157,6 +178,22 @@ class _ProductScreenState extends State<ProductScreen> {
               ],
             ),
           ),
+          if (images.length > 1)
+            SizedBox(
+              height: 66,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                itemCount: images.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, index) => _GalleryThumbnail(
+                  url: images[index],
+                  label: 'Ver foto ${index + 1} de ${images.length}',
+                  selected: index == imageIndex,
+                  onTap: () => _showImage(index),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Column(
@@ -479,6 +516,39 @@ class SizeBox extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GalleryThumbnail extends StatelessWidget {
+  const _GalleryThumbnail({
+    required this.url,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String url, label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    label: label,
+    child: Material(
+      color: AppColors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: selected ? AppColors.darkGreen : AppColors.border,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox.square(dimension: 56, child: ShopImage(url)),
+      ),
+    ),
+  );
 }
 
 class DeliveryOption extends StatelessWidget {

@@ -50,7 +50,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       context,
                       MaterialPageRoute<void>(
                         builder: (_) => const PageFrame(
-                          title: 'Calzado',
+                          title: 'Catálogo',
                           child: CatalogScreen(),
                         ),
                       ),

@@ -9,6 +9,8 @@ class Product {
     required this.image,
     required this.color,
     this.remoteId,
+    this.slug,
+    this.images = const [],
     this.remoteVariantIds = const {},
     this.variantStock = const {},
     this.lowStock = false,
@@ -19,7 +21,25 @@ class Product {
   final int id;
 
   /// UUID del backend cuando el producto proviene de PostgreSQL.
-  final String? remoteId;
+  final String? remoteId, slug;
+
+  /// Galería del producto; el listado del backend solo trae la primera foto.
+  final List<String> images;
+
+  /// Deben coincidir con IMAGE_VIEWS de backend/database/catalog.
+  static const _unsplashViews = [
+    '&flip=h',
+    '&crop=focalpoint&fp-x=0.42&fp-y=0.55&fp-z=1.8',
+    '&crop=focalpoint&fp-x=0.6&fp-y=0.45&fp-z=2.3',
+  ];
+  List<String> get gallery {
+    if (images.length > 1) return images;
+    final main = images.isEmpty ? image : images.first;
+    if (!main.contains('images.unsplash.com/') || !main.contains('?')) {
+      return [main];
+    }
+    return [main, for (final view in _unsplashViews) '$main$view'];
+  }
 
   /// Claves: índice de talla en [sizes].
   final Map<int, String> remoteVariantIds;

@@ -87,6 +87,8 @@ class CatalogProduct {
     return Product(
       id: slug.hashCode,
       remoteId: id,
+      slug: slug,
+      images: images,
       remoteVariantIds: {
         for (final (index, variant) in selected.indexed) index: variant.id,
       },

@@ -134,6 +134,7 @@ class ShopState extends ChangeNotifier {
   AuthSession? _authSession;
   List<Product> _remoteProducts = const [];
   final _cartProducts = <String, Product>{};
+  final _galleries = <String, List<String>>{};
   bool _catalogLoading = false;
   String? _catalogError;
   static const catalogPageSize = 50;
@@ -414,6 +415,25 @@ class ShopState extends ChangeNotifier {
         }),
       ),
     );
+  }
+
+  /// Galería completa del producto: el listado solo trae la primera foto y la
+  /// ficha del backend trae todas. Si falla, se queda con lo que ya tiene.
+  List<String> galleryOf(Product product) =>
+      _galleries[product.slug] ?? product.gallery;
+
+  Future<List<String>> loadGallery(Product product) async {
+    final slug = product.slug, repository = catalogRepository;
+    if (slug == null || repository == null) return galleryOf(product);
+    final cached = _galleries[slug];
+    if (cached != null) return cached;
+    try {
+      final images = (await repository.getProduct(slug)).images;
+      if (images.isEmpty) return product.gallery;
+      return _galleries[slug] = images;
+    } catch (_) {
+      return product.gallery;
+    }
   }
 
   ({Product product, int sizeIndex})? _findRemoteVariant(String variantId) {

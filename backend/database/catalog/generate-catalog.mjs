@@ -8,6 +8,7 @@ import {
   FEATURES,
   GENDER_DEPARTMENT,
   IMAGES,
+  IMAGE_VIEWS,
   MODEL_WORDS,
   SEED,
   TEMPLATES,
@@ -185,10 +186,22 @@ export function generateCatalog({ size = CATALOG_SIZE, seed = SEED } = {}) {
       }));
 
       const start = int(t.images.length);
-      const imageCount = t.images.length > 1 && rng() < 0.5 ? 2 : 1;
-      const images = Array.from({ length: imageCount }, (_, sortOrder) => ({
-        url: imageUrl(t.images[(start + sortOrder) % t.images.length]),
-        altText: truncate(sortOrder === 0 ? `${name} - ${color}` : `${name} - vista ${sortOrder + 1}`, 160),
+      // Consume el mismo número de valores que antes para no alterar el resto del catálogo.
+      if (t.images.length > 1) rng();
+      const mainImage = t.images[start];
+      const gallery = IMAGE_VIEWS.map((view) => ({
+        url: imageUrl(mainImage, view.suffix),
+        altText: `${name} - ${view.label ?? color}`,
+      }));
+      if (t.images.length > 1) {
+        gallery.push({
+          url: imageUrl(t.images[(start + 1) % t.images.length]),
+          altText: `${name} - foto de referencia`,
+        });
+      }
+      const images = gallery.map((image, sortOrder) => ({
+        url: image.url,
+        altText: truncate(image.altText, 160),
         sortOrder,
       }));
 

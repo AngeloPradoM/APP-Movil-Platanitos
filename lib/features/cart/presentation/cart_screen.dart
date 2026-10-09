@@ -17,7 +17,7 @@ class CartPage extends StatelessWidget {
         context,
         MaterialPageRoute<void>(
           builder: (_) =>
-              const PageFrame(title: 'Calzado', child: CatalogScreen()),
+              const PageFrame(title: 'Catálogo', child: CatalogScreen()),
         ),
       ),
     ),

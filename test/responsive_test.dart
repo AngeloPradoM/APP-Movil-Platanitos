@@ -37,7 +37,7 @@ void main() {
           title: 'Inicio',
           child: HomeScreen(onCatalog: () {}),
         ),
-        const PageFrame(title: 'Calzado', child: CatalogScreen()),
+        const PageFrame(title: 'Catálogo', child: CatalogScreen()),
         ProductScreen(product: products[0]),
         PageFrame(
           title: 'Mi Bolsa',
