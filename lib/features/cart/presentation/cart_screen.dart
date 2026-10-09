@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../shared/state/shop_state.dart';
 import '../../../widgets/shop_widgets.dart';
+import '../../auth/presentation/auth_screens.dart';
 import '../../checkout/presentation/checkout_screen.dart';
 import '../../catalog/presentation/catalog_screens.dart';
 
@@ -170,10 +171,15 @@ class CartScreen extends StatelessWidget {
         SummaryCard(subtotal: state.subtotal, shipping: state.shipping),
         const SizedBox(height: 24),
         FilledButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(builder: (_) => const CheckoutScreen()),
-          ),
+          onPressed: () async {
+            if (!await requireLoginForCheckout(context) || !context.mounted) {
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const CheckoutScreen()),
+            );
+          },
           child: const Text('Ir a Pagar'),
         ),
         const SizedBox(height: 12),

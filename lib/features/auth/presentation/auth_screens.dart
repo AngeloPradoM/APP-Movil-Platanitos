@@ -15,8 +15,22 @@ void enterShop(BuildContext context) => Navigator.of(context)
       (_) => false,
     );
 
+/// Abre el login como paso previo al pago. Devuelve `true` si el usuario
+/// terminó con una sesión iniciada.
+Future<bool> requireLoginForCheckout(BuildContext context) async {
+  if (ShopScope.of(context).signedIn) return true;
+  final authenticated = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute<bool>(
+      builder: (_) => const LoginScreen(fromCheckout: true),
+    ),
+  );
+  return authenticated == true;
+}
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.fromCheckout = false});
+  final bool fromCheckout;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -27,6 +41,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool hidden = true;
   bool submitting = false;
 
+  void finish() => widget.fromCheckout
+      ? Navigator.pop(context, true)
+      : enterShop(context);
+
+  Future<void> openSignup() async {
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => SignupScreen(fromCheckout: widget.fromCheckout),
+      ),
+    );
+    if (created == true && mounted) finish();
+  }
+
   Future<void> login({bool social = false}) async {
     if (!social && !form.currentState!.validate()) return;
     final state = ShopScope.of(context);
@@ -34,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => submitting = true);
       try {
         await state.loginRemote(email: email.trim(), password: password);
-        if (mounted) enterShop(context);
+        if (mounted) finish();
       } on ApiException {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -70,14 +98,19 @@ class _LoginScreenState extends State<LoginScreen> {
               phone: state.user.phone,
             ),
     );
-    enterShop(context);
+    finish();
   }
 
   @override
   Widget build(BuildContext context) => AuthLayout(
-    heading: 'Inicia sesión',
-    eyebrow: 'BIENVENIDA DE NUEVO',
-    description: 'Ingresa tus datos para continuar comprando.',
+    back: widget.fromCheckout,
+    heading: widget.fromCheckout
+        ? 'Inicia sesión para pagar'
+        : 'Inicia sesión',
+    eyebrow: widget.fromCheckout ? 'FINALIZA TU COMPRA' : 'BIENVENIDA DE NUEVO',
+    description: widget.fromCheckout
+        ? 'Necesitas una cuenta para completar el pago. Tu bolsa se conservará.'
+        : 'Ingresa tus datos para continuar comprando.',
     children: [
       Form(
         key: form,
@@ -156,17 +189,16 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      const SizedBox(height: 12),
-      OutlinedButton(
-        onPressed: () => enterShop(context),
-        child: const Text('Continuar como invitada/o'),
-      ),
+      if (!widget.fromCheckout) ...[
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => enterShop(context),
+          child: const Text('Continuar como invitada/o'),
+        ),
+      ],
       const SizedBox(height: 20),
       TextButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const SignupScreen()),
-        ),
+        onPressed: openSignup,
         child: const Text('¿No tienes cuenta? Regístrate'),
       ),
       const Center(
@@ -302,7 +334,8 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 }
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.fromCheckout = false});
+  final bool fromCheckout;
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
@@ -345,7 +378,10 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
       }
-      if (mounted) enterShop(context);
+      if (!mounted) return;
+      widget.fromCheckout
+          ? Navigator.pop(context, true)
+          : enterShop(context);
     } on ApiException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
