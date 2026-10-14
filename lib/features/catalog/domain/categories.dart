@@ -1,5 +1,5 @@
-import '../../../shared/models/shop_models.dart';
-import 'catalog_filter.dart';
+import '../../../app/models/shop_models.dart';
+import './catalog_filter.dart';
 
 class ShopCategory {
   const ShopCategory({
@@ -29,9 +29,10 @@ class ShopCategory {
   ];
 }
 
-String slugify(String value) => normalizeText(value)
-    .replaceAll(RegExp('[^a-z0-9]+'), '-')
-    .replaceAll(RegExp(r'^-+|-+$'), '');
+String slugify(String value) =>
+    normalizeText(value)
+        .replaceAll(RegExp('[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
 
 /// Departamentos de la tienda. Se calculan en la app a partir del nombre de
 /// cada categoría para no cambiar el esquema; una categoría puede estar en
@@ -78,7 +79,13 @@ enum CategoryGroup {
     'lente',
   ]),
   sports('Deportes', ['deport', 'running', 'training', 'futbol', 'outdoor']),
-  home('Hogar', ['hogar', 'cocina', 'decoracion', 'electrodomestico', 'mueble']),
+  home('Hogar', [
+    'hogar',
+    'cocina',
+    'decoracion',
+    'electrodomestico',
+    'mueble',
+  ]),
   tech('Tecnología', ['tecnolog', 'electronic', 'audio', 'celular']),
   beauty('Belleza', ['belleza', 'maquillaje', 'cuidado', 'perfum']),
   toys('Juguetes y libros', ['juguete', 'juego', 'libro', 'comic']),

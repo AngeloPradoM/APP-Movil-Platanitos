@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../shared/state/shop_state.dart';
-import '../widgets/line_icons.dart';
-import '../widgets/shop_widgets.dart';
-import '../features/account/presentation/account_screens.dart';
-import '../features/auth/presentation/auth_screens.dart';
-import '../features/cart/presentation/cart_screen.dart';
-import '../features/catalog/presentation/catalog_screens.dart';
-import '../features/orders/presentation/order_screens.dart';
+import '../core/theme/app_theme.dart';
+import './state/shop_state.dart';
+import '../shared/widgets/line_icons.dart';
+import '../shared/widgets/shop_widgets.dart';
+import '../features/account/presentation/screens/account_screens.dart';
+import '../features/auth/presentation/auth_flow.dart';
+import '../features/cart/presentation/screens/cart_screen.dart';
+import '../features/catalog/presentation/screens/catalog_screens.dart';
+import '../features/orders/presentation/screens/order_screens.dart';
 
 class ShopShell extends StatefulWidget {
   const ShopShell({super.key});
@@ -22,7 +22,13 @@ class _ShopShellState extends State<ShopShell> {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
-    final titles = ['Inicio', 'Categorías', 'Mi Bolsa', 'Favoritos', 'Mi Cuenta'];
+    final titles = [
+      'Inicio',
+      'Categorías',
+      'Mi Bolsa',
+      'Favoritos',
+      'Mi Cuenta',
+    ];
     return PopScope(
       canPop: tab == 0,
       onPopInvokedWithResult: (didPop, result) {

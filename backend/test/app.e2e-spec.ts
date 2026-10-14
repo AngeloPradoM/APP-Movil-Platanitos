@@ -22,11 +22,31 @@ describe('AppController (e2e)', () => {
     prisma = app.get(PrismaService);
   });
 
+  it('enforces administrative access and prevents public role escalation', async () => {
+    temporaryEmail = 'roles-' + Date.now() + '@example.com';
+    const credentials = { email: temporaryEmail, name: 'Roles Test', password: 'Roles-Test-Password-123' };
+    await request(app.getHttpServer()).get('/admin/users').expect(401);
+    await request(app.getHttpServer()).post('/auth/register').send({ ...credentials, role: 'ADMINISTRATIVO' }).expect(400);
+    const registration = await request(app.getHttpServer()).post('/auth/register').send(credentials).expect(201);
+    expect(registration.body.user.role).toBe('POSTULANTE');
+    await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + registration.body.accessToken).expect(403);
+    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'ADMINISTRATIVO' } });
+    const login = await request(app.getHttpServer()).post('/auth/login').send({ email: temporaryEmail, password: credentials.password }).expect(201);
+    expect(login.body.user.role).toBe('ADMINISTRATIVO');
+    const list = await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + login.body.accessToken).expect(200);
+    expect(list.body.some((user: { email: string }) => user.email === temporaryEmail)).toBe(true);
+    expect(list.body[0].passwordCredential).toBeUndefined();
+    const refreshed = await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(201);
+    expect(refreshed.body.user.role).toBe('ADMINISTRATIVO');
+    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'POSTULANTE' } });
+    await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + login.body.accessToken).expect(403);
+  });
+
   it('/ (GET)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect({ service: 'platanitos-backend', status: 'ok', health: '/health' });
   });
 
   it('/me (GET) rejects unauthenticated requests', () => {
@@ -81,7 +101,7 @@ describe('AppController (e2e)', () => {
       email: temporaryEmail,
       name: 'Usuario E2E',
       password: 'UnaClaveE2E-Segura-123',
-      phone: '987654321',
+      phone: '+541123456789',
     };
 
     const registration = await request(app.getHttpServer())
@@ -89,6 +109,10 @@ describe('AppController (e2e)', () => {
       .send(credentials)
       .expect(201);
     expect(registration.body.user.email).toBe(temporaryEmail);
+    expect(registration.body.user.phone).toBe('+541123456789');
+    const stored = await prisma.user.findUnique({ where: { email: temporaryEmail } });
+    expect(stored?.name).toBe(credentials.name);
+    expect(stored?.phone).toBe('+541123456789');
     expect(registration.body.accessToken).toEqual(expect.any(String));
     expect(registration.body.refreshToken).toEqual(expect.any(String));
 

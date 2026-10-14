@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
-import '../../../core/api_config.dart';
+import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
-import '../../../shared/models/shop_models.dart';
+import '../../../app/models/shop_models.dart';
 import '../domain/categories.dart';
 
 class CatalogVariant {
@@ -86,7 +86,7 @@ class CatalogProduct {
         .whereType<double>()
         .where((value) => value > price);
     return Product(
-      id: slug.hashCode,
+      id: catalogLocalId(slug),
       remoteId: id,
       slug: slug,
       images: images,
@@ -116,6 +116,15 @@ class CatalogProduct {
   }
 }
 
+int catalogLocalId(String value) {
+  var hash = 0x811C9DC5;
+  for (final unit in value.codeUnits) {
+    hash ^= unit;
+    hash = (hash * 0x01000193) & 0x7FFFFFFF;
+  }
+  return hash;
+}
+
 class CatalogPage {
   const CatalogPage({
     required this.products,
@@ -141,10 +150,22 @@ class CatalogPage {
   final int page, total, totalPages;
 }
 
-class CatalogRepository {
+abstract interface class CatalogRepositoryContract {
+  Future<CatalogPage> listProducts({
+    String? query,
+    String? category,
+    int page = 1,
+    int limit = 20,
+  });
+  Future<List<ShopCategory>> listCategories();
+  Future<CatalogProduct> getProduct(String slug);
+}
+
+class CatalogRepository implements CatalogRepositoryContract {
   CatalogRepository({ApiClient? client})
     : _client = client ?? ApiClient(baseUrl: ApiConfig.baseUrl);
   final ApiClient _client;
+  @override
   Future<CatalogPage> listProducts({
     String? query,
     String? category,
@@ -164,6 +185,7 @@ class CatalogRepository {
   }
 
   /// Categorías con productos activos, su conteo y una foto de muestra.
+  @override
   Future<List<ShopCategory>> listCategories() async {
     final payload = await _client.get('/catalog/categories') as List<dynamic>;
     return payload
@@ -172,6 +194,7 @@ class CatalogRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<CatalogProduct> getProduct(String slug) async {
     final payload = await _client.get(
       '/catalog/products/${Uri.encodeComponent(slug)}',

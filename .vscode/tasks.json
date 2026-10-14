@@ -1,0 +1,124 @@
+﻿{
+    "version":  "2.0.0",
+    "tasks":  [
+                  {
+                      "label":  "Platanitos: preparar dependencias",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/setup.ps1",
+                                   "-SkipDatabase"
+                               ],
+                      "problemMatcher":  [
+
+                                         ]
+                  },
+                  {
+                      "label":  "Platanitos: preparar base y catálogo",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/setup.ps1",
+                                   "-IncludeCatalog"
+                               ],
+                      "problemMatcher":  [
+
+                                         ]
+                  },
+                  {
+                      "label":  "Platanitos: backend",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/start-backend.ps1"
+                               ],
+                      "problemMatcher":  [
+
+                                         ],
+                      "presentation":  {
+                                           "panel":  "dedicated",
+                                           "group":  "platanitos"
+                                       }
+                  },
+                  {
+                      "label":  "Platanitos: frontend",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/start-frontend.ps1"
+                               ],
+                      "problemMatcher":  [
+
+                                         ],
+                      "presentation":  {
+                                           "panel":  "dedicated",
+                                           "group":  "platanitos"
+                                       }
+                  },
+                  {
+                      "label":  "Platanitos: frontend remoto",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/start-frontend.ps1",
+                                   "-AppMode",
+                                   "remote"
+                               ],
+                      "problemMatcher":  [
+
+                                         ],
+                      "presentation":  {
+                                           "panel":  "dedicated",
+                                           "group":  "platanitos"
+                                       }
+                  },
+                  {
+                      "label":  "Platanitos: levantar frontend y backend",
+                      "dependsOn":  [
+                                        "Platanitos: backend",
+                                        "Platanitos: frontend remoto"
+                                    ],
+                      "dependsOrder":  "parallel",
+                      "problemMatcher":  [
+
+                                         ]
+                  },
+                  {
+                      "label":  "Platanitos: preparar PostgreSQL aislado",
+                      "type":  "process",
+                      "command":  "powershell.exe",
+                      "args":  [
+                                   "-NoProfile",
+                                   "-ExecutionPolicy",
+                                   "Bypass",
+                                   "-File",
+                                   "${workspaceFolder}/scripts/setup.ps1",
+                                   "-IsolatedDatabase",
+                                   "-IncludeCatalog"
+                               ],
+                      "problemMatcher":  [
+
+                                         ]
+                  }
+              ]
+}
