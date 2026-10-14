@@ -1,26 +1,15 @@
-import '../../../core/api_config.dart';
+import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
+import '../domain/auth_session.dart';
+import '../domain/repositories/auth_repository_contract.dart';
 
-class AuthSession {
-  const AuthSession({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.user,
-  });
-  factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
-    accessToken: json['accessToken'] as String,
-    refreshToken: json['refreshToken'] as String,
-    user: Map<String, dynamic>.from(json['user'] as Map),
-  );
-  final String accessToken;
-  final String refreshToken;
-  final Map<String, dynamic> user;
-}
+export '../domain/auth_session.dart';
 
-class AuthRepository {
+class AuthRepository implements RemoteAuthRepository {
   AuthRepository({ApiClient? client})
     : _client = client ?? ApiClient(baseUrl: ApiConfig.baseUrl);
   final ApiClient _client;
+  @override
   Future<AuthSession> login({
     required String email,
     required String password,
@@ -30,6 +19,7 @@ class AuthRepository {
       body: {'email': email, 'password': password},
     ) as Map<String, dynamic>,
   );
+  @override
   Future<AuthSession> register({
     required String email,
     required String name,
@@ -52,6 +42,7 @@ class AuthRepository {
       },
     ) as Map<String, dynamic>,
   );
+  @override
   Future<AuthSession> refresh(String refreshToken) async =>
       AuthSession.fromJson(
         await _client.post(
@@ -59,6 +50,7 @@ class AuthRepository {
           body: {'refreshToken': refreshToken},
         ) as Map<String, dynamic>,
       );
+  @override
   Future<Map<String, dynamic>> updateProfile({
     required String accessToken,
     String? name,
@@ -75,6 +67,7 @@ class AuthRepository {
       },
     ) as Map,
   );
+  @override
   Future<void> logout(String refreshToken) async {
     await _client.post('/auth/logout', body: {'refreshToken': refreshToken});
   }

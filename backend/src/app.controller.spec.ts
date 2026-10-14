@@ -15,8 +15,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('returns API information', () => {
+      expect(appController.getInfo()).toEqual({ service: 'platanitos-backend', status: 'ok', health: '/health' });
     });
   });
 });

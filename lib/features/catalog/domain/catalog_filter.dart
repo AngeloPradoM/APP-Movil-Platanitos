@@ -1,4 +1,4 @@
-import '../../../shared/models/shop_models.dart';
+import '../../../app/models/shop_models.dart';
 
 enum ProductSort { recommended, cheapest, expensive, discount, newest, recent }
 
@@ -192,8 +192,9 @@ class CatalogFilter {
         ProductSort.recent => (favorites?.indexOf(b.id) ?? b.id).compareTo(
           favorites?.indexOf(a.id) ?? a.id,
         ),
-        ProductSort.recommended => (a.availableSizes.isEmpty ? 1 : 0)
-            .compareTo(b.availableSizes.isEmpty ? 1 : 0),
+        ProductSort.recommended => (a.availableSizes.isEmpty ? 1 : 0).compareTo(
+          b.availableSizes.isEmpty ? 1 : 0,
+        ),
         ProductSort.newest => 0,
       };
       return order != 0 ? order : position[a]!.compareTo(position[b]!);
@@ -220,16 +221,20 @@ class CatalogFilter {
       int Function(T, T) compare,
     ) {
       final values = {...counts.keys, ...selected}.toList()..sort(compare);
-      return [for (final value in values) (value: value, count: counts[value] ?? 0)];
+      return [
+        for (final value in values) (value: value, count: counts[value] ?? 0),
+      ];
     }
 
     final sizeCounts = count(FilterFacet.size, _sizesOf);
-    final brandCounts = count(FilterFacet.brand, (p) => [
-      if (p.brand.isNotEmpty) p.brand,
-    ]);
-    final colorCounts = count(FilterFacet.color, (p) => [
-      if (p.color.isNotEmpty) p.color,
-    ]);
+    final brandCounts = count(
+      FilterFacet.brand,
+      (p) => [if (p.brand.isNotEmpty) p.brand],
+    );
+    final colorCounts = count(
+      FilterFacet.color,
+      (p) => [if (p.color.isNotEmpty) p.color],
+    );
     final priceCounts = count(
       FilterFacet.price,
       (p) => PriceRange.all.where((range) => range.contains(p.price)),

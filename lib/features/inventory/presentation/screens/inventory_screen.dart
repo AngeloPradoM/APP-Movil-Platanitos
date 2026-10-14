@@ -1,0 +1,309 @@
+import 'package:flutter/material.dart';
+
+import '../../../../app/state/shop_state.dart';
+import '../../domain/inventory_models.dart';
+import '../controllers/inventory_controller.dart';
+
+class InventoryScreen extends StatefulWidget {
+  const InventoryScreen({super.key});
+
+  @override
+  State<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends State<InventoryScreen> {
+  InventoryController? controller;
+  final searchController = TextEditingController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (controller != null) return;
+    final repository = ShopScope.of(context).inventoryRepository;
+    if (repository != null) {
+      controller = InventoryController(repository)..load();
+    }
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> openMovement(InventoryItem item) async {
+    var type = StockMovementType.entry;
+    final quantity = TextEditingController();
+    final reason = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            '${item.productName} · ${item.sizeValue} ${item.sizeSystem}',
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<StockMovementType>(
+                  initialValue: type,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de movimiento',
+                  ),
+                  items: [
+                    for (final value in StockMovementType.values)
+                      DropdownMenuItem(value: value, child: Text(value.label)),
+                  ],
+                  onChanged: (value) => setDialogState(() => type = value!),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: quantity,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: type == StockMovementType.adjustment
+                        ? 'Nuevo stock físico'
+                        : 'Cantidad',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 120,
+                  decoration: const InputDecoration(labelText: 'Motivo'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submitted != true || !mounted) return;
+    final value = int.tryParse(quantity.text);
+    final invalidQuantity =
+        value == null ||
+        value < 0 ||
+        (value == 0 && type != StockMovementType.adjustment);
+    if (invalidQuantity || reason.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa una cantidad válida y el motivo.'),
+        ),
+      );
+      return;
+    }
+    try {
+      final state = ShopScope.of(context);
+      await controller!.registerMovement(
+        item: item,
+        type: type,
+        quantity: value,
+        reason: reason.text,
+        responsibleUserId: state.user.id ?? 'demo-almacen',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Movimiento guardado localmente.')),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'No se pudo guardar el movimiento.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> showHistory(InventoryItem item) async {
+    final movements = await controller!.movements(item);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            Text(
+              'Movimientos · ${item.productName}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            if (movements.isEmpty)
+              const Text('Todavía no hay movimientos para esta variante.'),
+            for (final movement in movements)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  movement.type == StockMovementType.entry
+                      ? Icons.add_circle_outline
+                      : Icons.remove_circle_outline,
+                ),
+                title: Text('${movement.type.label}: ${movement.quantity}'),
+                subtitle: Text(movement.reason),
+                trailing: Text(
+                  '${movement.createdAt.day}/${movement.createdAt.month}',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = controller;
+    if (current == null) {
+      return const Center(
+        child: Text('El inventario local no está disponible.'),
+      );
+    }
+    return AnimatedBuilder(
+      animation: current,
+      builder: (context, _) => RefreshIndicator(
+        onRefresh: current.load,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _SummaryCard(
+                  label: 'Variantes',
+                  value: '${current.items.length}',
+                  icon: Icons.style_outlined,
+                ),
+                _SummaryCard(
+                  label: 'Unidades disponibles',
+                  value: '${current.availableUnits}',
+                  icon: Icons.inventory_2_outlined,
+                ),
+                _SummaryCard(
+                  label: 'Stock bajo',
+                  value: '${current.lowStockCount}',
+                  icon: Icons.warning_amber_rounded,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (value) => current.load(query: value),
+              decoration: InputDecoration(
+                labelText: 'Buscar producto, color o talla',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'Buscar',
+                  onPressed: () => current.load(query: searchController.text),
+                  icon: const Icon(Icons.arrow_forward),
+                ),
+              ),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Mostrar solo stock bajo'),
+              value: current.lowStockOnly,
+              onChanged: (value) => current.load(lowStockOnly: value),
+            ),
+            if (current.loading) const LinearProgressIndicator(),
+            if (current.error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(current.error!, textAlign: TextAlign.center),
+              ),
+            for (final item in current.items)
+              Card(
+                child: ListTile(
+                  title: Text(item.productName),
+                  subtitle: Text(
+                    '${item.color} · Talla ${item.sizeValue} ${item.sizeSystem}\nFísico: ${item.physicalStock} · Reservado: ${item.reservedStock}',
+                  ),
+                  isThreeLine: true,
+                  leading: CircleAvatar(
+                    backgroundColor: item.lowStock
+                        ? Colors.orange.shade100
+                        : Colors.green.shade100,
+                    child: Text('${item.availableStock}'),
+                  ),
+                  onTap: () => openMovement(item),
+                  trailing: IconButton(
+                    tooltip: 'Ver movimientos',
+                    onPressed: () => showHistory(item),
+                    icon: const Icon(Icons.history),
+                  ),
+                ),
+              ),
+            if (!current.loading &&
+                current.items.isEmpty &&
+                current.error == null)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'No se encontraron variantes.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 190,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: Theme.of(context).textTheme.titleLarge),
+                  Text(label),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}

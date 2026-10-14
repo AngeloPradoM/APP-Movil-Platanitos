@@ -1,7 +1,7 @@
-import '../../../core/api_config.dart';
+import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
-import '../../../shared/models/shop_models.dart';
-import '../../account/data/addresses_repository.dart';
+import '../../../app/models/shop_models.dart';
+import '../../addresses/data/addresses_repository.dart';
 
 class RemoteOrderItem {
   const RemoteOrderItem({

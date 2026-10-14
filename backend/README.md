@@ -1,4 +1,4 @@
-# Platanitos · Backend (NestJS + Prisma + PostgreSQL)
+﻿# Platanitos · Backend (NestJS + Prisma + PostgreSQL)
 
 API REST de la app Platanitos. La guía completa de instalación (herramientas,
 base de datos, `.env`, ejecución de la app y solución de problemas) está en el
@@ -9,10 +9,10 @@ base de datos, `.env`, ejecución de la app y solución de problemas) está en e
 Desde esta carpeta (`backend/`):
 
 ```powershell
-npm install                     # 1. dependencias
-Copy-Item .env.example .env     # 2. configuración: completa DATABASE_URL y JWT_ACCESS_SECRET
-npm run db:setup                # 3. crea la base, aplica migraciones, genera Prisma y carga datos
-npm run start:dev               # 4. API en http://localhost:3000 (prueba /health)
+npm.cmd ci                      # 1. dependencias reproducibles
+if (-not (Test-Path .env)) { Copy-Item .env.example .env } # conserva .env existente
+npm.cmd run db:setup            # 3. crea la base, aplica migraciones, genera Prisma y carga datos
+npm.cmd run start:dev           # 4. API en http://localhost:3000 (prueba /health)
 ```
 
 Como alternativa al paso 3, puedes crear una base vacía `platanitos` y ejecutar
@@ -45,7 +45,7 @@ Nunca subas `.env` ni pongas credenciales reales en `.env.example`.
 | :--- | :--- |
 | `prisma/schema.prisma` | Modelo de datos |
 | `prisma/migrations/` | Migraciones versionadas (se aplican con `npx prisma migrate deploy`, que no borra datos) |
-| `prisma/seed.ts` | Datos de demostración usados por `npm run db:seed` |
+| `prisma/seeds/seed.ts` | Datos de demostración usados por `npm run db:seed` |
 | `database/seed.sql` | Los mismos datos de demostración en SQL |
 | `database/platanitos.sql` | Script completo generado: tablas, registro `_prisma_migrations` y datos |
 | `database/catalog/platanitos-catalog.mjs` | Modelo del catálogo ampliado: plantillas por tipo de producto con categoría, marcas, modelos, rango de precio, tallas, colores e imágenes |
@@ -67,7 +67,7 @@ npx prisma migrate dev --name descripcion_del_cambio
 npm run db:sql
 ```
 
-Si agregas datos de demostración, actualiza `prisma/seed.ts` y `database/seed.sql`.
+Si agregas datos de demostración, actualiza `prisma/seeds/seed.ts` y `database/seed.sql`.
 
 ## Configuración en producción
 
@@ -88,4 +88,12 @@ La app Flutter recibe la URL del backend al compilar:
 flutter build web --dart-define=API_BASE_URL=https://api.ejemplo.com
 ```
 
-Más detalles de la arquitectura en [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Más detalles de la arquitectura en [arquitectura del backend](../docs/architecture/backend.md).
+
+## Entorno local preparado
+
+Los comandos de preparación y arranque están en [`../scripts/`](../scripts/). Consultar [Arranque local preparado](../README.md#arranque-local-preparado) para iniciar ambos servicios desde VS Code o dos terminales.
+
+En este equipo se preparó una base aislada en `127.0.0.1:5433`; las credenciales están en `.env`, excluido de Git. Se aplicaron cinco migraciones y se cargaron 502 productos. La instancia PostgreSQL existente se conserva. Para comprobar la conexión: `node scripts/check-local.mjs --database`.
+
+Se sincronizó `package-lock.json` para que `npm.cmd ci` funcione. `npm.cmd` evita el bloqueo de ejecución de `npm.ps1` en PowerShell. Las versiones declaradas en `package.json` se conservaron.

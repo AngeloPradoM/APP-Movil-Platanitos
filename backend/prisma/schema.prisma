@@ -54,8 +54,14 @@ enum LoyaltyEntryType {
   REDEMPTION
 }
 
+enum UserRole {
+  ADMINISTRATIVO
+  POSTULANTE
+}
+
 model User {
   id                 String              @id @default(uuid()) @db.Uuid
+  role               UserRole            @default(POSTULANTE)
   email              String              @unique @db.VarChar(254)
   name               String              @db.VarChar(120)
   documentType       String?             @db.VarChar(20)

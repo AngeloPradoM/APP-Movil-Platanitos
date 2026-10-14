@@ -134,7 +134,7 @@ ALTER TABLE "RefreshSession" ADD CONSTRAINT "RefreshSession_userId_fkey" FOREIGN
 ALTER TABLE "AuditEvent" ADD CONSTRAINT "AuditEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES (gen_random_uuid()::text, 'fc17baa074457762b696d0a1b0a9e766677dfed3e4d68e929c0e663808e91996', now(), '20261008201120_initial_auth', now(), 1);
+VALUES (gen_random_uuid()::text, 'e87a758ca799e95a80c321ec33e94d33f93d3a4f137db7591d9fd0e9f6f0a887', now(), '20261008201120_initial_auth', now(), 1);
 
 -- ---------------------------------------------------------------------
 -- Migración 20261008201601_complete_domain
@@ -519,7 +519,7 @@ ALTER TABLE "SupportTicket" ADD CONSTRAINT "SupportTicket_userId_fkey" FOREIGN K
 ALTER TABLE "SupportTicket" ADD CONSTRAINT "SupportTicket_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES (gen_random_uuid()::text, 'b669ca15744d485bfdc10f619e17528ad154c6a357c33e5890198d75afcc6682', now(), '20261008201601_complete_domain', now(), 1);
+VALUES (gen_random_uuid()::text, '3400de031dff32e71c50b5e522a506b3b5c06831afd0dc5854c26456d62ecc4a', now(), '20261008201601_complete_domain', now(), 1);
 
 -- ---------------------------------------------------------------------
 -- Migración 20261009010000_loyalty_giftcards_content
@@ -623,7 +623,7 @@ ALTER TABLE "LoyaltyEntry" ADD CONSTRAINT "LoyaltyEntry_userId_fkey" FOREIGN KEY
 ALTER TABLE "GiftCard" ADD CONSTRAINT "GiftCard_purchaserId_fkey" FOREIGN KEY ("purchaserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES (gen_random_uuid()::text, '1d372947b259dd32a2f2a5371b2ea4912426bca67213c9d2f82e50e9f0bd723f', now(), '20261009010000_loyalty_giftcards_content', now(), 1);
+VALUES (gen_random_uuid()::text, '251b5497fdc7ec1ff705a7292f1121dd3688f115355ae9f812171df26047e598', now(), '20261009010000_loyalty_giftcards_content', now(), 1);
 
 -- ---------------------------------------------------------------------
 -- Migración 20261009020141_address_reference_phone
@@ -637,7 +637,7 @@ ALTER TABLE "OrderAddressSnapshot" ADD COLUMN     "phone" VARCHAR(20),
 ADD COLUMN     "reference" VARCHAR(180);
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES (gen_random_uuid()::text, '7e359027b17f85ba8ecf42e0c0674b8d60bc672204faa1bb955cb6ecd461e7e0', now(), '20261009020141_address_reference_phone', now(), 1);
+VALUES (gen_random_uuid()::text, 'f287f27e63675dc238933f3891e64eb29f6b9d854b69f7df9832ef361274d5cb', now(), '20261009020141_address_reference_phone', now(), 1);
 
 -- ---------------------------------------------------------------------
 -- Migración 20261009031301_size_system_alpha_one_size
@@ -654,7 +654,16 @@ ALTER TYPE "SizeSystem" ADD VALUE 'ALPHA';
 ALTER TYPE "SizeSystem" ADD VALUE 'ONE_SIZE';
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES (gen_random_uuid()::text, '9738629ebd91944b636396fc7f4aecdc05a28ca8f8848041537e5aa2631f11d8', now(), '20261009031301_size_system_alpha_one_size', now(), 1);
+VALUES (gen_random_uuid()::text, '722d583e46b4b0bc757f0d7fe039b077a8daa8510e22f753f516664166e5cd4d', now(), '20261009031301_size_system_alpha_one_size', now(), 1);
+
+-- ---------------------------------------------------------------------
+-- Migración 20261009210000_user_roles
+-- ---------------------------------------------------------------------
+CREATE TYPE "UserRole" AS ENUM ('ADMINISTRATIVO', 'POSTULANTE');
+ALTER TABLE "User" ADD COLUMN "role" "UserRole" NOT NULL DEFAULT 'POSTULANTE';
+
+INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+VALUES (gen_random_uuid()::text, '3d07cbd37a2b3522cf9d807952cc0cb9162bbb68e35c1389362736f37397efda', now(), '20261009210000_user_roles', now(), 1);
 
 -- ---------------------------------------------------------------------
 -- Datos de demostración

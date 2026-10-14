@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:platanitos_app/app/app.dart';
+import 'package:platanitos_app/app/models/shop_models.dart';
+import 'package:platanitos_app/app/state/shop_state.dart';
+import 'package:platanitos_app/features/administration/presentation/screens/role_home.dart';
+import 'package:platanitos_app/app/shop_shell.dart';
+import 'package:platanitos_app/app/data/memory_demo_store.dart';
+import 'package:platanitos_app/features/inventory/presentation/screens/inventory_screen.dart';
+
+void main() {
+  testWidgets('administrative account opens its panel', (tester) async {
+    final state = ShopState()
+      ..login(
+        account: const AppUser(
+          name: 'Admin',
+          document: '',
+          email: 'admin@example.com',
+          phone: '',
+          role: UserRole.administrativo,
+        ),
+      );
+    addTearDown(state.dispose);
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.pump();
+    expect(find.byType(AdministrativeHome), findsOneWidget);
+    expect(find.text('Panel administrativo'), findsOneWidget);
+    expect(find.byType(ShopShell), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('applicant account keeps access to the shop', (tester) async {
+    final state = ShopState()
+      ..login(
+        account: const AppUser(
+          name: 'Postulante',
+          document: '',
+          email: 'postulante@example.com',
+          phone: '',
+        ),
+      );
+    addTearDown(state.dispose);
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.pump();
+    expect(find.byType(ShopShell), findsOneWidget);
+    expect(find.byType(AdministrativeHome), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('demo profile opens the warehouse inventory', (tester) async {
+    final store = DemoMemoryStore();
+    final state = ShopState(
+      demoAuthRepository: MemoryDemoAuthRepository(store),
+      catalogRepository: MemoryCatalogRepository(store),
+      inventoryRepository: MemoryInventoryRepository(store),
+    );
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecciona un perfil'), findsOneWidget);
+
+    await tester.tap(find.text('Almacén'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gestión de almacén'), findsOneWidget);
+    expect(find.byType(InventoryScreen), findsOneWidget);
+    expect(find.text('Zapatilla Plataforma'), findsWidgets);
+  });
+}

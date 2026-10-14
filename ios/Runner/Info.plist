@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>La cámara se usa para registrar una fotografía de evidencia de la entrega.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>La galería se usa para seleccionar una fotografía de evidencia de la entrega.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

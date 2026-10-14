@@ -1,4 +1,4 @@
-import '../../../core/api_config.dart';
+import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
 
 class RemoteCartItem {

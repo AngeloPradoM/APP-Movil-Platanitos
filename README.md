@@ -1,13 +1,109 @@
 ﻿# Platanitos — Aplicación móvil de comercio electrónico
 
-**Proyecto académico universitario · Flutter + NestJS + PostgreSQL**
+**Proyecto académico universitario · Demo Flutter multiservicio**
 
 > ¿Quieres ejecutar el proyecto en tu computadora? Ve directamente a la
 > [Guía de instalación paso a paso](#10-guía-de-instalación-paso-a-paso), al final de este documento.
 
+## Estado actual: frontend demostrativo
+
+La aplicación se ejecuta por defecto en `APP_MODE=demo`. No necesita NestJS, PostgreSQL, variables `.env`, cuentas ni contraseñas. En Android, los perfiles, la sesión, el catálogo y todos los flujos operativos se guardan en SQLite (`platanitos_demo.db`). En Chrome se utiliza un adaptador en memoria con los mismos contratos, porque `sqflite` está dirigido a plataformas móviles y de escritorio.
+
+Desde la raíz del proyecto:
+
+```powershell
+flutter pub get
+flutter run -d chrome
+```
+
+Para Android, primero inicia un emulador y consulta su identificador:
+
+```powershell
+flutter devices
+flutter run -d emulator-5554
+```
+
+La pantalla inicial permite elegir uno de estos perfiles ficticios, sin escribir credenciales:
+
+| Perfil | Estado en esta etapa |
+| :--- | :--- |
+| Cliente | Catálogo, bolsa persistente, compra y pago simulado, pedidos y solicitudes posventa |
+| Almacén | Inventario, preparación y despacho de pedidos con reserva y descuento de stock |
+| Repartidor | Pedidos asignados, recojo, tránsito, entrega e incidencias |
+| Atención al cliente | Gestión de cambios, devoluciones y reclamos |
+| Administrador | Indicadores de pedidos, ventas simuladas, inventario, reparto y posventa |
+| Trabajador de tienda | Reservas de productos y confirmación de recojo o cancelación |
+
+La integración HTTP anterior permanece disponible para desarrollo futuro con:
+
+```powershell
+flutter run -d chrome --dart-define=APP_MODE=remote --dart-define=API_BASE_URL=http://localhost:3000
+```
+
+## Integración remota conservada (opcional)
+
+El flujo remoto anterior utiliza Flutter, NestJS y una base PostgreSQL aislada. Se conserva para la futura integración y no es necesario para ejecutar la demo frontend. Los secretos se guardan únicamente en `backend/.env`; este archivo y `.local/` están excluidos de Git.
+
+| Servicio | Dirección | Estado verificado |
+| :--- | :--- | :--- |
+| Frontend web | `http://127.0.0.1:8080` | Arranque Flutter con la URL de la API definida |
+| Backend REST | `http://127.0.0.1:3000` | `/health` responde `ok` |
+| PostgreSQL de desarrollo | `127.0.0.1:5433` | Instancia aislada, base `platanitos` |
+| Catálogo | `/catalog/products` | 502 productos activos: 2 iniciales y 500 del catálogo ampliado |
+
+### Iniciar desde VS Code
+
+Para la demo local, abrir **Terminal → Ejecutar tarea → Platanitos: frontend**. La tarea **Platanitos: levantar frontend y backend** queda reservada para comprobar la integración remota y usa terminales independientes.
+
+### Iniciar desde dos terminales
+
+Ejecutar desde la raíz del proyecto. En la primera terminal:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-backend.ps1
+```
+
+En la segunda terminal:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-frontend.ps1
+```
+
+El frontend abre Chrome y mantiene el puerto web `8080`. Para servir la web y abrir el navegador manualmente, agregar `-Device web-server`. `Bypass` se aplica únicamente al proceso que ejecuta estos scripts; no modifica permanentemente la política de PowerShell. Internamente se utiliza `npm.cmd` para evitar el bloqueo de `npm.ps1`.
+
+### Preparar otra instalación
+
+Si PostgreSQL está instalado y se desea una base aislada, desde la raíz:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -IsolatedDatabase -IncludeCatalog
+```
+
+Este comando conserva un `.env` existente, instala dependencias, genera Prisma, prepara el servidor aislado, aplica migraciones y carga datos. Si `DATABASE_URL` ya apunta a otra base, no la sustituye por una conexión aislada. Para utilizar un PostgreSQL propio, completar `DATABASE_URL` en `backend/.env` y ejecutar el mismo comando sin `-IsolatedDatabase`.
+
+Para preparar únicamente dependencias: `setup.ps1 -SkipDatabase`. Para comprobar configuración y conexión sin revelar credenciales: `node backend/scripts/check-local.mjs --database`.
+
+La instancia aislada utiliza los binarios de PostgreSQL instalados en Windows y guarda sus datos en `.local/postgres-data`. No modifica el servicio PostgreSQL existente del puerto `5432`. No necesita Docker. `start-backend.ps1` inicia automáticamente esta instancia cuando hay metadatos locales.
+
+Para detener únicamente la base aislada, después de cerrar frontend y backend:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\database.ps1 -Stop
+```
+
+### Verificación realizada
+
+- Flutter: análisis sin incidencias, **98 pruebas aprobadas**, compilación web release y APK debug verificadas.
+- Backend: Prisma generado, compilación y análisis correctos; **2 pruebas unitarias y 7 pruebas de integración aprobadas**.
+- Base aislada: **5 migraciones aplicadas** y catálogo ampliado cargado.
+- API: health, catálogo y CORS para `http://127.0.0.1:8080` comprobados. Chrome abrió la app y consultó la API real sin errores de JavaScript.
+- Scripts PowerShell y tareas JSON: sintaxis verificada.
+
+Los scripts no crean una cuenta con contraseña pública. Registrar una cuenta desde la app para probar el flujo autenticado. Las pruebas de integración se ejecutaron en la base aislada de desarrollo.
+
 ## 1. Presentación del proyecto
 
-Platanitos es un prototipo funcional de tienda de calzado desarrollado para estudiar diseño de interfaces, navegación, gestión de estado, consumo de APIs y persistencia en base de datos. La aplicación Flutter se conecta a una API REST propia (NestJS) que guarda usuarios, carritos, favoritos, direcciones y pedidos en PostgreSQL.
+Platanitos es una demo móvil multiservicio desarrollada en Flutter. La etapa actual simula sus operaciones en el frontend y utiliza persistencia local; los contratos de repositorio permiten conectar posteriormente una API NestJS con PostgreSQL.
 
 | Aspecto | Descripción |
 | :--- | :--- |
@@ -16,8 +112,8 @@ Platanitos es un prototipo funcional de tienda de calzado desarrollado para estu
 | Nombre del paquete | `platanitos_app` |
 | Versión de la aplicación | `1.0.0+1` |
 | Frontend | Flutter y Dart (web y Android) |
-| Backend | NestJS 12 (Node.js) con Prisma 7 |
-| Base de datos | PostgreSQL |
+| Backend futuro | NestJS 12 (Node.js) con Prisma 7, conservado fuera del flujo principal |
+| Persistencia actual | SQLite en Android; adaptador temporal en web |
 | Modalidad | Prototipo funcional: pagos, envíos y seguimiento son simulados |
 
 ## 2. Índice
@@ -64,11 +160,11 @@ Platanitos es un prototipo funcional de tienda de calzado desarrollado para estu
 | Esquema y migraciones | `backend/prisma/` | Modelo de datos (`schema.prisma`), migraciones versionadas y datos de demostración (`seed.ts`) |
 | Script de base de datos | `backend/database/` | `platanitos.sql` crea toda la base con un solo archivo; `seed.sql` contiene los datos de demostración; `catalog.sql` (opcional) agrega un catálogo ampliado de 500 productos |
 
-La app también funciona sin backend en **modo invitado**: el catálogo, las tiendas y el blog usan datos de respaldo locales. Crear cuenta, iniciar sesión y guardar datos en la nube requieren que la API esté levantada.
+La app funciona por defecto sin backend. La selección de perfiles, sesión e inventario usan repositorios locales. El modo remoto se conserva mediante `APP_MODE=remote` para una integración posterior.
 
 ## 4. Herramientas y versiones verificadas
 
-**Fecha de verificación: 8 de octubre de 2026.** Son las versiones del entorno donde se desarrolló y probó el proyecto. Versiones iguales o superiores dentro de la misma versión mayor deberían funcionar.
+**Fecha de verificación: 13 de octubre de 2026.** Son las versiones del entorno donde se desarrolló y probó el proyecto. Versiones iguales o superiores dentro de la misma versión mayor deberían funcionar.
 
 ### 4.1. Entorno de desarrollo
 
@@ -90,6 +186,8 @@ La app también funciona sin backend en **modo invitado**: el catálogo, las tie
 | :--- | :--- | :--- | :--- |
 | Flutter | `http` | `1.6.0` | Llamadas a la API |
 | Flutter | `flutter_secure_storage` | `11.2.0` | Guarda los tokens de sesión de forma segura |
+| Flutter | `sqflite` / `path` | `2.4.4+2` / `1.9.1` | Base SQLite local y ruta del archivo en Android |
+| Flutter | `image_picker` | `1.2.4` | Captura o selección de la evidencia fotográfica de entrega |
 | Flutter | `cupertino_icons` / `flutter_lints` | `1.0.9` / `6.0.0` | Íconos y análisis estático |
 | Backend | `@nestjs/core` | `12.1.2` | Framework de la API |
 | Backend | `prisma` / `@prisma/client` | `7.10.0` | Migraciones y acceso a datos |
@@ -113,15 +211,17 @@ La app también funciona sin backend en **modo invitado**: el catálogo, las tie
 
 | Carpeta | Contenido |
 | :--- | :--- |
-| `lib/app` | Contenedor principal con la barra de navegación inferior |
-| `lib/core` | Tema y colores (`AppColors`), validaciones, navegación, cliente HTTP y `ApiConfig` (URL de la API) |
-| `lib/features/<módulo>` | Un módulo por flujo: `auth`, `catalog`, `cart`, `checkout`, `orders`, `account`, `support`. Cada uno separa `data/` (repositorios que llaman a la API) y `presentation/` (pantallas) |
-| `lib/models` y `lib/shared` | Modelos tipados (producto, carrito, pedido, dirección, usuario) |
-| `lib/state` | `ShopState`: estado compartido con `ChangeNotifier`; trabaja en local y sincroniza con la API cuando hay sesión |
-| `lib/data/mock_data.dart` | Datos de respaldo cuando el backend no responde |
-| `lib/widgets` | Componentes reutilizables (tarjetas, botones, íconos de línea, línea de tiempo del pedido) |
+| `lib/app` | Composicion, dependencias, navegacion y estado de la aplicacion |
+| `lib/core` | Configuración, SQLite, red, errores, tema y validaciones compartidas |
+| `lib/features/<modulo>` | Auth, inventory, administration, catalog, cart, checkout, orders, account, addresses, favorites, loyalty, gift_cards, content y support; separa data, domain y presentation |
+| `lib/features/<modulo>/domain` | Modelos de cada funcionalidad, publicados desde lib/app/models/shop_models.dart |
+| `lib/app/state` y controladores de features | Estado compartido y operaciones por funcionalidad |
+| `lib/app/data/demo_data.dart` | Datos de respaldo cuando el backend no responde |
+| `lib/shared/widgets` | Componentes reutilizables (tarjetas, botones, íconos de línea, línea de tiempo del pedido) |
 
-Más detalle en [`docs/FRONTEND_ARCHITECTURE.md`](docs/FRONTEND_ARCHITECTURE.md).
+Más detalle en [`docs/architecture/frontend.md`](docs/architecture/frontend.md).
+
+La validación funcional final se encuentra en [`docs/testing/demo_acceptance.md`](docs/testing/demo_acceptance.md). Incluye el recorrido completo entre perfiles, casos de control y comandos de entrega.
 
 ### 5.2. Backend (`backend/`)
 
@@ -133,14 +233,14 @@ Más detalle en [`docs/FRONTEND_ARCHITECTURE.md`](docs/FRONTEND_ARCHITECTURE.md)
 | `src/database` | `PrismaService` (conexión a PostgreSQL) |
 | `prisma/schema.prisma` | Modelo de datos (23 tablas) |
 | `prisma/migrations/` | Migraciones versionadas aplicadas con `prisma migrate deploy` |
-| `prisma/seed.ts` | Datos de demostración (productos, tiendas y blog) |
+| `prisma/seeds/seed.ts` | Datos de demostración (productos, tiendas y blog) |
 | `database/platanitos.sql` | **Script completo** de la base (tablas + registro de migraciones + datos) |
 | `scripts/setup-database.mjs` | Comando `npm run db:setup`: crea la base y la deja lista automáticamente |
 | `database/catalog/` | Modelo del catálogo ampliado (marcas, categorías, tipos, precios e imágenes) y su generador |
 | `scripts/seed-catalog.mjs` | Comandos `npm run db:catalog` (carga 500 productos) y `npm run db:catalog:sql` (genera `database/catalog.sql`) |
 | `.env.example` | Plantilla de configuración; se copia como `.env` |
 
-Más detalle en [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md) y [`backend/README.md`](backend/README.md).
+Más detalle en [`docs/architecture/backend.md`](docs/architecture/backend.md) y [`backend/README.md`](backend/README.md).
 
 ### 5.3. Mantener el script de base de datos
 
@@ -152,7 +252,7 @@ npx prisma migrate dev --name descripcion_del_cambio   # crea la nueva migració
 npm run db:sql                                         # regenera database/platanitos.sql
 ```
 
-Si se agregan datos de demostración, actualizar tanto `prisma/seed.ts` como `database/seed.sql`, y volver a ejecutar `npm run db:sql`.
+Si se agregan datos de demostración, actualizar tanto `prisma/seeds/seed.ts` como `database/seed.sql`, y volver a ejecutar `npm run db:sql`.
 
 El catálogo ampliado es independiente: si se modifica `database/catalog/platanitos-catalog.mjs`, ejecutar `npm run db:catalog:sql` para regenerar `database/catalog.sql`.
 
@@ -182,25 +282,27 @@ Los errores internos nunca se muestran al usuario: la app muestra "El sistema es
 - **Catálogo:** inicio con banners y categorías, búsqueda, filtros por talla, marca, color y precio, ordenamiento y detalle con tallas EUR/US/CM.
 - **Bolsa y favoritos:** sincronizados con el backend cuando hay sesión; locales en modo invitado.
 - **Direcciones:** formulario para **escribir** la dirección (tipo, quién recibe, teléfono, dirección, departamento, provincia, distrito y referencia), lista "Mis direcciones" y dirección principal.
-- **Checkout en 3 pasos:** Envío (elegir o agregar dirección) → Entrega (fecha estimada y resumen) → Pago (Yape/Plin con QR decorativo, tarjeta con error simulado o efectivo en agentes).
-- **Pedidos:** compra finalizada, seguimiento con línea de tiempo, detalle de entrega con la dirección real y pedido entregado; historial "En curso / Historial".
+- **Checkout en 3 pasos:** Envío → Entrega → Pago. Yape/Plin y efectivo generan pagos simulados explícitos; la tarjeta conserva el error de demostración.
+- **Pedidos:** bolsa y pedidos persistentes, reserva de stock, preparación, despacho, reparto, entrega e historial.
+- **Operación por roles:** inventario, preparación de pedidos, entregas con firma y fotografía local, incidencias, posventa, reportes administrativos y reservas en tienda.
 - **Mi Cuenta:** perfil editable, direcciones, monedero, puntos, membresía, Resikla, eGift Card, tiendas (Ubícanos), blog y centro de ayuda.
 - **Accesibilidad y diseño:** fuente Inter, colores centralizados en `AppColors`, estados *hover/pressed*, pantallas adaptables de 320 a 900 px y texto ampliado al 140 %.
 
 ## 8. Guía de uso de la demostración
 
-1. Abre la app y elige **Crear cuenta** (nombre, correo y contraseña de al menos 8 caracteres) o **Continuar como invitada/o**.
-2. Busca productos desde el inicio o Categorías; filtra por talla, marca, color y precio.
-3. En el detalle elige una talla y agrégala a la bolsa. En la bolsa cambia cantidades; el envío cuesta S/ 6.90.
-4. Pulsa **Ir a Pagar** (como invitado se pedirá iniciar sesión). Escribe una dirección de envío, revisa la entrega y elige el método de pago.
-5. La tarjeta usa datos ficticios y simula un error para probar el cambio de método; Yape/Plin y efectivo completan la compra.
-6. Desde **Seguir mi pedido** puedes simular el siguiente estado y la entrega. Los pedidos entregados pasan a **Historial**.
-7. En **Mi Cuenta → Perfil** edita tus datos; en **Mi Cuenta → Direcciones** administra tus direcciones.
+1. Abre la app y selecciona un perfil ficticio; no se solicitan credenciales.
+2. Con **Cliente**, agrega un producto, completa la compra simulada y registra una solicitud posventa desde un pedido.
+3. Con **Almacén**, abre la pestaña Preparación y avanza el pedido hasta Despachado.
+4. Con **Repartidor**, confirma recojo e inicio de ruta. Para completar la entrega registra el nombre de quien recibe, su firma digital y una fotografía; también puedes registrar una incidencia.
+5. Con **Atención al cliente**, atiende y resuelve las solicitudes; con **Administrador**, revisa los indicadores consolidados.
+6. Con **Trabajador de tienda**, crea una reserva y confirma el recojo o la cancelación.
+7. Cierra la sesión para cambiar de perfil. En Android, los datos se conservan al reiniciar; en Chrome duran mientras la aplicación permanezca abierta.
+8. Todos los pagos y estados comerciales son simulaciones; la app no procesa dinero real.
 
 ## 9. Alcance y limitaciones
 
 - Los pagos son **simulados**: no hay pasarela real y el QR de Yape/Plin es decorativo.
-- Envíos, transportista y seguimiento son ilustrativos; el estado del pedido se avanza manualmente.
+- Envíos, reparto y seguimiento son simulados; cada perfil avanza manualmente el estado que le corresponde.
 - La ubicación se **escribe** a mano; no se usa Google Maps ni geolocalización.
 - Inicio de sesión con Google/Apple es simulado; no hay OAuth real.
 - El modo invitado guarda bolsa y favoritos solo en memoria.
@@ -547,7 +649,7 @@ La app decide a qué URL llamar así:
 | Web (Chrome) | `http://localhost:3000` | `--dart-define=API_BASE_URL=...` |
 | Android | `http://10.0.2.2:3000` | `--dart-define=API_BASE_URL=...` |
 
-`API_BASE_URL` va sin `/` al final. Está definida en `lib/core/api_config.dart`.
+`API_BASE_URL` va sin `/` al final. Está definida en `lib/core/config/api_config.dart`.
 
 #### 8.1. Navegador (Chrome)
 
@@ -641,7 +743,7 @@ Las pruebas e2e usan la base configurada en `.env`: crean usuarios temporales `e
 | `Environment variable not found: DATABASE_URL` o "Falta DATABASE_URL" | No existe `backend/.env` o se ejecutó el comando fuera de `backend/` | Crea el archivo (paso 5.1) y ejecuta los comandos dentro de `backend/`. |
 | El backend no arranca y menciona `JWT_ACCESS_SECRET` | Variable vacía o comentada | Genérala con el comando del paso 5.4. |
 | El script SQL dice "La base de datos ya tiene las tablas de Platanitos" | Ya se ejecutó antes | No hace falta repetirlo. Para empezar de cero, borra la base `platanitos`, créala vacía y ejecuta el script otra vez. |
-| `prisma migrate deploy` devuelve `P3005` (schema is not empty) | Las tablas se crearon sin registrar las migraciones | Borra y recrea la base con `platanitos.sql` o con `npm run db:setup`. |
+| `prisma migrate deploy` devuelve `P3005` (schema is not empty) | Las tablas se crearon sin registrar las migraciones | Conserva los datos y revisa el historial de migraciones; si el esquema se importó por SQL, verifica su registro en `_prisma_migrations` antes de aplicar una línea base. |
 | `@prisma/client did not initialize yet` o falta `.prisma/client` | No se generó el cliente | `npx prisma generate` dentro de `backend/`. |
 | `EADDRINUSE: address already in use :::3000` | Otro programa usa el puerto 3000 | Cierra la otra terminal del backend o cambia `PORT` y pasa `API_BASE_URL` con el nuevo puerto. |
 | En Chrome, la consola muestra un error de CORS | `CORS_ALLOW_LOCALHOST=false` o el origen no está permitido | Usa `CORS_ALLOW_LOCALHOST=true` en desarrollo o agrega el origen a `CORS_ORIGINS`. |
@@ -650,3 +752,26 @@ Las pruebas e2e usan la base configurada en `.env`: crean usuarios temporales `e
 | `psql` no se reconoce como comando | La carpeta `bin` de PostgreSQL no está en PATH | Usa pgAdmin (opción A) o agrega `C:\Program Files\PostgreSQL\<versión>\bin` al PATH. |
 | `flutter doctor` muestra "Android license status unknown" | Licencias sin aceptar | `flutter doctor --android-licenses`. |
 | No aparecen imágenes de productos | Sin conexión a Internet | Las imágenes vienen de Unsplash; conéctate a Internet. |
+
+## Roles de acceso
+
+La demo local incluye los roles Cliente, Almacén, Repartidor, Atención al cliente, Administrador y Trabajador de tienda. Son perfiles ficticios seleccionables desde la pantalla inicial y no contienen contraseñas ni secretos. Los nombres antiguos `ADMINISTRATIVO` y `POSTULANTE` se aceptan únicamente como compatibilidad con la API conservada.
+
+### Crear otras cuentas
+
+Desde la raíz del proyecto:
+
+```powershell
+cd backend
+npm.cmd run account:create
+```
+
+El comando solicita correo, nombre, rol (`ADMINISTRATIVO` o `POSTULANTE`) y contraseña oculta. No modifica cuentas existentes. Los usuarios anteriores quedan como postulantes al aplicar la migración. El endpoint `GET /admin/users` verifica el rol en el servidor.
+
+## Organizacion del proyecto
+
+Consulta [arquitectura Flutter](docs/architecture/frontend.md), [arquitectura backend](docs/architecture/backend.md), [ejecucion local](docs/setup/local.md), [base de datos](docs/database/model.md) y [compilacion y despliegue](docs/deployment/README.md). Las pruebas se agrupan en test/features, test/integration y test/responsive. Los comandos de arranque permanecen en scripts.
+
+### Separacion de pantallas y repositorios
+
+Autenticacion se organiza en login_screen.dart, signup_screen.dart y recovery_screen.dart, con ayudas de acceso en auth_flow.dart y componentes propios en presentation/widgets. Fidelizacion utiliza LoyaltyRepository y tarjetas de regalo utiliza GiftCardsRepository. Los filtros del catalogo y el progreso de membresia estan en los widgets de sus respectivos modulos. La documentacion del backend se centraliza en docs/architecture/backend.md.
