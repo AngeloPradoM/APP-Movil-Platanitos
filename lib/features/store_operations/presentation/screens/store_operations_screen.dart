@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../inventory/domain/inventory_models.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 
 class StoreOperationsScreen extends StatefulWidget {
   const StoreOperationsScreen({super.key});
@@ -157,56 +159,87 @@ class _StoreOperationsScreenState extends State<StoreOperationsScreen> {
       final reservations = snapshot.data!.$1;
       final inventory = snapshot.data!.$2;
       return ListView(
-        padding: const EdgeInsets.all(16),
+        padding: operationsListPadding(context),
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              Text(
-                'Reservas en tienda',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              FilledButton.icon(
-                onPressed: () => _create(inventory),
-                icon: const Icon(Icons.add),
-                label: const Text('Reservar'),
-              ),
-            ],
+          OperationsPanelHeader(
+            title: 'Reservas en tienda',
+            subtitle: 'Reserva productos y confirma recojo o cancelación.',
+            trailing: FilledButton.icon(
+              onPressed: () => _create(inventory),
+              icon: const Icon(Icons.add),
+              label: const Text('Reservar'),
+            ),
           ),
           const SizedBox(height: 16),
           if (reservations.isEmpty)
-            const Card(
-              child: ListTile(title: Text('No hay reservas registradas.')),
+            const OperationsEmptyTile(
+              message: 'No hay reservas registradas.',
             ),
           for (final item in reservations)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.storefront_outlined),
-                title: Text(item.productName),
-                subtitle: Text(
-                  '${item.customerName} · ${item.quantity} unidad(es)\nEstado: ${item.status}',
-                ),
-                isThreeLine: true,
-                trailing: item.status != 'ACTIVE'
-                    ? const Icon(Icons.check_circle_outline)
-                    : Wrap(
-                        spacing: 4,
-                        children: [
-                          IconButton(
-                            tooltip: 'Entregado',
-                            onPressed: () => _update(item, 'COLLECTED'),
-                            icon: const Icon(Icons.check),
+            OperationsTile(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OperationsAvatar(
+                    icon: Icons.storefront_outlined,
+                    warning: item.status == 'ACTIVE',
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.productName,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${item.customerName} · ${item.quantity} unidad(es)',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
                           ),
-                          IconButton(
-                            tooltip: 'Cancelar',
-                            onPressed: () => _update(item, 'CANCELLED'),
-                            icon: const Icon(Icons.close),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Estado: ${item.status}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (item.status != 'ACTIVE')
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: AppColors.green,
+                    )
+                  else
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Entregado',
+                          onPressed: () => _update(item, 'COLLECTED'),
+                          icon: const Icon(
+                            Icons.check,
+                            color: AppColors.green,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Cancelar',
+                          onPressed: () => _update(item, 'CANCELLED'),
+                          icon: const Icon(
+                            Icons.close,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
             ),
         ],

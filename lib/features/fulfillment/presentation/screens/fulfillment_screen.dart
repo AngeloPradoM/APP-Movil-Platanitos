@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 
 class FulfillmentScreen extends StatefulWidget {
   const FulfillmentScreen({super.key});
@@ -81,49 +83,68 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
           await next;
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: operationsListPadding(context),
           children: [
-            Text(
-              'Preparación y despacho',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'El despacho descuenta el stock reservado y asigna el pedido al repartidor.',
+            const OperationsPanelHeader(
+              title: 'Preparación y despacho',
+              subtitle:
+                  'El despacho descuenta el stock reservado y asigna el pedido al repartidor.',
             ),
             const SizedBox(height: 16),
             if (values.isEmpty)
-              const Card(
-                child: ListTile(title: Text('No hay pedidos pendientes.')),
+              const OperationsEmptyTile(
+                message: 'No hay pedidos pendientes.',
               ),
             for (final task in values)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.inventory_2_outlined),
-                        title: Text(task.publicNumber),
-                        subtitle: Text(
-                          '${task.units} unidades · ${_label(task.status)}',
+              OperationsTile(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const OperationsAvatar(
+                          icon: Icons.inventory_2_outlined,
                         ),
-                        trailing: _action(task.status) == null
-                            ? const Icon(Icons.check_circle_outline)
-                            : null,
-                      ),
-                      if (_action(task.status) != null)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton(
-                            onPressed: () => _run(task),
-                            child: Text(_action(task.status)!),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                task.publicNumber,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${task.units} unidades · ${_label(task.status)}',
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (_action(task.status) == null)
+                          const Icon(
+                            Icons.check_circle_outline,
+                            color: AppColors.green,
+                          ),
+                      ],
+                    ),
+                    if (_action(task.status) != null) ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton(
+                          onPressed: () => _run(task),
+                          child: Text(_action(task.status)!),
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
           ],

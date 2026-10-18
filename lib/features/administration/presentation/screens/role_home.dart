@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/shop_shell.dart';
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/shop_widgets.dart';
 import '../../../auth/domain/user_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../delivery/presentation/screens/delivery_dashboard.dart';
@@ -60,6 +62,9 @@ class _WarehouseHome extends StatelessWidget {
     child: Column(
       children: [
         TabBar(
+          indicatorColor: AppColors.green,
+          labelColor: AppColors.green,
+          unselectedLabelColor: AppColors.muted,
           tabs: [
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Inventario'),
             Tab(icon: Icon(Icons.inventory_outlined), text: 'Preparación'),
@@ -82,13 +87,34 @@ class _RoleScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final showRole = MediaQuery.sizeOf(context).width >= 600;
     return Scaffold(
+      backgroundColor: softBackground,
       appBar: AppBar(
+        backgroundColor: softBackground,
+        scrolledUnderElevation: 0,
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           if (showRole)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Chip(label: Text(ShopScope.of(context).user.role.label)),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.softGreen,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  ShopScope.of(context).user.role.label,
+                  style: const TextStyle(
+                    color: AppColors.darkGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
           IconButton(
             tooltip: 'Cerrar sesión',
@@ -99,7 +125,7 @@ class _RoleScaffold extends StatelessWidget {
                 (_) => false,
               );
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: AppColors.muted),
           ),
         ],
       ),

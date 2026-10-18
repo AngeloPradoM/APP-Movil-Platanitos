@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 import 'delivery_evidence_dialog.dart';
 
 class DeliveryDashboard extends StatefulWidget {
@@ -148,62 +150,90 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
           await next;
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: operationsListPadding(context),
           children: [
-            Text(
-              'Entregas asignadas',
-              style: Theme.of(context).textTheme.headlineSmall,
+            const OperationsPanelHeader(
+              title: 'Entregas asignadas',
+              subtitle: 'Recojo, tránsito, evidencia de entrega e incidencias.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (snapshot.data!.isEmpty)
-              const Card(
-                child: ListTile(title: Text('No hay entregas asignadas.')),
+              const OperationsEmptyTile(
+                message: 'No hay entregas asignadas.',
               ),
             for (final item in snapshot.data!)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.local_shipping_outlined),
-                        title: Text(item.publicNumber),
-                        subtitle: Text(
-                          '${item.address}\nEstado: ${_deliveryLabel(item.status)}',
+              OperationsTile(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const OperationsAvatar(
+                          icon: Icons.local_shipping_outlined,
                         ),
-                        isThreeLine: true,
-                      ),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          if ({'ASSIGNED', 'PICKED_UP'}.contains(item.status))
-                            FilledButton(
-                              onPressed: () => _advance(item),
-                              child: Text(_deliveryAction(item.status)),
-                            ),
-                          if (item.status == 'IN_TRANSIT')
-                            FilledButton.icon(
-                              onPressed: () => _confirmDelivery(item),
-                              icon: const Icon(Icons.verified_outlined),
-                              label: const Text('Confirmar con evidencia'),
-                            ),
-                          if (item.status == 'IN_TRANSIT')
-                            OutlinedButton(
-                              onPressed: () => _incident(item),
-                              child: const Text('Incidencia'),
-                            ),
-                          if (item.status == 'DELIVERED' && item.hasEvidence)
-                            OutlinedButton.icon(
-                              onPressed: () => _showEvidence(item),
-                              icon: const Icon(Icons.receipt_long_outlined),
-                              label: const Text('Ver constancia'),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.publicNumber,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.address,
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Estado: ${_deliveryLabel(item.status)}',
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if ({'ASSIGNED', 'PICKED_UP'}.contains(item.status))
+                          FilledButton(
+                            onPressed: () => _advance(item),
+                            child: Text(_deliveryAction(item.status)),
+                          ),
+                        if (item.status == 'IN_TRANSIT')
+                          FilledButton.icon(
+                            onPressed: () => _confirmDelivery(item),
+                            icon: const Icon(Icons.verified_outlined),
+                            label: const Text('Confirmar con evidencia'),
+                          ),
+                        if (item.status == 'IN_TRANSIT')
+                          OutlinedButton(
+                            onPressed: () => _incident(item),
+                            child: const Text('Incidencia'),
+                          ),
+                        if (item.status == 'DELIVERED' && item.hasEvidence)
+                          OutlinedButton.icon(
+                            onPressed: () => _showEvidence(item),
+                            icon: const Icon(Icons.receipt_long_outlined),
+                            label: const Text('Ver constancia'),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
           ],

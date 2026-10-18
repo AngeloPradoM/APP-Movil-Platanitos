@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/shop_widgets.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 
 class OperationsAdminDashboard extends StatefulWidget {
   const OperationsAdminDashboard({super.key});
@@ -87,15 +90,12 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
           await next;
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: operationsListPadding(context),
           children: [
-            Text(
-              'Resumen operativo',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Indicadores calculados con los datos locales de la demostración.',
+            const OperationsPanelHeader(
+              title: 'Resumen operativo',
+              subtitle:
+                  'Indicadores calculados con los datos locales de la demostración.',
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -103,34 +103,53 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
               runSpacing: 12,
               children: [
                 for (final metric in metrics)
-                  SizedBox(
-                    width: 190,
-                    child: Card(
-                      child: ListTile(
-                        leading: Icon(metric.$3),
-                        title: Text(metric.$2),
-                        subtitle: Text(metric.$1),
-                      ),
-                    ),
+                  OperationsMetricCard(
+                    label: metric.$1,
+                    value: metric.$2,
+                    icon: metric.$3,
                   ),
               ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.inventory_2_outlined),
-                title: const Text('Revisar inventario'),
-                subtitle: const Text('Stock físico, reservado y disponible'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => Scaffold(
-                      appBar: AppBar(title: const Text('Inventario')),
-                      body: const InventoryScreen(),
+            OperationsTile(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    backgroundColor: softBackground,
+                    appBar: AppBar(
+                      backgroundColor: softBackground,
+                      title: const Text('Inventario'),
                     ),
+                    body: const InventoryScreen(),
                   ),
                 ),
+              ),
+              child: const Row(
+                children: [
+                  OperationsAvatar(icon: Icons.inventory_2_outlined),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Revisar inventario',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Stock físico, reservado y disponible',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: AppColors.muted),
+                ],
               ),
             ),
           ],
