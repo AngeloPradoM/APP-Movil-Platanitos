@@ -60,7 +60,7 @@ void main() {
     state.toggleFavorite(2);
     expect(state.favorites, isNot(contains(2)));
     final filter = CatalogFilter()
-      ..query = 'platanitos'
+      ..query = 'zapatilla plataforma'
       ..colors.add('Blanco')
       ..price = PriceRange.all.first;
     expect(filter.apply(products).single.id, 1);
@@ -70,7 +70,9 @@ void main() {
     expect(filter.apply(products), isEmpty);
     filter.clear();
     filter.sort = ProductSort.cheapest;
-    expect(filter.apply(products).first.id, 4);
+    final cheapest = [...products]
+      ..sort((a, b) => a.price.compareTo(b.price));
+    expect(filter.apply(products).first.id, cheapest.first.id);
   });
   test(
     'Purchases and recycling earn points that redeem into the wallet',

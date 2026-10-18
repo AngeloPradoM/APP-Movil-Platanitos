@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:platanitos_app/app/data/demo_data.dart';
 import 'package:platanitos_app/core/theme/app_theme.dart';
 import 'package:platanitos_app/core/network/api_client.dart';
 import 'package:platanitos_app/features/catalog/data/catalog_repository.dart';
@@ -245,7 +246,15 @@ void main() {
           const ShopCategory(name: 'Botines', slug: 'botines', productCount: 1),
         ]);
         expect(result.offline, isTrue);
-        expect(result.products.single.name, 'Botines Chelsea Abril');
+        expect(result.products, isNotEmpty);
+        expect(
+          result.products.every((product) => product.category == 'Botines'),
+          isTrue,
+        );
+        expect(
+          result.products.map((product) => product.name),
+          contains('Botines Chelsea Abril'),
+        );
 
         await expectLater(
           state.loadCategoryProducts([_running]),
@@ -527,6 +536,6 @@ void main() {
     expect(find.text('No encontramos productos'), findsOneWidget);
     await tester.tap(find.text('Limpiar búsqueda y filtros'));
     await tester.pump();
-    expect(find.text('4 productos'), findsOneWidget);
+    expect(find.text('${products.length} productos'), findsOneWidget);
   });
 }

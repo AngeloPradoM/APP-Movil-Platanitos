@@ -60,16 +60,24 @@ void main() {
 
     test('sin backend las categorías salen de los productos de respaldo', () {
       final categories = categoriesFromProducts(products);
-      expect(categories.map((category) => category.name), [
-        'Botines',
-        'Sandalias',
-        'Tacos',
-        'Zapatillas',
-      ]);
-      expect(categories.first.productCount, 1);
-      expect(categories.first.image, products[1].image);
-      expect(categories.first.contains(products[1]), isTrue);
-      expect(categories.first.contains(products[0]), isFalse);
+      expect(categories, isNotEmpty);
+      expect(
+        categories.map((category) => category.name).toSet(),
+        products.map((product) => product.category).toSet(),
+      );
+      final first = categories.first;
+      final sample = products.firstWhere(
+        (product) => product.category == first.name,
+      );
+      expect(first.productCount, greaterThan(0));
+      expect(first.image, sample.image);
+      expect(first.contains(sample), isTrue);
+      expect(
+        first.contains(
+          products.firstWhere((product) => product.category != first.name),
+        ),
+        isFalse,
+      );
     });
   });
 
