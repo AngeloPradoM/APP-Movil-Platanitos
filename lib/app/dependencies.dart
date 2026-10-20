@@ -1,26 +1,19 @@
-import 'package:flutter/foundation.dart';
-
 import '../core/config/app_environment.dart';
-import '../core/database/app_database.dart';
-import '../features/gift_cards/data/gift_cards_repository.dart';
-import '../core/network/api_client.dart';
 import '../core/config/api_config.dart';
-import '../features/loyalty/data/loyalty_repository.dart';
+import '../core/network/api_client.dart';
 import '../features/addresses/data/addresses_repository.dart';
-import '../features/content/data/content_repository.dart';
 import '../features/auth/data/auth_repository.dart';
+import '../features/auth/domain/repositories/auth_repository_contract.dart';
 import '../features/cart/data/cart_repository.dart';
 import '../features/catalog/data/catalog_repository.dart';
+import '../features/content/data/content_repository.dart';
 import '../features/favorites/data/favorites_repository.dart';
-import '../features/orders/data/orders_repository.dart';
-import '../features/auth/data/local_auth_repository.dart';
-import '../features/auth/domain/repositories/auth_repository_contract.dart';
-import '../features/catalog/data/local_catalog_repository.dart';
-import '../features/inventory/data/sqlite_inventory_repository.dart';
+import '../features/gift_cards/data/gift_cards_repository.dart';
 import '../features/inventory/domain/repositories/inventory_repository.dart';
+import '../features/loyalty/data/loyalty_repository.dart';
 import '../features/operations/data/memory_demo_operations_repository.dart';
-import '../features/operations/data/sqlite_demo_operations_repository.dart';
 import '../features/operations/domain/repositories/demo_operations_repository.dart';
+import '../features/orders/data/orders_repository.dart';
 import './data/memory_demo_store.dart';
 
 class AppDependencies {
@@ -38,7 +31,6 @@ class AppDependencies {
     this.demoAuth,
     this.inventory,
     this.operations,
-    this._database,
   });
 
   static Future<AppDependencies> create({AppMode? mode}) async {
@@ -63,34 +55,17 @@ class AppDependencies {
     );
   }
 
+  /// Demo siempre en memoria: al reiniciar la app (Chrome o emulador) se
+  /// pierde sesión, carrito, pedidos e inventario simulados.
   static Future<AppDependencies> _demo() async {
-    if (kIsWeb) {
-      final store = DemoMemoryStore();
-      return AppDependencies(
-        mode: AppMode.demo,
-        auth: null,
-        demoAuth: MemoryDemoAuthRepository(store),
-        catalog: MemoryCatalogRepository(store),
-        inventory: MemoryInventoryRepository(store),
-        operations: MemoryDemoOperationsRepository(store),
-        cart: null,
-        favorites: null,
-        orders: null,
-        loyalty: null,
-        giftCards: null,
-        content: null,
-        addresses: null,
-      );
-    }
-    final database = await AppDatabase.open();
+    final store = DemoMemoryStore();
     return AppDependencies(
       mode: AppMode.demo,
-      database: database,
       auth: null,
-      demoAuth: LocalAuthRepository(database),
-      catalog: LocalCatalogRepository(database),
-      inventory: SqliteInventoryRepository(database),
-      operations: SqliteDemoOperationsRepository(database),
+      demoAuth: MemoryDemoAuthRepository(store),
+      catalog: MemoryCatalogRepository(store),
+      inventory: MemoryInventoryRepository(store),
+      operations: MemoryDemoOperationsRepository(store),
       cart: null,
       favorites: null,
       orders: null,
@@ -114,7 +89,6 @@ class AppDependencies {
   final GiftCardsRepository? giftCards;
   final ContentRepository? content;
   final AddressesRepository? addresses;
-  final AppDatabase? _database;
 
-  Future<void> dispose() async => _database?.close();
+  Future<void> dispose() async {}
 }

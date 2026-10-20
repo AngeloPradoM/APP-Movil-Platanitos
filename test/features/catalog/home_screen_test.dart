@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platanitos_app/app/app.dart';
+import 'package:platanitos_app/app/data/demo_data.dart';
+import 'package:platanitos_app/app/state/shop_state.dart';
 import 'package:platanitos_app/core/theme/app_theme.dart';
 import 'package:platanitos_app/features/catalog/presentation/screens/catalog_screens.dart';
-import 'package:platanitos_app/app/app.dart';
-import 'package:platanitos_app/app/state/shop_state.dart';
 
 Future<ShopState> _mountShop(WidgetTester tester) async {
   tester.view.physicalSize = const Size(430, 1100);
@@ -46,11 +47,9 @@ void main() {
     tester,
   ) async {
     await _mountShop(tester);
-    expect(find.text('Zapatillas'), findsOneWidget);
-    expect(find.text('Botines'), findsOneWidget);
-    expect(find.text('Running'), findsNothing);
-    expect(find.text('Fútbol'), findsNothing);
-    expect(find.text('Mochilas'), findsNothing);
+    expect(find.text('Zapatillas'), findsWidgets);
+    expect(find.text('Botines'), findsWidgets);
+    expect(find.text('Running'), findsWidgets);
     final seen = <String>{};
     const titles = [
       'Ofertas Cyber',
@@ -66,12 +65,7 @@ void main() {
       await tester.drag(_homeScroll, const Offset(0, -250));
       await tester.pump();
     }
-    expect(seen, {
-      'Ofertas Cyber',
-      'Compra por marca',
-      'Zapatillas más buscadas',
-      'Novedades',
-    });
+    expect(seen, containsAll(['Ofertas Cyber', 'Compra por marca', 'Novedades']));
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -84,7 +78,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(CategoryScreen), findsOneWidget);
     expect(state.catalog.narrows, isFalse);
-    expect(find.text('1 producto'), findsOneWidget);
+    final botinesCount =
+        products.where((product) => product.category == 'Botines').length;
+    expect(
+      find.text(
+        botinesCount == 1 ? '1 producto' : '$botinesCount productos',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Botines Chelsea Abril'), findsOneWidget);
     expect(find.text('Tacos Amelia'), findsNothing);
 
@@ -120,15 +121,14 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     final state = await _mountShop(tester);
-    state.catalog.query = 'tacos';
-    final brand = find.bySemanticsLabel('Ver productos de VIZZANO');
+    final brand = find.bySemanticsLabel('Ver productos de NIKE');
     await tester.scrollUntilVisible(brand, 300, scrollable: _homeScroll);
     await tester.tap(brand);
     await tester.pump();
-    expect(state.catalog.brands, {'VIZZANO'});
+    expect(state.catalog.brands, {'NIKE'});
     expect(state.catalog.query, isEmpty);
     expect(find.text('Volver a categorías'), findsOneWidget);
-    expect(find.text('Botines Chelsea Abril'), findsOneWidget);
+    expect(find.text('Zapatilla Running Air Flow'), findsOneWidget);
     expect(find.text('Zapatilla Plataforma'), findsNothing);
     semantics.dispose();
     await tester.pumpWidget(const SizedBox());

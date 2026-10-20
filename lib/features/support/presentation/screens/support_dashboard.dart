@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 
 class SupportDashboard extends StatefulWidget {
   const SupportDashboard({super.key});
@@ -68,59 +70,82 @@ class _SupportDashboardState extends State<SupportDashboard> {
           await next;
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: operationsListPadding(context),
           children: [
-            Text(
-              'Solicitudes posventa',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Cambios, devoluciones y reclamos registrados por clientes.',
+            const OperationsPanelHeader(
+              title: 'Solicitudes posventa',
+              subtitle:
+                  'Cambios, devoluciones y reclamos registrados por clientes.',
             ),
             const SizedBox(height: 16),
             if (snapshot.data!.isEmpty)
-              const Card(
-                child: ListTile(title: Text('No hay solicitudes registradas.')),
+              const OperationsEmptyTile(
+                message: 'No hay solicitudes registradas.',
               ),
             for (final request in snapshot.data!)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.support_agent_outlined),
-                        title: Text(
-                          '${request.publicNumber} · ${_type(request.type)}',
+              OperationsTile(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        OperationsAvatar(
+                          icon: Icons.support_agent_outlined,
+                          warning: request.status != 'RESOLVED',
                         ),
-                        subtitle: Text(
-                          '${request.reason}\n${_supportStatus(request.status)}',
-                        ),
-                        isThreeLine: true,
-                        trailing: request.status == 'RESOLVED'
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                              )
-                            : null,
-                      ),
-                      if (request.status != 'RESOLVED')
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton(
-                            onPressed: () => _advance(request),
-                            child: Text(
-                              request.status == 'REGISTERED'
-                                  ? 'Atender'
-                                  : 'Resolver',
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${request.publicNumber} · ${_type(request.type)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                request.reason,
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _supportStatus(request.status),
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (request.status == 'RESOLVED')
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppColors.green,
+                          ),
+                      ],
+                    ),
+                    if (request.status != 'RESOLVED') ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton(
+                          onPressed: () => _advance(request),
+                          child: Text(
+                            request.status == 'REGISTERED'
+                                ? 'Atender'
+                                : 'Resolver',
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
           ],

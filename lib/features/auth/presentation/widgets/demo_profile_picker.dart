@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/shop_widgets.dart';
 import '../../domain/user_models.dart';
 
 class DemoProfilePicker extends StatefulWidget {
@@ -56,57 +58,64 @@ class _DemoProfilePickerState extends State<DemoProfilePicker> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: widget.canGoBack ? AppBar() : null,
+    backgroundColor: softBackground,
+    appBar: widget.canGoBack
+        ? AppBar(backgroundColor: softBackground, elevation: 0)
+        : null,
     body: SafeArea(
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
+          constraints: const BoxConstraints(maxWidth: 520),
           child: FutureBuilder<List<AppUser>>(
             future: profiles,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Text('No se pudieron cargar los perfiles locales.'),
+                  child: Text(
+                    'No se pudieron cargar los perfiles locales.',
+                    textAlign: TextAlign.center,
+                  ),
                 );
               }
               if (!snapshot.hasData) {
-                return const CircularProgressIndicator();
+                return const Center(child: CircularProgressIndicator());
               }
               return ListView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 24,
+                ),
                 children: [
+                  SizedBox(height: widget.canGoBack ? 8 : 24),
+                  const Center(child: BrandLogo()),
+                  const SizedBox(height: 2),
                   Text(
                     widget.heading ?? 'Selecciona un perfil',
-                    style: Theme.of(context).textTheme.headlineSmall,
                     textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF3D4550),
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Text(
                     'Modo demostrativo · datos ficticios almacenados localmente',
                     textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
-                  const SizedBox(height: 24),
-                  for (final profile in snapshot.data!)
-                    Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Icon(iconFor(profile.role)),
-                        ),
-                        title: Text(profile.role.label),
-                        subtitle: Text(profile.name),
-                        trailing: selectedId == profile.id
-                            ? const SizedBox.square(
-                                dimension: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.chevron_right),
-                        enabled: selectedId == null,
-                        onTap: () => select(profile),
-                      ),
+                  const SizedBox(height: 28),
+                  for (final profile in snapshot.data!) ...[
+                    _ProfileTile(
+                      profile: profile,
+                      icon: iconFor(profile.role),
+                      loading: selectedId == profile.id,
+                      enabled: selectedId == null,
+                      onTap: () => select(profile),
                     ),
+                    const SizedBox(height: 10),
+                  ],
                 ],
               );
             },
@@ -115,4 +124,74 @@ class _DemoProfilePickerState extends State<DemoProfilePicker> {
       ),
     ),
   );
+}
+
+class _ProfileTile extends StatelessWidget {
+  const _ProfileTile({
+    required this.profile,
+    required this.icon,
+    required this.loading,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final AppUser profile;
+  final IconData icon;
+  final bool loading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(13));
+    return Material(
+      color: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        borderRadius: radius,
+        onTap: enabled ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.softGreen,
+                child: Icon(icon, color: AppColors.green),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.role.label,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      profile.name,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (loading)
+                const SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                const Icon(Icons.chevron_right, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

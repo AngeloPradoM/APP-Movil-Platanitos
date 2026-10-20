@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../operations/presentation/widgets/operations_panel.dart';
 import '../../domain/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
 
@@ -183,23 +185,29 @@ class _InventoryScreenState extends State<InventoryScreen> {
       builder: (context, _) => RefreshIndicator(
         onRefresh: current.load,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: operationsListPadding(context),
           children: [
+            const OperationsPanelHeader(
+              title: 'Inventario',
+              subtitle:
+                  'Stock físico, reservado y disponible de cada variante.',
+            ),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                _SummaryCard(
+                OperationsMetricCard(
                   label: 'Variantes',
                   value: '${current.items.length}',
                   icon: Icons.style_outlined,
                 ),
-                _SummaryCard(
+                OperationsMetricCard(
                   label: 'Unidades disponibles',
                   value: '${current.availableUnits}',
                   icon: Icons.inventory_2_outlined,
                 ),
-                _SummaryCard(
+                OperationsMetricCard(
                   label: 'Stock bajo',
                   value: '${current.lowStockCount}',
                   icon: Icons.warning_amber_rounded,
@@ -231,39 +239,64 @@ class _InventoryScreenState extends State<InventoryScreen> {
             if (current.error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(current.error!, textAlign: TextAlign.center),
+                child: Text(
+                  current.error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.muted),
+                ),
               ),
             for (final item in current.items)
-              Card(
-                child: ListTile(
-                  title: Text(item.productName),
-                  subtitle: Text(
-                    '${item.color} · Talla ${item.sizeValue} ${item.sizeSystem}\nFísico: ${item.physicalStock} · Reservado: ${item.reservedStock}',
-                  ),
-                  isThreeLine: true,
-                  leading: CircleAvatar(
-                    backgroundColor: item.lowStock
-                        ? Colors.orange.shade100
-                        : Colors.green.shade100,
-                    child: Text('${item.availableStock}'),
-                  ),
-                  onTap: () => openMovement(item),
-                  trailing: IconButton(
-                    tooltip: 'Ver movimientos',
-                    onPressed: () => showHistory(item),
-                    icon: const Icon(Icons.history),
-                  ),
+              OperationsTile(
+                onTap: () => openMovement(item),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OperationsAvatar(
+                      icon: Icons.inventory_2_outlined,
+                      warning: item.lowStock,
+                      label: '${item.availableStock}',
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.productName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.color} · Talla ${item.sizeValue} ${item.sizeSystem}',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Físico: ${item.physicalStock} · Reservado: ${item.reservedStock}',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Ver movimientos',
+                      onPressed: () => showHistory(item),
+                      icon: const Icon(Icons.history, color: AppColors.muted),
+                    ),
+                  ],
                 ),
               ),
             if (!current.loading &&
                 current.items.isEmpty &&
                 current.error == null)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
-                  'No se encontraron variantes.',
-                  textAlign: TextAlign.center,
-                ),
+              const OperationsEmptyTile(
+                message: 'No se encontraron variantes.',
               ),
           ],
         ),
@@ -272,38 +305,3 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 190,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value, style: Theme.of(context).textTheme.titleLarge),
-                  Text(label),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
