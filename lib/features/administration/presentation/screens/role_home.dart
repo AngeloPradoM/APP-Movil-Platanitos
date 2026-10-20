@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/shop_shell.dart';
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_guide_dialog.dart';
 import '../../../../shared/widgets/shop_widgets.dart';
 import '../../../auth/domain/user_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
@@ -93,6 +94,7 @@ class _RoleScaffold extends StatelessWidget {
         scrolledUnderElevation: 0,
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          const AppGuideButton(),
           if (showRole)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
@@ -129,7 +131,14 @@ class _RoleScaffold extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(child: child),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SizedBox.expand(child: child),
+          ),
+        ),
+      ),
     );
   }
 }

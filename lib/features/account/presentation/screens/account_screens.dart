@@ -554,6 +554,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _editForm() => Form(
     key: form,
+    autovalidateMode: AutovalidateMode.onUserInteraction,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

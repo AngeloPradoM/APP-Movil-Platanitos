@@ -24,12 +24,19 @@ ThemeData buildTheme() => ThemeData(
   ),
   scaffoldBackgroundColor: Colors.white,
   fontFamily: 'Inter',
+  visualDensity: VisualDensity.standard,
+  focusColor: AppColors.softGreen,
   textTheme: const TextTheme(
     bodyMedium: TextStyle(color: AppColors.ink, fontSize: 14),
     bodySmall: TextStyle(color: AppColors.muted, fontSize: 12),
     titleLarge: TextStyle(
       color: AppColors.ink,
       fontSize: 22,
+      fontWeight: FontWeight.w700,
+    ),
+    titleMedium: TextStyle(
+      color: AppColors.ink,
+      fontSize: 16,
       fontWeight: FontWeight.w700,
     ),
   ),
@@ -60,6 +67,45 @@ ThemeData buildTheme() => ThemeData(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: AppColors.border),
     ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.green, width: 1.6),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.danger),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.danger, width: 1.6),
+    ),
+  ),
+  cardTheme: CardThemeData(
+    elevation: 0,
+    color: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: const BorderSide(color: AppColors.border),
+    ),
+  ),
+  dialogTheme: DialogThemeData(
+    backgroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+  ),
+  snackBarTheme: SnackBarThemeData(
+    behavior: SnackBarBehavior.floating,
+    backgroundColor: AppColors.ink,
+    contentTextStyle: const TextStyle(color: Colors.white),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  ),
+  tooltipTheme: TooltipThemeData(
+    decoration: BoxDecoration(
+      color: AppColors.ink,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    textStyle: const TextStyle(color: Colors.white, fontSize: 12),
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(

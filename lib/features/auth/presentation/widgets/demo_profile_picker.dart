@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_guide_dialog.dart';
 import '../../../../shared/widgets/shop_widgets.dart';
 import '../../domain/user_models.dart';
 
@@ -9,11 +10,13 @@ class DemoProfilePicker extends StatefulWidget {
   const DemoProfilePicker({
     super.key,
     required this.onSuccess,
+    this.onClientSelected,
     this.heading,
     this.canGoBack = false,
   });
 
   final VoidCallback onSuccess;
+  final ValueChanged<AppUser>? onClientSelected;
   final String? heading;
   final bool canGoBack;
 
@@ -32,6 +35,10 @@ class _DemoProfilePickerState extends State<DemoProfilePicker> {
   }
 
   Future<void> select(AppUser profile) async {
+    if (profile.role == UserRole.cliente && widget.onClientSelected != null) {
+      widget.onClientSelected!(profile);
+      return;
+    }
     setState(() => selectedId = profile.id);
     try {
       await ShopScope.of(context).loginDemo(profile.id!);
@@ -104,6 +111,14 @@ class _DemoProfilePickerState extends State<DemoProfilePicker> {
                     'Modo demostrativo · datos ficticios almacenados localmente',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => showAppGuideDialog(context),
+                      icon: const Icon(Icons.menu_book_outlined),
+                      label: const Text('Ver guía de uso'),
+                    ),
                   ),
                   const SizedBox(height: 28),
                   for (final profile in snapshot.data!) ...[

@@ -138,6 +138,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       color: softBackground,
       child: Form(
         key: form,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [

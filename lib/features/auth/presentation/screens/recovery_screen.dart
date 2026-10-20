@@ -39,6 +39,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
         : [
             Form(
               key: form,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: TextFormField(
                 decoration: const InputDecoration(
                   labelText: 'Correo electrónico',

@@ -119,6 +119,8 @@ void main() {
 
     await tester.tap(find.text('Categorías'));
     await tester.pump();
+    await tester.ensureVisible(find.text(products[0].category));
+    await tester.pump();
     await tester.tap(find.text(products[0].category));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -200,6 +202,36 @@ void main() {
     expect(state.cart, isEmpty);
     expect(find.text('¡Gracias por tu compra!'), findsOneWidget);
     expect(find.text('#${state.orders.single.id}'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Customer shell adapts navigation and exposes the demo guide', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = ShopState(seedHistory: false)..login();
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.pump();
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+
+    await tester.tap(find.byTooltip('Guía de la demostración'));
+    await tester.pumpAndSettle();
+    expect(find.text('Guía de la demo Platanitos'), findsOneWidget);
+    expect(find.textContaining('El perfil Cliente solicita'), findsOneWidget);
+    await tester.tap(find.text('Cerrar'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(430, 900);
+    await tester.pump();
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

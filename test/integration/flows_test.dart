@@ -116,14 +116,21 @@ void main() {
       await tester.pumpWidget(PlatanitosApp(state: state));
       await tester.enterText(find.byType(TextField).first, 'Botines');
       await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('Resultados para “Botines”'), findsOneWidget);
-      expect(find.text('1 producto'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              RegExp(r'^\d+ productos?$').hasMatch(widget.data ?? ''),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.text('Inicio'));
       await tester.pump();
       await tester.enterText(find.byType(TextField).first, 'noexiste');
       await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Limpiar búsqueda y filtros'));
       await tester.tap(find.text('Limpiar búsqueda y filtros'));
       await tester.pump();

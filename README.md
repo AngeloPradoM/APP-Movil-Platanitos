@@ -1,777 +1,207 @@
-﻿# Platanitos — Aplicación móvil de comercio electrónico
+# Platanitos — Aplicación de comercio electrónico
 
-**Proyecto académico universitario · Demo Flutter multiservicio**
+**Proyecto académico universitario · Flutter (Android y web) · Versión `1.0.0+1`**
 
-> ¿Quieres ejecutar el proyecto en tu computadora? Ve directamente a la
-> [Guía de instalación paso a paso](#10-guía-de-instalación-paso-a-paso), al final de este documento.
+Aplicación multiservicio que simula una tienda en línea y sus operaciones de almacén, reparto, atención al cliente, administración y tienda física.
 
-## Estado actual: frontend demostrativo
+> **Inicio rápido:** la aplicación funciona de forma predeterminada en **modo demo**. No necesita backend, PostgreSQL ni archivo `.env` para ejecutarse.
 
-La aplicación se ejecuta por defecto en `APP_MODE=demo`. No necesita NestJS, PostgreSQL, variables `.env`, cuentas ni contraseñas. En Android, los perfiles, la sesión, el catálogo y todos los flujos operativos se guardan en SQLite (`platanitos_demo.db`). En Chrome se utiliza un adaptador en memoria con los mismos contratos, porque `sqflite` está dirigido a plataformas móviles y de escritorio.
+## 1. Cómo levantar el proyecto
 
-Desde la raíz del proyecto:
+### Requisitos
+
+- **Obligatorio:** [Flutter SDK](https://docs.flutter.dev/install/quick) (versión verificada: `3.47.6`, canal estable) y Git.
+- **Para web:** Google Chrome.
+- **Para Android:** Android Studio, SDK de Android y un emulador o dispositivo conectado.
+- **Solo para el modo remoto:** Node.js `20+` y PostgreSQL `14+`.
+
+Comprueba la instalación de Flutter con `flutter doctor`.
+
+### Ejecutar en Chrome (recomendado)
+
+Abre **PowerShell** o la terminal de VS Code y ejecuta:
 
 ```powershell
+git clone https://github.com/AngeloPradoM/APP-Movil-Platanitos.git
+cd APP-Movil-Platanitos
 flutter pub get
 flutter run -d chrome
 ```
 
-Para Android, primero inicia un emulador y consulta su identificador:
+Si ya tienes el repositorio descargado, abre su carpeta y ejecuta únicamente los dos últimos comandos.
+
+### Ejecutar en Android
+
+Desde la raíz del proyecto:
 
 ```powershell
-flutter devices
-flutter run -d emulator-5554
+flutter emulators                         # Lista los emuladores disponibles
+flutter emulators --launch <id-emulador>  # Inicia uno de la lista
+flutter devices                           # Muestra el identificador del dispositivo
+flutter run -d <id-dispositivo>           # Ejecuta la app
 ```
 
-La pantalla inicial permite elegir uno de estos perfiles ficticios, sin escribir credenciales:
+También puedes iniciar el emulador desde **Android Studio → Device Manager**. Sustituye los identificadores entre `< >` por los que aparezcan en tu equipo (por ejemplo, `emulator-5554`).
 
-| Perfil | Estado en esta etapa |
-| :--- | :--- |
-| Cliente | Catálogo, bolsa persistente, compra y pago simulado, pedidos y solicitudes posventa |
-| Almacén | Inventario, preparación y despacho de pedidos con reserva y descuento de stock |
-| Repartidor | Pedidos asignados, recojo, tránsito, entrega e incidencias |
-| Atención al cliente | Gestión de cambios, devoluciones y reclamos |
-| Administrador | Indicadores de pedidos, ventas simuladas, inventario, reparto y posventa |
-| Trabajador de tienda | Reservas de productos y confirmación de recojo o cancelación |
+### Ejecutar desde VS Code
 
-La integración HTTP anterior permanece disponible para desarrollo futuro con:
+Abre **Terminal → Ejecutar tarea → `Platanitos: frontend`** para iniciar la demostración local.
 
-```powershell
-flutter run -d chrome --dart-define=APP_MODE=remote --dart-define=API_BASE_URL=http://localhost:3000
-```
+## 2. Credenciales de prueba
 
-## Integración remota conservada (opcional)
+Al abrir la aplicación, selecciona uno de los perfiles de demostración:
 
-El flujo remoto anterior utiliza Flutter, NestJS y una base PostgreSQL aislada. Se conserva para la futura integración y no es necesario para ejecutar la demo frontend. Los secretos se guardan únicamente en `backend/.env`; este archivo y `.local/` están excluidos de Git.
+| Perfil | Usuario | Contraseña | Acceso |
+| --- | --- | --- | --- |
+| **Cliente** | `cliente@demo.local` | `Cliente123` | Catálogo, carrito, compras simuladas, pedidos y posventa |
+| **Almacén** | Acceso directo | No requiere | Stock, preparación y despacho |
+| **Repartidor** | Acceso directo | No requiere | Recojo, ruta, entrega e incidencias |
+| **Atención al cliente** | Acceso directo | No requiere | Cambios, devoluciones y reclamos |
+| **Administrador** | Acceso directo | No requiere | Indicadores y reportes |
+| **Trabajador de tienda** | Acceso directo | No requiere | Reservas y confirmación de recojo |
 
-| Servicio | Dirección | Estado verificado |
-| :--- | :--- | :--- |
-| Frontend web | `http://127.0.0.1:8080` | Arranque Flutter con la URL de la API definida |
-| Backend REST | `http://127.0.0.1:3000` | `/health` responde `ok` |
-| PostgreSQL de desarrollo | `127.0.0.1:5433` | Instancia aislada, base `platanitos` |
-| Catálogo | `/catalog/products` | 502 productos activos: 2 iniciales y 500 del catálogo ampliado |
+**Importante:** estas credenciales y accesos pertenecen **solo al modo demo**. No son cuentas reales ni sirven para autenticarse automáticamente en el backend remoto.
 
-### Iniciar desde VS Code
+Para cambiar de perfil, cierra la sesión actual y selecciona otro desde la pantalla inicial.
 
-Para la demo local, abrir **Terminal → Ejecutar tarea → Platanitos: frontend**. La tarea **Platanitos: levantar frontend y backend** queda reservada para comprobar la integración remota y usa terminales independientes.
+## 3. Información del sistema
 
-### Iniciar desde dos terminales
+| Elemento | Descripción |
+| --- | --- |
+| Tipo | Prototipo académico de comercio electrónico multiservicio |
+| Paquete | `platanitos_app` |
+| Frontend | Flutter y Dart (Chrome y Android) |
+| Modo predeterminado | `APP_MODE=demo` (sin API ni base de datos externa) |
+| Datos en Android | SQLite local: `platanitos_demo.db` |
+| Datos en Chrome | Adaptador en memoria; se pierden al cerrar la ejecución |
+| Backend disponible | NestJS 12 + Prisma 7 + PostgreSQL; integración opcional con `APP_MODE=remote` |
+| API local | `http://localhost:3000` en el modo remoto |
+| Repositorio | [AngeloPradoM/APP-Movil-Platanitos](https://github.com/AngeloPradoM/APP-Movil-Platanitos) |
+| Rama documentada | `develop` |
 
-Ejecutar desde la raíz del proyecto. En la primera terminal:
+**Funciones principales:** catálogo y filtros, favoritos, bolsa, checkout simulado, pedidos, inventario y despacho, entregas, posventa, reservas en tienda, indicadores administrativos, puntos, monedero, membresía y tarjetas de regalo.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-backend.ps1
-```
+**Alcance actual:** los pagos, el reparto y el seguimiento son simulados. No se procesa dinero real; la geolocalización y la autenticación con Google/Apple no están integradas de forma real. La aplicación fue verificada en Chrome y Android.
 
-En la segunda terminal:
+## 4. Conectar el backend (opcional)
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-frontend.ps1
-```
+Esta sección es **solo para probar la integración HTTP**. Para usar la demo normal, puedes omitirla.
 
-El frontend abre Chrome y mantiene el puerto web `8080`. Para servir la web y abrir el navegador manualmente, agregar `-Device web-server`. `Bypass` se aplica únicamente al proceso que ejecuta estos scripts; no modifica permanentemente la política de PowerShell. Internamente se utiliza `npm.cmd` para evitar el bloqueo de `npm.ps1`.
+### Preparar NestJS y PostgreSQL
 
-### Preparar otra instalación
-
-Si PostgreSQL está instalado y se desea una base aislada, desde la raíz:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -IsolatedDatabase -IncludeCatalog
-```
-
-Este comando conserva un `.env` existente, instala dependencias, genera Prisma, prepara el servidor aislado, aplica migraciones y carga datos. Si `DATABASE_URL` ya apunta a otra base, no la sustituye por una conexión aislada. Para utilizar un PostgreSQL propio, completar `DATABASE_URL` en `backend/.env` y ejecutar el mismo comando sin `-IsolatedDatabase`.
-
-Para preparar únicamente dependencias: `setup.ps1 -SkipDatabase`. Para comprobar configuración y conexión sin revelar credenciales: `node backend/scripts/check-local.mjs --database`.
-
-La instancia aislada utiliza los binarios de PostgreSQL instalados en Windows y guarda sus datos en `.local/postgres-data`. No modifica el servicio PostgreSQL existente del puerto `5432`. No necesita Docker. `start-backend.ps1` inicia automáticamente esta instancia cuando hay metadatos locales.
-
-Para detener únicamente la base aislada, después de cerrar frontend y backend:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\database.ps1 -Stop
-```
-
-### Verificación realizada
-
-- Flutter: análisis sin incidencias, **98 pruebas aprobadas**, compilación web release y APK debug verificadas.
-- Backend: Prisma generado, compilación y análisis correctos; **2 pruebas unitarias y 7 pruebas de integración aprobadas**.
-- Base aislada: **5 migraciones aplicadas** y catálogo ampliado cargado.
-- API: health, catálogo y CORS para `http://127.0.0.1:8080` comprobados. Chrome abrió la app y consultó la API real sin errores de JavaScript.
-- Scripts PowerShell y tareas JSON: sintaxis verificada.
-
-Los scripts no crean una cuenta con contraseña pública. Registrar una cuenta desde la app para probar el flujo autenticado. Las pruebas de integración se ejecutaron en la base aislada de desarrollo.
-
-## 1. Presentación del proyecto
-
-Platanitos es una demo móvil multiservicio desarrollada en Flutter. La etapa actual simula sus operaciones en el frontend y utiliza persistencia local; los contratos de repositorio permiten conectar posteriormente una API NestJS con PostgreSQL.
-
-| Aspecto | Descripción |
-| :--- | :--- |
-| Categoría | Proyecto estudiantil universitario |
-| Área de formación | Desarrollo de software, aplicaciones móviles e interacción hombre-máquina |
-| Nombre del paquete | `platanitos_app` |
-| Versión de la aplicación | `1.0.0+1` |
-| Frontend | Flutter y Dart (web y Android) |
-| Backend futuro | NestJS 12 (Node.js) con Prisma 7, conservado fuera del flujo principal |
-| Persistencia actual | SQLite en Android; adaptador temporal en web |
-| Modalidad | Prototipo funcional: pagos, envíos y seguimiento son simulados |
-
-## 2. Índice
-
-**Descripción del proyecto**
-
-1. [Presentación del proyecto](#1-presentación-del-proyecto)
-2. [Índice](#2-índice)
-3. [Componentes del sistema](#3-componentes-del-sistema)
-4. [Herramientas y versiones verificadas](#4-herramientas-y-versiones-verificadas)
-5. [Arquitectura y organización](#5-arquitectura-y-organización)
-6. [API REST del backend](#6-api-rest-del-backend)
-7. [Cobertura funcional](#7-cobertura-funcional)
-8. [Guía de uso de la demostración](#8-guía-de-uso-de-la-demostración)
-9. [Alcance y limitaciones](#9-alcance-y-limitaciones)
-
-**Puesta en marcha**
-
-10. [Guía de instalación paso a paso](#10-guía-de-instalación-paso-a-paso)
-    - [Paso 1. Instalar las herramientas necesarias](#paso-1-instalar-las-herramientas-necesarias)
-    - [Paso 2. Clonar el repositorio](#paso-2-clonar-el-repositorio)
-    - [Paso 3. Instalar las dependencias](#paso-3-instalar-las-dependencias)
-    - [Paso 4. Crear la base de datos con el script](#paso-4-crear-la-base-de-datos-con-el-script)
-    - [Paso 5. Configurar `backend/.env`](#paso-5-configurar-backendenv)
-    - [Paso 6. Preparar Prisma (cliente, migraciones y datos)](#paso-6-preparar-prisma-cliente-migraciones-y-datos)
-    - [Paso 7. Levantar el backend](#paso-7-levantar-el-backend)
-    - [Paso 8. Ejecutar la app Flutter (navegador y Android)](#paso-8-ejecutar-la-app-flutter-navegador-y-android)
-    - [Paso 9. Verificar que todo funciona](#paso-9-verificar-que-todo-funciona)
-    - [Paso 10. Solución de problemas](#paso-10-solución-de-problemas)
-
-## 3. Componentes del sistema
-
-```text
-┌────────────────────┐   HTTP/JSON (JWT)   ┌────────────────────┐   Prisma   ┌──────────────┐
-│  App Flutter       │ ──────────────────▶ │  API NestJS        │ ─────────▶ │  PostgreSQL  │
-│  (Chrome/Android)  │ ◀────────────────── │  puerto 3000       │ ◀───────── │  "platanitos"│
-└────────────────────┘                     └────────────────────┘            └──────────────┘
-```
-
-| Componente | Carpeta | Responsabilidad |
-| :--- | :--- | :--- |
-| App Flutter | raíz del repositorio (`lib/`, `test/`, `android/`, `web/`) | Interfaz, navegación, estado compartido y consumo de la API |
-| API NestJS | `backend/src/` | Autenticación, catálogo, carrito, favoritos, direcciones, pedidos, puntos, eGift Cards y contenido |
-| Esquema y migraciones | `backend/prisma/` | Modelo de datos (`schema.prisma`), migraciones versionadas y datos de demostración (`seed.ts`) |
-| Script de base de datos | `backend/database/` | `platanitos.sql` crea toda la base con un solo archivo; `seed.sql` contiene los datos de demostración; `catalog.sql` (opcional) agrega un catálogo ampliado de 500 productos |
-
-La app funciona por defecto sin backend. La selección de perfiles, sesión e inventario usan repositorios locales. El modo remoto se conserva mediante `APP_MODE=remote` para una integración posterior.
-
-## 4. Herramientas y versiones verificadas
-
-**Fecha de verificación: 13 de octubre de 2026.** Son las versiones del entorno donde se desarrolló y probó el proyecto. Versiones iguales o superiores dentro de la misma versión mayor deberían funcionar.
-
-### 4.1. Entorno de desarrollo
-
-| Categoría | Herramienta | Versión verificada | Uso en el proyecto |
-| :--- | :--- | :--- | :--- |
-| Editor | Visual Studio Code | `1.140.0` | Edición, ejecución y depuración |
-| Framework móvil | Flutter SDK | `3.47.6`, canal `stable` | Interfaz y compilación web/Android |
-| Lenguaje | Dart SDK | `3.13.5` | Incluido con Flutter |
-| Entorno de ejecución | Node.js | `24.4.1` | Ejecuta la API (mínimo recomendado: 20 LTS) |
-| Gestor de paquetes | npm | `11.4.2` | Dependencias del backend |
-| Base de datos | PostgreSQL | 14 o superior | Requerido por `gen_random_uuid()` y Prisma 7 |
-| Control de versiones | Git para Windows | `2.54.0.windows.1` | Clonar y gestionar el proyecto |
-| Herramientas Android | Android Studio | `2026.2.1` | SDK Manager y emuladores |
-| Herramientas Android | Android SDK Build-Tools / Platform-Tools | `36.0.0` / `37.0.1` | Compilación y comunicación ADB |
-
-### 4.2. Dependencias principales del proyecto
-
-| Parte | Paquete | Versión | Uso |
-| :--- | :--- | :--- | :--- |
-| Flutter | `http` | `1.6.0` | Llamadas a la API |
-| Flutter | `flutter_secure_storage` | `11.2.0` | Guarda los tokens de sesión de forma segura |
-| Flutter | `sqflite` / `path` | `2.4.4+2` / `1.9.1` | Base SQLite local y ruta del archivo en Android |
-| Flutter | `image_picker` | `1.2.4` | Captura o selección de la evidencia fotográfica de entrega |
-| Flutter | `cupertino_icons` / `flutter_lints` | `1.0.9` / `6.0.0` | Íconos y análisis estático |
-| Backend | `@nestjs/core` | `12.1.2` | Framework de la API |
-| Backend | `prisma` / `@prisma/client` | `7.10.0` | Migraciones y acceso a datos |
-| Backend | `pg` / `@prisma/adapter-pg` | `8.23.1` / `7.10.0` | Conexión con PostgreSQL |
-| Backend | `argon2`, `@nestjs/jwt`, `passport-jwt` | `0.45.1`, `12.x`, `4.x` | Contraseñas cifradas y sesiones JWT |
-| Backend | `helmet`, `@nestjs/throttler`, `class-validator` | `8.x`, `6.x`, `0.15.x` | Seguridad, límite de peticiones y validación |
-| Backend (pruebas) | `vitest`, `supertest` | `4.x`, `7.x` | Pruebas unitarias y e2e |
-
-### 4.3. Configuración Android del proyecto
-
-| Componente | Valor | Observación |
-| :--- | :--- | :--- |
-| `compileSdk` / `targetSdk` | API `36` | Instalar **Android SDK Platform 36** en SDK Manager |
-| `minSdk` | API `24` | Android 7.0 o superior |
-| Android Gradle Plugin / Kotlin / Gradle | `9.1.0` / `2.4.0` / `9.3.1` | Declarados en `android/` |
-| Java/Kotlin JVM | Nivel `17` | Lo provee Android Studio |
-
-## 5. Arquitectura y organización
-
-### 5.1. App Flutter (`lib/`)
-
-| Carpeta | Contenido |
-| :--- | :--- |
-| `lib/app` | Composicion, dependencias, navegacion y estado de la aplicacion |
-| `lib/core` | Configuración, SQLite, red, errores, tema y validaciones compartidas |
-| `lib/features/<modulo>` | Auth, inventory, administration, catalog, cart, checkout, orders, account, addresses, favorites, loyalty, gift_cards, content y support; separa data, domain y presentation |
-| `lib/features/<modulo>/domain` | Modelos de cada funcionalidad, publicados desde lib/app/models/shop_models.dart |
-| `lib/app/state` y controladores de features | Estado compartido y operaciones por funcionalidad |
-| `lib/app/data/demo_data.dart` | Datos de respaldo cuando el backend no responde |
-| `lib/shared/widgets` | Componentes reutilizables (tarjetas, botones, íconos de línea, línea de tiempo del pedido) |
-
-Más detalle en [`docs/architecture/frontend.md`](docs/architecture/frontend.md).
-
-La validación funcional final se encuentra en [`docs/testing/demo_acceptance.md`](docs/testing/demo_acceptance.md). Incluye el recorrido completo entre perfiles, casos de control y comandos de entrega.
-
-### 5.2. Backend (`backend/`)
-
-| Carpeta o archivo | Contenido |
-| :--- | :--- |
-| `src/auth` | Registro, login, refresh y logout con JWT; perfil en `/me` |
-| `src/catalog`, `src/cart`, `src/favorites`, `src/addresses`, `src/orders` | Módulos de negocio (controlador + servicio + DTOs validados) |
-| `src/loyalty`, `src/gift-cards`, `src/content` | Puntos, eGift Cards, tiendas y blog |
-| `src/database` | `PrismaService` (conexión a PostgreSQL) |
-| `prisma/schema.prisma` | Modelo de datos (23 tablas) |
-| `prisma/migrations/` | Migraciones versionadas aplicadas con `prisma migrate deploy` |
-| `prisma/seeds/seed.ts` | Datos de demostración (productos, tiendas y blog) |
-| `database/platanitos.sql` | **Script completo** de la base (tablas + registro de migraciones + datos) |
-| `scripts/setup-database.mjs` | Comando `npm run db:setup`: crea la base y la deja lista automáticamente |
-| `database/catalog/` | Modelo del catálogo ampliado (marcas, categorías, tipos, precios e imágenes) y su generador |
-| `scripts/seed-catalog.mjs` | Comandos `npm run db:catalog` (carga 500 productos) y `npm run db:catalog:sql` (genera `database/catalog.sql`) |
-| `.env.example` | Plantilla de configuración; se copia como `.env` |
-
-Más detalle en [`docs/architecture/backend.md`](docs/architecture/backend.md) y [`backend/README.md`](backend/README.md).
-
-### 5.3. Mantener el script de base de datos
-
-`backend/database/platanitos.sql` se genera a partir de las migraciones y de `backend/database/seed.sql`. Cuando el equipo cambie el modelo de datos:
-
-```powershell
-cd backend
-npx prisma migrate dev --name descripcion_del_cambio   # crea la nueva migración
-npm run db:sql                                         # regenera database/platanitos.sql
-```
-
-Si se agregan datos de demostración, actualizar tanto `prisma/seeds/seed.ts` como `database/seed.sql`, y volver a ejecutar `npm run db:sql`.
-
-El catálogo ampliado es independiente: si se modifica `database/catalog/platanitos-catalog.mjs`, ejecutar `npm run db:catalog:sql` para regenerar `database/catalog.sql`.
-
-## 6. API REST del backend
-
-Base local: `http://localhost:3000`. Las rutas marcadas con 🔒 requieren el encabezado `Authorization: Bearer <token>` que la app obtiene al iniciar sesión.
-
-| Módulo | Método y ruta | Descripción |
-| :--- | :--- | :--- |
-| Salud | `GET /health` | Comprueba que la API está activa |
-| Autenticación | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | Crear cuenta, iniciar sesión, renovar y cerrar sesión |
-| Perfil 🔒 | `GET /me`, `PATCH /me` | Ver y editar nombre, correo y teléfono |
-| Catálogo | `GET /catalog/categories`, `GET /catalog/brands`, `GET /catalog/products`, `GET /catalog/products/:slug` | Productos, filtros y detalle |
-| Carrito 🔒 | `GET /cart`, `POST /cart/items`, `POST /cart/sync`, `PATCH /cart/items/:itemId`, `DELETE /cart/items/:itemId` | Bolsa persistente |
-| Favoritos 🔒 | `GET /favorites`, `PUT /favorites/:productId`, `DELETE /favorites/:productId` | Lista de favoritos |
-| Direcciones 🔒 | `GET /addresses`, `POST /addresses`, `PUT /addresses/:id`, `DELETE /addresses/:id` | Hasta 10 direcciones escritas por usuario, una principal |
-| Pedidos 🔒 | `POST /orders`, `GET /orders`, `GET /orders/:publicNumber`, `PATCH /orders/:publicNumber/status` | Crear pedido (con `addressId` opcional), historial y estado simulado |
-| Puntos 🔒 | `GET /loyalty`, `POST /loyalty/redeem`, `POST /loyalty/recycling` | Puntos, canje por saldo y bono Resikla |
-| eGift Cards 🔒 | `GET /gift-cards`, `POST /gift-cards` | Emisión simulada |
-| Contenido | `GET /content/stores`, `GET /content/blog`, `GET /content/blog/:slug` | Tiendas y artículos |
-
-Los errores internos nunca se muestran al usuario: la app muestra "El sistema está fallando en este momento. Intenta más tarde."
-
-## 7. Cobertura funcional
-
-- **Cuenta:** crear cuenta, iniciar sesión, recuperar contraseña (simulado), modo invitado y cierre de sesión. La sesión se renueva sola con el *refresh token*.
-- **Catálogo:** inicio con banners y categorías, búsqueda, filtros por talla, marca, color y precio, ordenamiento y detalle con tallas EUR/US/CM.
-- **Bolsa y favoritos:** sincronizados con el backend cuando hay sesión; locales en modo invitado.
-- **Direcciones:** formulario para **escribir** la dirección (tipo, quién recibe, teléfono, dirección, departamento, provincia, distrito y referencia), lista "Mis direcciones" y dirección principal.
-- **Checkout en 3 pasos:** Envío → Entrega → Pago. Yape/Plin y efectivo generan pagos simulados explícitos; la tarjeta conserva el error de demostración.
-- **Pedidos:** bolsa y pedidos persistentes, reserva de stock, preparación, despacho, reparto, entrega e historial.
-- **Operación por roles:** inventario, preparación de pedidos, entregas con firma y fotografía local, incidencias, posventa, reportes administrativos y reservas en tienda.
-- **Mi Cuenta:** perfil editable, direcciones, monedero, puntos, membresía, Resikla, eGift Card, tiendas (Ubícanos), blog y centro de ayuda.
-- **Accesibilidad y diseño:** fuente Inter, colores centralizados en `AppColors`, estados *hover/pressed*, pantallas adaptables de 320 a 900 px y texto ampliado al 140 %.
-
-## 8. Guía de uso de la demostración
-
-1. Abre la app y selecciona un perfil ficticio; no se solicitan credenciales.
-2. Con **Cliente**, agrega un producto, completa la compra simulada y registra una solicitud posventa desde un pedido.
-3. Con **Almacén**, abre la pestaña Preparación y avanza el pedido hasta Despachado.
-4. Con **Repartidor**, confirma recojo e inicio de ruta. Para completar la entrega registra el nombre de quien recibe, su firma digital y una fotografía; también puedes registrar una incidencia.
-5. Con **Atención al cliente**, atiende y resuelve las solicitudes; con **Administrador**, revisa los indicadores consolidados.
-6. Con **Trabajador de tienda**, crea una reserva y confirma el recojo o la cancelación.
-7. Cierra la sesión para cambiar de perfil. En Android, los datos se conservan al reiniciar; en Chrome duran mientras la aplicación permanezca abierta.
-8. Todos los pagos y estados comerciales son simulaciones; la app no procesa dinero real.
-
-## 9. Alcance y limitaciones
-
-- Los pagos son **simulados**: no hay pasarela real y el QR de Yape/Plin es decorativo.
-- Envíos, reparto y seguimiento son simulados; cada perfil avanza manualmente el estado que le corresponde.
-- La ubicación se **escribe** a mano; no se usa Google Maps ni geolocalización.
-- Inicio de sesión con Google/Apple es simulado; no hay OAuth real.
-- El modo invitado guarda bolsa y favoritos solo en memoria.
-- Las imágenes del catálogo se cargan desde Unsplash y requieren Internet; si fallan se muestra un reemplazo.
-- El catálogo ampliado (500 productos) se modeló con información pública de platanitos.com (departamentos, marcas, tipos de producto y rangos de precio); los productos son generados, no copias de fichas reales. La app carga la primera página (20 productos) y solo permite comprar tallas EUR 35–40, por lo que la ropa (tallas S–XL), los accesorios (talla única) y el calzado infantil se ven en la API pero aún no son comprables desde la app.
-- La app se validó en navegador (Chrome) y Android. iOS, macOS, Windows y Linux no se probaron.
-- Las fechas estimadas se calculan desde la fecha del dispositivo.
-
----
-
-## 10. Guía de instalación paso a paso
-
-Sigue los pasos **en orden**. Los comandos son para **PowerShell en Windows**; cuando cambian en macOS/Linux se indica.
-
-| Paso | Qué harás | Tiempo aproximado |
-| :--- | :--- | :--- |
-| 1 | Instalar Git, Node.js, PostgreSQL, Flutter y Android Studio | 30–60 min (solo la primera vez) |
-| 2 | Clonar el repositorio | 1 min |
-| 3 | Instalar dependencias (npm y Flutter) | 3–5 min |
-| 4 | Crear la base de datos con el script | 2 min |
-| 5 | Configurar `backend/.env` | 5 min |
-| 6 | Preparar Prisma | 1 min |
-| 7 | Levantar el backend | 1 min |
-| 8 | Ejecutar la app en Chrome o Android | 2–5 min |
-| 9 | Verificar que todo funciona | 5 min |
-| 10 | Solución de problemas (si algo falla) | — |
-
-### Paso 1. Instalar las herramientas necesarias
-
-#### 1.1. Lista de herramientas
-
-| Herramienta | ¿Obligatoria? | Para qué | Descarga |
-| :--- | :--- | :--- | :--- |
-| Git | Sí | Clonar el repositorio | [git-scm.com](https://git-scm.com/downloads/win) |
-| Node.js 20 LTS o superior (incluye npm) | Sí | Ejecutar el backend | [nodejs.org](https://nodejs.org/) |
-| PostgreSQL 14 o superior (incluye pgAdmin 4) | Sí | Base de datos | [postgresql.org/download](https://www.postgresql.org/download/windows/) |
-| Flutter SDK 3.47 (canal stable) | Sí | Ejecutar la app | [docs.flutter.dev](https://docs.flutter.dev/install/quick) |
-| Google Chrome | Para la versión web | Ejecutar la app en el navegador | [google.com/chrome](https://www.google.com/chrome/) |
-| Android Studio + Android SDK API 36 | Para Android | Emulador y compilación Android | [developer.android.com/studio](https://developer.android.com/studio?hl=es-419) |
-| Visual Studio Code + extensiones Flutter y Dart | Recomendado | Editor | [code.visualstudio.com](https://code.visualstudio.com/) |
-
-#### 1.2. Instalar Node.js
-
-1. Descarga el instalador **LTS** desde [nodejs.org](https://nodejs.org/) y ejecútalo con las opciones por defecto.
-2. Abre una terminal **nueva** y comprueba:
-
-```powershell
-node --version   # v20 o superior
-npm --version
-```
-
-#### 1.3. Instalar PostgreSQL
-
-1. Descarga el instalador de [postgresql.org](https://www.postgresql.org/download/windows/) (versión 14 o superior).
-2. En el asistente deja marcados **PostgreSQL Server**, **pgAdmin 4** y **Command Line Tools**.
-3. Cuando pida la contraseña del superusuario `postgres`, escribe una y **anótala**: la usarás en el paso 5.
-4. Deja el puerto en **5432** y termina la instalación.
-5. (Opcional) Para usar `psql` desde la terminal, agrega `C:\Program Files\PostgreSQL\<versión>\bin` a la variable PATH.
-
-#### 1.4. Instalar Flutter (desde VS Code)
-
-1. Instala Git y VS Code. En VS Code abre **Extensiones** (`Ctrl + Shift + X`) e instala **Flutter** (de Dart Code); se instala también **Dart**.
-2. Crea la carpeta `C:\dev`.
-3. Abre la paleta (`Ctrl + Shift + P`) → **Flutter: New Project** → **Download SDK** → elige `C:\dev`. La raíz del SDK debe quedar en `C:\dev\flutter`.
-4. Acepta **Add SDK to PATH**. Si no aparece, agrega manualmente `C:\dev\flutter\bin` en **Variables de entorno → Variables de usuario → Path**.
-5. Cancela la creación del proyecto nuevo, cierra VS Code y abre una terminal nueva:
-
-```powershell
-flutter --version
-flutter doctor
-```
-
-#### 1.5. Preparar Android (solo si usarás Android)
-
-1. Instala [Android Studio](https://developer.android.com/studio?hl=es-419) con la instalación **Standard**.
-2. Abre **More Actions → SDK Manager**:
-   - En **SDK Platforms** marca **Android API 36**.
-   - En **SDK Tools** marca **Android SDK Command-line Tools**, **Platform-Tools**, **Build-Tools** y **Android Emulator**.
-3. Pulsa **Apply** y espera la descarga.
-4. Crea un emulador en **More Actions → Virtual Device Manager** (por ejemplo, Pixel con API 36).
-5. Registra el SDK y acepta las licencias:
-
-```powershell
-flutter config --android-sdk "$env:LOCALAPPDATA\Android\Sdk"
-flutter doctor --android-licenses
-flutter doctor
-```
-
-`flutter doctor` debe mostrar ✓ en **Flutter**, **Android toolchain** y **Chrome**. El aviso de **Visual Studio (C++)** solo importa para compilar una app de escritorio Windows y puede ignorarse.
-
-### Paso 2. Clonar el repositorio
-
-```powershell
-cd $HOME\Desktop
-git clone https://github.com/AngeloPradoM/APP-Movil-Platanitos.git
-cd APP-Movil-Platanitos
-```
-
-Estructura que debes ver:
-
-```text
-APP-Movil-Platanitos/
-├── backend/          ← API NestJS, Prisma y script de base de datos
-│   ├── database/     ← platanitos.sql, seed.sql y catalog.sql (opcional)
-│   ├── prisma/       ← schema.prisma, migraciones y seed.ts
-│   └── .env.example  ← plantilla de configuración
-├── lib/              ← código de la app Flutter
-├── android/, web/    ← plataformas
-└── README.md
-```
-
-### Paso 3. Instalar las dependencias
-
-#### 3.1. Backend (Node.js)
+1. Asegúrate de que PostgreSQL esté instalado y en ejecución.
+2. Desde la raíz del repositorio, configura el backend en PowerShell:
 
 ```powershell
 cd backend
 npm install
-cd ..
-```
-
-`npm install` respeta las versiones de `package-lock.json`. No uses `npm update` ni `npm audit fix --force`: cambiarían versiones probadas.
-
-#### 3.2. App Flutter
-
-Desde la raíz del repositorio:
-
-```powershell
-flutter pub get
-```
-
-### Paso 4. Crear la base de datos con el script
-
-El archivo [`backend/database/platanitos.sql`](backend/database/platanitos.sql) crea **todo** en un solo paso:
-
-- los tipos y las 23 tablas del sistema con sus índices y relaciones;
-- la tabla `_prisma_migrations`, para que Prisma sepa que las migraciones ya están aplicadas;
-- los datos de demostración: 2 productos con 4 variantes, 4 tiendas y 3 artículos del blog.
-
-Debe ejecutarse sobre una base de datos **vacía** llamada `platanitos`. Si las tablas ya existen, el script se detiene sin modificar nada. Elige **una** de las tres opciones.
-
-#### Opción A — pgAdmin (recomendada si no usas la terminal)
-
-1. Abre **pgAdmin 4** y conéctate al servidor con la contraseña de `postgres`.
-2. Clic derecho en **Databases → Create → Database…**
-3. En **Database** escribe `platanitos` y pulsa **Save**.
-4. Clic derecho sobre la base `platanitos` → **Query Tool**.
-5. Pulsa el ícono **Open File** y elige `backend/database/platanitos.sql`.
-6. Pulsa **Execute** (o `F5`). Debe terminar con el mensaje `COMMIT` / "Query returned successfully".
-7. Comprueba en **platanitos → Schemas → public → Tables** que aparecen 24 tablas (23 del sistema + `_prisma_migrations`). Si no las ves, clic derecho → **Refresh**.
-
-#### Opción B — Terminal con `psql`
-
-```powershell
-psql -U postgres -c "CREATE DATABASE platanitos;"
-psql -U postgres -d platanitos -v ON_ERROR_STOP=1 -f backend/database/platanitos.sql
-```
-
-`psql` pedirá la contraseña de `postgres`. La última línea debe ser `COMMIT`.
-
-#### Opción C — Automática con Node.js
-
-Si prefieres no usar pgAdmin ni `psql`, salta este paso: en el paso 6 el comando `npm run db:setup` crea la base, las tablas y los datos por ti.
-
-### Paso 5. Configurar `backend/.env`
-
-El backend lee su configuración del archivo `backend/.env`. Ese archivo contiene contraseñas, **no se sube a GitHub** (está en `.gitignore`) y cada integrante crea el suyo.
-
-#### 5.1. Crear el archivo
-
-```powershell
-cd backend
 Copy-Item .env.example .env
 ```
 
-En macOS/Linux: `cp .env.example .env`. Luego abre `backend/.env` con VS Code o el Bloc de notas.
+3. En `backend/.env`, ajusta **al menos** `DATABASE_URL` y `JWT_ACCESS_SECRET`:
 
-#### 5.2. Qué significa cada variable
-
-| Variable | ¿Cambiarla? | Valor por defecto | Explicación |
-| :--- | :--- | :--- | :--- |
-| `PORT` | No | `3000` | Puerto de la API. La app Flutter usa 3000 por defecto; si lo cambias, también debes pasar `API_BASE_URL` (paso 8). |
-| `HOST` | Solo para celular físico | `127.0.0.1` | Interfaz de red donde escucha la API. `127.0.0.1` = solo tu PC (sirve para Chrome y el emulador). `0.0.0.0` = también otros dispositivos de tu Wi-Fi (necesario para un celular real). |
-| `NODE_ENV` | No | `development` | `development` en tu PC. `production` solo al desplegar en un servidor (desactiva el CORS automático de localhost). |
-| `CORS_ORIGINS` | No (en local) | `http://localhost:8080,http://127.0.0.1:8080` | Lista, separada por comas y sin espacios, de las páginas web que pueden llamar a la API. En un servidor real se pone el dominio de la app web. |
-| `CORS_ALLOW_LOCALHOST` | No | `true` | `true` acepta cualquier puerto de `localhost`. Es necesario porque `flutter run -d chrome` usa un puerto distinto en cada ejecución. Usa `false` en producción. |
-| `DATABASE_URL` | **Sí** | `postgresql://USUARIO:CONTRASENA@127.0.0.1:5432/platanitos` | Dirección de conexión a PostgreSQL (ver 5.3). |
-| `JWT_ACCESS_SECRET` | **Sí** | `CAMBIAR_POR_…` | Clave secreta con la que se firman las sesiones (ver 5.4). Mínimo 32 caracteres aleatorios. |
-| `JWT_ACCESS_TTL` | No | `15m` | Duración del token de acceso (`15m` = 15 minutos, `1h` = 1 hora). La app lo renueva sola. |
-| `JWT_REFRESH_TTL_DAYS` | No | `30` | Días que dura la sesión antes de pedir iniciar sesión otra vez. |
-
-Solo **dos variables son obligatorias de cambiar**: `DATABASE_URL` y `JWT_ACCESS_SECRET`.
-
-#### 5.3. Cómo armar `DATABASE_URL`
-
-```text
-postgresql://USUARIO:CONTRASENA@HOST:PUERTO/NOMBRE_BASE
+```dotenv
+DATABASE_URL=postgresql://postgres:TU_CONTRASENA@127.0.0.1:5432/platanitos
+JWT_ACCESS_SECRET=PEGA_AQUI_UN_SECRETO_ALEATORIO
 ```
 
-| Parte | Qué poner | Valor habitual |
-| :--- | :--- | :--- |
-| `USUARIO` | Usuario de PostgreSQL | `postgres` |
-| `CONTRASENA` | La contraseña que elegiste al instalar PostgreSQL (paso 1.3) | — |
-| `HOST` | Dónde corre PostgreSQL | `127.0.0.1` (tu misma PC) |
-| `PUERTO` | Puerto de PostgreSQL | `5432` |
-| `NOMBRE_BASE` | Base creada en el paso 4 | `platanitos` |
-
-Ejemplo: si tu contraseña es `MiClave2026`, la línea queda:
-
-```env
-DATABASE_URL=postgresql://postgres:MiClave2026@127.0.0.1:5432/platanitos
-```
-
-**Si la contraseña tiene caracteres especiales**, hay que codificarlos o la conexión fallará:
-
-| Carácter | Se escribe | Carácter | Se escribe |
-| :---: | :---: | :---: | :---: |
-| `@` | `%40` | `?` | `%3F` |
-| `:` | `%3A` | `%` | `%25` |
-| `/` | `%2F` | espacio | `%20` |
-| `#` | `%23` | `&` | `%26` |
-
-Por ejemplo, `Mi@Clave#1` se escribe `Mi%40Clave%231`. Para obtenerlo automáticamente:
-
-```powershell
-node -e "console.log(encodeURIComponent('Mi@Clave#1'))"
-```
-
-#### 5.4. Cómo generar `JWT_ACCESS_SECRET`
-
-Ejecuta este comando y copia el resultado:
+Genera un secreto de forma local con:
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
-Pégalo en el `.env`:
-
-```env
-JWT_ACCESS_SECRET=pega_aqui_el_texto_generado
-```
-
-No lo compartas. Si lo cambias, todas las sesiones abiertas se invalidan y hay que volver a iniciar sesión.
-
-#### 5.5. `HOST` y CORS según dónde ejecutes la app
-
-| Dónde corre la app | `HOST` | `CORS_ALLOW_LOCALHOST` | URL que usa la app |
-| :--- | :--- | :--- | :--- |
-| Chrome (web) en tu PC | `127.0.0.1` | `true` | `http://localhost:3000` (automático) |
-| Emulador Android | `127.0.0.1` | no aplica | `http://10.0.2.2:3000` (automático; `10.0.2.2` es tu PC vista desde el emulador) |
-| Celular Android físico por Wi-Fi | `0.0.0.0` | no aplica | `http://<IP-de-tu-PC>:3000` (se indica con `API_BASE_URL`, paso 8.3) |
-
-CORS solo afecta al navegador; las apps Android no lo usan.
-
-#### 5.6. Ejemplo completo
-
-```env
-PORT=3000
-HOST=127.0.0.1
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
-CORS_ALLOW_LOCALHOST=true
-DATABASE_URL=postgresql://postgres:MiClave2026@127.0.0.1:5432/platanitos
-JWT_ACCESS_SECRET=q3Vb7m1x...texto_generado_en_el_paso_5.4...Zp9
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL_DAYS=30
-```
-
-#### 5.7. Comprobar que `.env` no se subirá
-
-```powershell
-git check-ignore -v backend/.env
-```
-
-Debe responder `backend/.gitignore:4:.env  backend/.env`. Nunca pongas contraseñas reales en `.env.example`.
-
-### Paso 6. Preparar Prisma (cliente, migraciones y datos)
-
-Todos los comandos se ejecutan dentro de `backend/`.
-
-**Si creaste la base con el script (opción A o B del paso 4):**
-
-```powershell
-npx prisma generate
-npx prisma migrate status
-```
-
-- `prisma generate` crea el cliente de Prisma que usa el backend (es obligatorio, aunque la base ya exista).
-- `migrate status` debe terminar con **"Database schema is up to date!"**.
-
-**Si elegiste la opción C (automática):**
+4. Prepara la base de datos e inicia la API (desde `backend/`):
 
 ```powershell
 npm run db:setup
-```
-
-Este comando hace 4 cosas y muestra el avance:
-
-1. Crea la base indicada en `DATABASE_URL` si no existe.
-2. Aplica las migraciones (`prisma migrate deploy`).
-3. Genera el cliente de Prisma (`prisma generate`).
-4. Carga los datos de demostración (`npm run db:seed`).
-
-Puede ejecutarse varias veces sin duplicar datos. Si el usuario de PostgreSQL no tiene permiso para crear bases, crea `platanitos` en pgAdmin y vuelve a ejecutarlo.
-
-#### Opcional: cargar el catálogo ampliado de 500 productos
-
-Los datos de demostración traen solo 2 productos. Para probar la app con un catálogo grande y variado (calzado, ropa, carteras, accesorios, hogar, tecnología, belleza, juguetes, libros, vinos y más, con 82 marcas y 54 categorías), ejecuta desde `backend/`:
-
-```powershell
-npm run db:catalog
-```
-
-El comando muestra el avance en 4 pasos y termina con un conteo por categoría. Es idempotente (repetirlo actualiza los mismos 500 productos, sin duplicar) y no borra los productos de demostración.
-
-Si prefieres pgAdmin o `psql`, ejecuta el archivo [`backend/database/catalog.sql`](backend/database/catalog.sql) sobre la base `platanitos` **después** de `platanitos.sql`, igual que en el paso 4:
-
-```powershell
-psql -U postgres -d platanitos -v ON_ERROR_STOP=1 -f backend/database/catalog.sql
-```
-
-### Paso 7. Levantar el backend
-
-```powershell
-cd backend
 npm run start:dev
 ```
 
-Espera el mensaje **"Nest application successfully started"** y deja esa terminal abierta. Comprueba en el navegador:
+Comprueba el backend en [http://localhost:3000/health](http://localhost:3000/health).
 
-- [http://localhost:3000/health](http://localhost:3000/health) → `{"status":"ok","service":"platanitos-backend",...}`
-- [http://localhost:3000/catalog/products](http://localhost:3000/catalog/products) → lista de productos de demostración.
+### Ejecutar Flutter en modo remoto
 
-Para una ejecución sin recarga automática: `npm run build` y luego `npm run start:prod`.
-
-### Paso 8. Ejecutar la app Flutter (navegador y Android)
-
-Abre **otra terminal** en la raíz del repositorio (el backend sigue corriendo en la primera).
-
-La app decide a qué URL llamar así:
-
-| Plataforma | URL por defecto | Cómo cambiarla |
-| :--- | :--- | :--- |
-| Web (Chrome) | `http://localhost:3000` | `--dart-define=API_BASE_URL=...` |
-| Android | `http://10.0.2.2:3000` | `--dart-define=API_BASE_URL=...` |
-
-`API_BASE_URL` va sin `/` al final. Está definida en `lib/core/config/api_config.dart`.
-
-#### 8.1. Navegador (Chrome)
+Abre **una segunda terminal** en la raíz del repositorio:
 
 ```powershell
-flutter run -d chrome
+flutter run -d chrome --dart-define=APP_MODE=remote --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
-#### 8.2. Emulador Android
+En un emulador Android, Flutter utiliza por defecto `http://10.0.2.2:3000` para acceder a la API del equipo anfitrión. Ejecuta la app con `--dart-define=APP_MODE=remote`.
 
-1. Inicia el emulador desde **Android Studio → Virtual Device Manager → ▶**.
-2. Verifica que aparezca y ejecuta la app:
+**Acceso remoto:** no se publica una cuenta con contraseña de prueba. Registra un usuario desde la aplicación. Los roles internos `ADMINISTRATIVO` y `POSTULANTE` pertenecen a la API conservada y **no equivalen** a los seis accesos directos del modo demo.
+
+---
+
+## Información complementaria
+
+### Estructura del proyecto
+
+| Ruta | Contenido |
+| --- | --- |
+| `lib/` | Interfaz Flutter, navegación, funcionalidades y estado |
+| `lib/core/` | Configuración, almacenamiento, red y utilidades |
+| `lib/features/` | Módulos funcionales separados por responsabilidades |
+| `android/` y `web/` | Configuración de plataformas |
+| `backend/src/` | Módulos y controladores NestJS |
+| `backend/prisma/` | Esquema, migraciones y datos iniciales |
+| `backend/database/` | Archivos SQL y catálogo ampliado |
+| `scripts/` | Automatización de instalación y arranque |
+| `docs/` | Arquitectura, pruebas, base de datos y despliegue |
+
+### Herramientas y ejecución avanzada
+
+En Windows puedes utilizar los scripts incluidos para preparar un entorno de desarrollo aislado, si PostgreSQL ya está instalado:
 
 ```powershell
-flutter devices
-flutter run -d emulator-5554
+# Desde la raíz del proyecto
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -IsolatedDatabase -IncludeCatalog
 ```
 
-(usa el identificador que muestre `flutter devices`). No hace falta `API_BASE_URL`: el emulador llega a tu PC con `10.0.2.2`.
+Si `DATABASE_URL` ya apunta a otra base, el script conserva esa configuración. Para trabajar con PostgreSQL propio, configura `backend/.env` y ejecuta `setup.ps1` **sin** `-IsolatedDatabase`.
 
-#### 8.3. Celular Android físico
+Para iniciar las partes en terminales separadas, están disponibles `scripts/start-backend.ps1` y `scripts/start-frontend.ps1`. También existen tareas de VS Code para el frontend y para frontend + backend.
 
-1. En el celular activa **Opciones de desarrollador** (toca 7 veces **Número de compilación**) y luego **Depuración USB**. Conéctalo por USB y acepta el permiso.
-2. PC y celular deben estar en la **misma red Wi-Fi**.
-3. En `backend/.env` cambia `HOST=0.0.0.0` y reinicia el backend (`Ctrl + C` y `npm run start:dev`).
-4. Averigua la IP de tu PC con `ipconfig` (línea **Dirección IPv4**, por ejemplo `192.168.1.50`).
-5. Permite el puerto 3000 en el Firewall de Windows (PowerShell **como administrador**, una sola vez):
+Comandos adicionales:
 
 ```powershell
-New-NetFirewallRule -DisplayName "Platanitos API 3000" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow
-```
-
-6. Prueba desde el navegador del celular `http://192.168.1.50:3000/health`. Si responde, ejecuta:
-
-```powershell
-flutter devices
-flutter run -d <id-del-celular> --dart-define=API_BASE_URL=http://192.168.1.50:3000
-```
-
-Las compilaciones **debug** permiten HTTP hacia tu PC (`android/app/src/debug/AndroidManifest.xml`). Una versión **release** necesitará la API publicada con HTTPS.
-
-### Paso 9. Verificar que todo funciona
-
-#### 9.1. Prueba manual
-
-1. `http://localhost:3000/health` responde `"status":"ok"`.
-2. En la app, pulsa **Crear cuenta** (contraseña de al menos 8 caracteres). Debes entrar al inicio con tu nombre.
-3. Agrega un producto a la bolsa, ve a **Ir a Pagar**, escribe una dirección y paga con Yape/Plin.
-4. En pgAdmin, la tabla `Order` de la base `platanitos` debe tener tu pedido y `Address` tu dirección.
-5. Cierra sesión y vuelve a entrar: pedidos, favoritos y direcciones siguen ahí.
-
-#### 9.2. Pruebas automáticas
-
-App Flutter (desde la raíz):
-
-```powershell
+# Desde la raíz (Flutter)
 flutter analyze
 flutter test
-```
 
-Backend (desde `backend/`, con PostgreSQL encendido):
-
-```powershell
+# Desde backend/ (API y base de datos)
 npm run build
 npm run test:e2e -- --run
+npm run db:catalog       # Carga el catálogo opcional ampliado
+npx prisma studio        # Inspecciona la base de datos
+npm.cmd run account:create # Crea una cuenta para el backend; solicita sus datos
 ```
 
-Las pruebas e2e usan la base configurada en `.env`: crean usuarios temporales `e2e-…@example.com` y los eliminan al terminar.
+### Problemas frecuentes
 
-#### 9.3. Comandos útiles del backend
+| Problema | Qué revisar |
+| --- | --- |
+| Flutter no detecta Chrome o Android | Ejecuta `flutter doctor` y `flutter devices` |
+| El emulador figura `offline` | Reinícialo desde Android Studio → Device Manager; vuelve a ejecutar `flutter devices` |
+| `DATABASE_URL` no está definida | Crea `backend/.env` a partir de `.env.example` |
+| PostgreSQL rechaza la conexión | Comprueba que el servicio esté encendido, el puerto y las credenciales de `DATABASE_URL` |
+| Falta `@prisma/client` | Dentro de `backend/`, ejecuta `npx prisma generate` |
+| La API no inicia por `JWT_ACCESS_SECRET` | Genera y configura un secreto suficientemente largo |
+| La API devuelve error o no conecta | Revisa [localhost:3000/health](http://localhost:3000/health) y asegúrate de usar `APP_MODE=remote` si quieres consumirla |
+| Puerto `3000` ocupado | Detén el otro proceso o cambia `PORT` y `API_BASE_URL` |
+| Android remoto no conecta a `localhost` | Desde un emulador usa `10.0.2.2`; en celular físico usa la IP local de la PC y configura `HOST=0.0.0.0` |
 
-| Comando | Para qué |
-| :--- | :--- |
-| `npm run start:dev` | Levantar la API con recarga automática |
-| `npm run build` / `npm run start:prod` | Compilar y ejecutar la versión compilada |
-| `npm run db:setup` | Crear la base, aplicar migraciones, generar el cliente y cargar datos |
-| `npm run db:seed` | Volver a cargar solo los datos de demostración |
-| `npm run db:sql` | Regenerar `database/platanitos.sql` tras una nueva migración |
-| `npm run db:catalog` | Cargar o actualizar el catálogo ampliado de 500 productos |
-| `npm run db:catalog:sql` | Regenerar `database/catalog.sql` tras cambiar el modelo del catálogo |
-| `npx prisma migrate status` | Ver si la base está al día |
-| `npx prisma studio` | Explorar la base desde el navegador |
-| `npm run test:e2e -- --run` | Pruebas de extremo a extremo |
+### Documentación y referencias
 
-### Paso 10. Solución de problemas
+- [Arquitectura Flutter](docs/architecture/frontend.md)
+- [Arquitectura backend](docs/architecture/backend.md)
+- [Ejecución local](docs/setup/local.md)
+- [Modelo de datos](docs/database/model.md)
+- [Pruebas funcionales de la demo](docs/testing/demo_acceptance.md)
+- [Compilación y despliegue](docs/deployment/README.md)
+- [Documentación del backend](backend/README.md)
 
-| Síntoma | Causa probable | Solución |
-| :--- | :--- | :--- |
-| La app dice "El sistema está fallando en este momento" al iniciar sesión o crear cuenta | El backend no está corriendo o la app apunta a otra URL | Repite el paso 7 y abre `/health`. En celular físico revisa `API_BASE_URL` (paso 8.3). |
-| `db:setup` muestra "Usuario o contraseña de PostgreSQL incorrectos" | `DATABASE_URL` mal escrita | Revisa usuario y contraseña (paso 5.3); codifica los caracteres especiales. |
-| "No se pudo conectar a PostgreSQL" o `ECONNREFUSED` | El servicio de PostgreSQL está detenido o el puerto no es 5432 | Abre `services.msc`, inicia **postgresql-x64-NN** y verifica el puerto en `DATABASE_URL`. |
-| `Environment variable not found: DATABASE_URL` o "Falta DATABASE_URL" | No existe `backend/.env` o se ejecutó el comando fuera de `backend/` | Crea el archivo (paso 5.1) y ejecuta los comandos dentro de `backend/`. |
-| El backend no arranca y menciona `JWT_ACCESS_SECRET` | Variable vacía o comentada | Genérala con el comando del paso 5.4. |
-| El script SQL dice "La base de datos ya tiene las tablas de Platanitos" | Ya se ejecutó antes | No hace falta repetirlo. Para empezar de cero, borra la base `platanitos`, créala vacía y ejecuta el script otra vez. |
-| `prisma migrate deploy` devuelve `P3005` (schema is not empty) | Las tablas se crearon sin registrar las migraciones | Conserva los datos y revisa el historial de migraciones; si el esquema se importó por SQL, verifica su registro en `_prisma_migrations` antes de aplicar una línea base. |
-| `@prisma/client did not initialize yet` o falta `.prisma/client` | No se generó el cliente | `npx prisma generate` dentro de `backend/`. |
-| `EADDRINUSE: address already in use :::3000` | Otro programa usa el puerto 3000 | Cierra la otra terminal del backend o cambia `PORT` y pasa `API_BASE_URL` con el nuevo puerto. |
-| En Chrome, la consola muestra un error de CORS | `CORS_ALLOW_LOCALHOST=false` o el origen no está permitido | Usa `CORS_ALLOW_LOCALHOST=true` en desarrollo o agrega el origen a `CORS_ORIGINS`. |
-| El emulador Android no se conecta | Backend apagado o se usó `localhost` | El emulador usa `10.0.2.2` automáticamente; no pases `API_BASE_URL=http://localhost:3000`. |
-| El celular físico no se conecta | `HOST` sigue en `127.0.0.1`, otra red Wi-Fi o firewall | `HOST=0.0.0.0`, misma Wi-Fi, regla de firewall y prueba `/health` desde el celular (paso 8.3). |
-| `psql` no se reconoce como comando | La carpeta `bin` de PostgreSQL no está en PATH | Usa pgAdmin (opción A) o agrega `C:\Program Files\PostgreSQL\<versión>\bin` al PATH. |
-| `flutter doctor` muestra "Android license status unknown" | Licencias sin aceptar | `flutter doctor --android-licenses`. |
-| No aparecen imágenes de productos | Sin conexión a Internet | Las imágenes vienen de Unsplash; conéctate a Internet. |
+**Verificación documentada (13 de octubre de 2026):** frontend con 100 pruebas aprobadas, compilación web release y APK debug; backend con 2 pruebas unitarias y 8 de integración aprobadas. Estos resultados reflejan la verificación informada para esa fecha y no una ejecución de pruebas realizada al editar este README.
 
-## Roles de acceso
-
-La demo local incluye los roles Cliente, Almacén, Repartidor, Atención al cliente, Administrador y Trabajador de tienda. Son perfiles ficticios seleccionables desde la pantalla inicial y no contienen contraseñas ni secretos. Los nombres antiguos `ADMINISTRATIVO` y `POSTULANTE` se aceptan únicamente como compatibilidad con la API conservada.
-
-### Crear otras cuentas
-
-Desde la raíz del proyecto:
-
-```powershell
-cd backend
-npm.cmd run account:create
-```
-
-El comando solicita correo, nombre, rol (`ADMINISTRATIVO` o `POSTULANTE`) y contraseña oculta. No modifica cuentas existentes. Los usuarios anteriores quedan como postulantes al aplicar la migración. El endpoint `GET /admin/users` verifica el rol en el servidor.
-
-## Organizacion del proyecto
-
-Consulta [arquitectura Flutter](docs/architecture/frontend.md), [arquitectura backend](docs/architecture/backend.md), [ejecucion local](docs/setup/local.md), [base de datos](docs/database/model.md) y [compilacion y despliegue](docs/deployment/README.md). Las pruebas se agrupan en test/features, test/integration y test/responsive. Los comandos de arranque permanecen en scripts.
-
-### Separacion de pantallas y repositorios
-
-Autenticacion se organiza en login_screen.dart, signup_screen.dart y recovery_screen.dart, con ayudas de acceso en auth_flow.dart y componentes propios en presentation/widgets. Fidelizacion utiliza LoyaltyRepository y tarjetas de regalo utiliza GiftCardsRepository. Los filtros del catalogo y el progreso de membresia estan en los widgets de sus respectivos modulos. La documentacion del backend se centraliza en docs/architecture/backend.md.
+> **Seguridad:** nunca subas `backend/.env` al repositorio ni compartas contraseñas reales. Los datos de acceso públicos de esta guía son exclusivos de la demostración.

@@ -65,4 +65,35 @@ void main() {
     expect(find.byType(InventoryScreen), findsOneWidget);
     expect(find.text('Zapatilla Plataforma'), findsWidgets);
   });
+
+  testWidgets('client profile requests credentials before opening the shop', (
+    tester,
+  ) async {
+    final store = DemoMemoryStore();
+    final state = ShopState(
+      demoAuthRepository: MemoryDemoAuthRepository(store),
+      catalogRepository: MemoryCatalogRepository(store),
+      inventoryRepository: MemoryInventoryRepository(store),
+    );
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(PlatanitosApp(state: state));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cliente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Iniciar sesión como Cliente'), findsOneWidget);
+    expect(find.text('Correo: cliente@demo.local'), findsOneWidget);
+    expect(find.text('Contraseña: Cliente123'), findsOneWidget);
+    expect(state.signedIn, isFalse);
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Cliente123');
+    await tester.tap(find.text('Iniciar Sesión'));
+    await tester.pumpAndSettle();
+
+    expect(state.signedIn, isTrue);
+    expect(state.user.role, UserRole.cliente);
+    expect(find.byType(ShopShell), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

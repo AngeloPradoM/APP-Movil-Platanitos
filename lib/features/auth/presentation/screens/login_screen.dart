@@ -25,13 +25,35 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
+  static const demoClientPassword = 'Cliente123';
   String email = '', password = '';
   bool hidden = true;
   bool submitting = false;
+  AppUser? demoClientProfile;
   bool get returnOnSuccess => widget.prompt != null;
+  bool get isDemoClientLogin => demoClientProfile != null;
+  bool get showBackButton => returnOnSuccess || isDemoClientLogin;
 
   void finish() =>
       returnOnSuccess ? Navigator.pop(context, true) : enterShop(context);
+
+  void openDemoClientLogin(AppUser profile) {
+    setState(() {
+      demoClientProfile = profile;
+      email = profile.email;
+      password = '';
+      hidden = true;
+    });
+  }
+
+  void closeDemoClientLogin() {
+    form.currentState?.reset();
+    setState(() {
+      demoClientProfile = null;
+      email = '';
+      password = '';
+    });
+  }
 
   Future<void> openSignup() async {
     final created = await Navigator.push<bool>(
@@ -46,6 +68,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> login({bool social = false}) async {
     if (!social && !form.currentState!.validate()) return;
     final state = ShopScope.of(context);
+    final demoProfile = demoClientProfile;
+    if (!social && demoProfile != null) {
+      if (email.trim().toLowerCase() != demoProfile.email.toLowerCase() ||
+          password != demoClientPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Correo o contraseña incorrectos. Usa las credenciales de demostración.',
+            ),
+          ),
+        );
+        return;
+      }
+      setState(() => submitting = true);
+      try {
+        await state.loginDemo(demoProfile.id!);
+        if (mounted) finish();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo iniciar la sesión de Cliente.'),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => submitting = false);
+      }
+      return;
+    }
     if (!social && state.authRepository != null) {
       setState(() => submitting = true);
       try {
@@ -112,18 +164,25 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final appState = ShopScope.of(context);
-    if (appState.isDemoMode) {
+    if (appState.isDemoMode && !isDemoClientLogin) {
       return DemoProfilePicker(
         heading: widget.prompt?.heading,
         canGoBack: returnOnSuccess,
         onSuccess: finish,
+        onClientSelected: openDemoClientLogin,
       );
     }
     final prompt = widget.prompt;
     return Scaffold(
       backgroundColor: softBackground,
-      appBar: returnOnSuccess
-          ? AppBar(backgroundColor: softBackground, elevation: 0)
+      appBar: showBackButton
+          ? AppBar(
+              backgroundColor: softBackground,
+              elevation: 0,
+              leading: isDemoClientLogin
+                  ? BackButton(onPressed: closeDemoClientLogin)
+                  : null,
+            )
           : null,
       body: SafeArea(
         child: Center(
@@ -138,11 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SizedBox(height: returnOnSuccess ? 8 : 48),
+                        SizedBox(height: showBackButton ? 8 : 48),
                         const Center(child: BrandLogo()),
                         const SizedBox(height: 2),
                         Text(
-                          prompt?.heading ?? 'Iniciar sesión',
+                          isDemoClientLogin
+                              ? 'Iniciar sesión como Cliente'
+                              : prompt?.heading ?? 'Iniciar sesión',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 15,
@@ -158,14 +219,44 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
-                        const SizedBox(height: 56),
+                        if (isDemoClientLogin) ...[
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.softGreen,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Credenciales de demostración',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.darkGreen,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                SelectableText('Correo: cliente@demo.local'),
+                                SelectableText('Contraseña: Cliente123'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: isDemoClientLogin ? 24 : 56),
                         Form(
                           key: form,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               fieldLabel('Correo electrónico'),
                               TextFormField(
+                                initialValue: isDemoClientLogin
+                                    ? demoClientProfile!.email
+                                    : null,
                                 decoration: fieldDecoration(
                                   'ejemplo@correo.com',
                                 ),
@@ -240,38 +331,43 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        const Row(
-                          children: [
-                            Expanded(child: Divider(color: fieldBorderColor)),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                'o ingresa con',
-                                style: TextStyle(
-                                  color: hintColor,
-                                  fontSize: 12,
+                        if (!isDemoClientLogin) ...[
+                          const SizedBox(height: 18),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider(color: fieldBorderColor)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  'o ingresa con',
+                                  style: TextStyle(
+                                    color: hintColor,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Expanded(child: Divider(color: fieldBorderColor)),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            _socialButton(
-                              'Google',
-                              const Icon(Icons.g_mobiledata_rounded, size: 26),
-                            ),
-                            const SizedBox(width: 12),
-                            _socialButton(
-                              'Apple',
-                              const Icon(Icons.apple, size: 20),
-                            ),
-                          ],
-                        ),
-                        if (!returnOnSuccess) ...[
+                              Expanded(child: Divider(color: fieldBorderColor)),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              _socialButton(
+                                'Google',
+                                const Icon(
+                                  Icons.g_mobiledata_rounded,
+                                  size: 26,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _socialButton(
+                                'Apple',
+                                const Icon(Icons.apple, size: 20),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (!returnOnSuccess && !isDemoClientLogin) ...[
                           const SizedBox(height: 8),
                           Center(
                             child: TextButton(

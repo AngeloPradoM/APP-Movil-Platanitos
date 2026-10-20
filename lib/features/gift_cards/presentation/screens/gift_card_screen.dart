@@ -80,6 +80,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
         const SectionTitle('¿Para quién es?'),
         Form(
           key: form,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

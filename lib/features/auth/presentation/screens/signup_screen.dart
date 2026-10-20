@@ -158,6 +158,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 18),
                 Form(
                   key: form,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
