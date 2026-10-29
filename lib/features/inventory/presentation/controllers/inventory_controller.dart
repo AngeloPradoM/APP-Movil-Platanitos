@@ -33,7 +33,7 @@ class InventoryController extends ChangeNotifier {
         lowStockOnly: _lowStockOnly,
       );
     } catch (_) {
-      _error = 'No se pudo cargar el inventario local.';
+      _error = 'No se pudo cargar el inventario.';
     } finally {
       _loading = false;
       notifyListeners();
@@ -54,6 +54,11 @@ class InventoryController extends ChangeNotifier {
       reason: reason,
       responsibleUserId: responsibleUserId,
     );
+    await load();
+  }
+
+  Future<void> updatePrice(InventoryItem item, double price) async {
+    await _repository.updatePrice(variantId: item.variantId, price: price);
     await load();
   }
 

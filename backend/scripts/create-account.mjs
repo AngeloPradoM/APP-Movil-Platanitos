@@ -12,7 +12,7 @@ let prisma;
 try {
   const email = (await rl.question('Correo: ')).trim().toLowerCase();
   const name = (await rl.question('Nombre: ')).trim();
-  const role = (await rl.question('Rol (ADMINISTRATIVO / POSTULANTE): ')).trim().toUpperCase();
+  const role = (await rl.question('Rol (CLIENTE / ALMACEN / REPARTIDOR / ATENCION_CLIENTE / ADMINISTRADOR / TRABAJADOR_TIENDA): ')).trim().toUpperCase();
   // Use a hidden prompt so credentials do not appear in terminal output.
   stdout.write('Contrasena (minimo 8 caracteres): ');
   muted = true;

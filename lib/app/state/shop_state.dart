@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/network/access_token_store.dart';
 import '../../core/network/api_client.dart';
 import '../data/demo_data.dart';
 import '../../features/loyalty/data/loyalty_repository.dart';
@@ -56,6 +57,7 @@ class ShopState extends ChangeNotifier {
     this.demoAuthRepository,
     this.inventoryRepository,
     this.operationsRepository,
+    this.tokenStore,
     SessionStorage? sessionStorage,
   }) : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
@@ -91,6 +93,7 @@ class ShopState extends ChangeNotifier {
   final DemoAuthRepository? demoAuthRepository;
   final InventoryRepository? inventoryRepository;
   final DemoOperationsRepository? operationsRepository;
+  final AccessTokenStore? tokenStore;
   final SessionStorage _sessionStorage;
   final CartRepository? cartRepository;
   final FavoritesRepository? favoritesRepository;

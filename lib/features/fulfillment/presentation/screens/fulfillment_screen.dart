@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../operations/data/remote_operations_repository.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
 import '../../../operations/presentation/widgets/operations_panel.dart';
@@ -42,6 +43,14 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
             worker,
             'demo-repartidor',
           );
+        case 'DISPATCHED':
+          final remote = repository;
+          if (remote is! RemoteOperationsRepository) break;
+          await remote.markInTransit(task.orderId);
+        case 'IN_TRANSIT':
+          final remote = repository;
+          if (remote is! RemoteOperationsRepository) break;
+          await remote.markDelivered(task.orderId);
       }
       if (mounted) {
         setState(() {
@@ -74,6 +83,9 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
         return const Center(child: CircularProgressIndicator());
       }
       final values = snapshot.data!;
+      final remoteOps =
+          ShopScope.of(context).operationsRepository
+              is RemoteOperationsRepository;
       return RefreshIndicator(
         onRefresh: () async {
           final next = _load();
@@ -88,7 +100,7 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
             const OperationsPanelHeader(
               title: 'Preparación y despacho',
               subtitle:
-                  'El despacho descuenta el stock reservado y asigna el pedido al repartidor.',
+                  'El pedido sigue este orden: preparar, despachar, poner en camino y entregar. El pago en efectivo se confirma al entregar.',
             ),
             const SizedBox(height: 16),
             if (values.isEmpty)
@@ -127,20 +139,20 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
                             ],
                           ),
                         ),
-                        if (_action(task.status) == null)
+                        if (_action(task.status, remote: remoteOps) == null)
                           const Icon(
                             Icons.check_circle_outline,
                             color: AppColors.green,
                           ),
                       ],
                     ),
-                    if (_action(task.status) != null) ...[
+                    if (_action(task.status, remote: remoteOps) != null) ...[
                       const SizedBox(height: 12),
                       Align(
                         alignment: Alignment.centerRight,
                         child: FilledButton(
                           onPressed: () => _run(task),
-                          child: Text(_action(task.status)!),
+                          child: Text(_action(task.status, remote: remoteOps)!),
                         ),
                       ),
                     ],
@@ -159,12 +171,15 @@ String _label(String value) => switch (value) {
   'PREPARING' => 'En preparación',
   'PREPARED' => 'Listo para despacho',
   'DISPATCHED' => 'Despachado',
+  'IN_TRANSIT' => 'En camino',
   _ => value,
 };
 
-String? _action(String value) => switch (value) {
+String? _action(String value, {required bool remote}) => switch (value) {
   'PENDING' => 'Iniciar',
   'PREPARING' => 'Marcar listo',
   'PREPARED' => 'Despachar',
+  'DISPATCHED' when remote => 'Poner en camino',
+  'IN_TRANSIT' when remote => 'Marcar entregado',
   _ => null,
 };

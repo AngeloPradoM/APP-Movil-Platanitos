@@ -15,6 +15,15 @@ import './catalog_screens.dart';
 String _photo(String id) =>
     'https://images.unsplash.com/$id?fit=crop&q=85&w=800';
 
+String? _photoFrom(List<Product> source, ProductCollection collection) {
+  for (final product in source) {
+    if (collection.matches(product) && product.image.isNotEmpty) {
+      return product.image;
+    }
+  }
+  return null;
+}
+
 bool Function(Product) _named(List<String> words) => (product) {
   final name = product.name.toLowerCase();
   return words.any(name.contains);
@@ -128,29 +137,24 @@ class _HomeContent {
       return category.contains('running') ? 1 : 2;
     }
 
-    final present = <String, String>{};
     final frequency = <String, int>{};
     for (final product in source) {
       if (product.brand.isEmpty) continue;
-      present.putIfAbsent(product.brand.toLowerCase(), () => product.brand);
       frequency.update(product.brand, (count) => count + 1, ifAbsent: () => 1);
     }
-    final brands = <String>[
-      for (final brand in _HomeScreenState.topBrands)
-        if (present[brand.toLowerCase()] case final name?)
-          name
-        else if (hasMore)
-          brand,
-    ];
-    final others =
-        frequency.keys.where((brand) => !brands.contains(brand)).toList()
-          ..sort((a, b) => frequency[b]!.compareTo(frequency[a]!));
-    if (brands.length < 10) brands.addAll(others.take(10 - brands.length));
+    final brands = frequency.keys.toList()
+      ..sort((a, b) => frequency[b]!.compareTo(frequency[a]!));
 
     return _HomeContent._(
       slides: [
         for (final slide in _HomeScreenState.slides)
-          if (available(slide.collection)) slide,
+          if (available(slide.collection))
+            (
+              image: _photoFrom(source, slide.collection) ?? slide.image,
+              title: slide.title,
+              subtitle: slide.subtitle,
+              collection: slide.collection,
+            ),
       ],
       categories: [
         for (final category in _HomeScreenState.categories)
@@ -161,7 +165,11 @@ class _HomeContent {
       brands: brands,
       audiences: [
         for (final audience in _HomeScreenState.audiences)
-          if (available(audience.collection)) audience,
+          if (available(audience.collection))
+            (
+              image: _photoFrom(source, audience.collection) ?? audience.image,
+              collection: audience.collection,
+            ),
       ],
       trending: [
         for (var level = 0; level < 3; level++)
@@ -192,20 +200,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _Collections.accessories,
   ];
   static const _tabLabels = ['Calzado', 'Carteras', 'Ofertas', 'Accesorios'];
-  static const topBrands = [
-    'Nike',
-    'Adidas',
-    'Puma',
-    'Vans',
-    'Converse',
-    'Skechers',
-    'New Balance',
-    'Platanitos',
-    'Reebok',
-    'Under Armour',
-    'Crocs',
-    'CAT',
-  ];
   static final List<_Slide> slides = [
     (
       image: _photo('photo-1549298916-b41d501d3772'),
@@ -292,6 +286,19 @@ class _HomeScreenState extends State<HomeScreen> {
   int section = 0;
   Object? _contentKey;
   _HomeContent? _content;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = ShopScope.of(context);
+      state.loadCategories();
+      state.ensureCatalog().whenComplete(() {
+        if (mounted) unawaited(state.loadFullCatalog());
+      });
+    });
+  }
 
   _HomeContent _contentFor(ShopState state) {
     final source = state.catalogProducts;
@@ -425,7 +432,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            if (content.categories.isNotEmpty)
+            if (state.categories.any((category) => category.image != null))
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _SectionHeader('Compra por categoría'),
+                    _StoredCategoryRow(
+                      categories: state.categories,
+                      onOpen: (category) => openCategory(
+                        context,
+                        title: category.name,
+                        categories: [category],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (content.categories.isNotEmpty)
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1150,6 +1174,74 @@ class _CountdownState extends State<_Countdown> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StoredCategoryRow extends StatelessWidget {
+  const _StoredCategoryRow({required this.categories, required this.onOpen});
+  final List<ShopCategory> categories;
+  final ValueChanged<ShopCategory> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = [
+      for (final category in categories)
+        if (category.productCount > 0 && category.image != null) category,
+    ];
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return SizedBox(
+      height: 96 + 22 * scale,
+      child: ListView.builder(
+        key: const PageStorageKey('stored-categories'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemExtent: 80 + (scale - 1) * 50,
+        itemCount: visible.length,
+        itemBuilder: (context, index) {
+          final category = visible[index];
+          return Semantics(
+            button: true,
+            label: 'Ver ${category.name}',
+            excludeSemantics: true,
+            onTap: () => onOpen(category),
+            child: InkWell(
+              onTap: () => onOpen(category),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.softGreen,
+                      ),
+                      child: ClipOval(
+                        child: ShopImage(category.image!, thumbnail: true),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      category.name,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

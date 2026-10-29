@@ -13,4 +13,8 @@ abstract interface class InventoryRepository {
     required String reason,
     required String responsibleUserId,
   });
+  Future<void> updatePrice({
+    required String variantId,
+    required double price,
+  });
 }

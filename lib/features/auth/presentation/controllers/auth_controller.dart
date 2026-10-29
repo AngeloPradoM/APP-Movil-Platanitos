@@ -11,6 +11,7 @@ extension AuthController on ShopState {
     }
     user = await repository.signIn(profileId);
     signedIn = true;
+    _syncToken();
     if (_addresses.isEmpty) _addresses.add(demoAddress);
     await loadDemoCommerce(mergeCart: true);
     _notifySafely();
@@ -41,6 +42,7 @@ extension AuthController on ShopState {
     await _loadAccountData();
     final remoteUser = session.user;
     user = AppUser(
+      id: remoteUser['id'] as String?,
       name: remoteUser['name'] as String? ?? user.name,
       document: remoteUser['documentNumber'] as String? ?? user.document,
       email: remoteUser['email'] as String? ?? email,
@@ -48,6 +50,7 @@ extension AuthController on ShopState {
       role: UserRole.fromJson(remoteUser['role']),
     );
     signedIn = true;
+    _syncToken();
     _notifySafely();
   }
 
@@ -79,6 +82,7 @@ extension AuthController on ShopState {
     await loadRemoteCart();
     await _loadAccountData();
     user = AppUser(
+      id: session.user['id'] as String?,
       name: session.user['name'] as String? ?? name,
       document:
           '${session.user['documentType'] ?? documentType ?? ''} ${session.user['documentNumber'] ?? documentNumber ?? ''}'
@@ -88,6 +92,7 @@ extension AuthController on ShopState {
       role: UserRole.fromJson(session.user['role']),
     );
     signedIn = true;
+    _syncToken();
     _notifySafely();
   }
 
@@ -112,6 +117,7 @@ extension AuthController on ShopState {
       _authSession = session;
       final remoteUser = session.user;
       user = AppUser(
+        id: remoteUser['id'] as String?,
         name: remoteUser['name'] as String? ?? user.name,
         document: remoteUser['documentNumber'] as String? ?? user.document,
         email: remoteUser['email'] as String? ?? user.email,
@@ -123,8 +129,9 @@ extension AuthController on ShopState {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
       );
-      await loadRemoteCart();
+        await loadRemoteCart();
       await _loadAccountData();
+      _syncToken();
       _notifySafely();
     } catch (_) {
       await _sessionStorage.clear();
@@ -141,6 +148,7 @@ extension AuthController on ShopState {
       authRepository!.logout(refreshToken).catchError((_) {});
     }
     _authSession = null;
+    _syncToken();
     _sessionStorage.clear();
     signedIn = false;
     _cart.clear();
@@ -155,5 +163,9 @@ extension AuthController on ShopState {
     _loyalty = null;
     catalog.clear();
     _notifySafely();
+  }
+
+  void _syncToken() {
+    tokenStore?.value = _authSession?.accessToken;
   }
 }

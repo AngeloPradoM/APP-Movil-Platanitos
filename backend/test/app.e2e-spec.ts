@@ -26,19 +26,19 @@ describe('AppController (e2e)', () => {
     temporaryEmail = 'roles-' + Date.now() + '@example.com';
     const credentials = { email: temporaryEmail, name: 'Roles Test', password: 'Roles-Test-Password-123' };
     await request(app.getHttpServer()).get('/admin/users').expect(401);
-    await request(app.getHttpServer()).post('/auth/register').send({ ...credentials, role: 'ADMINISTRATIVO' }).expect(400);
+    await request(app.getHttpServer()).post('/auth/register').send({ ...credentials, role: 'ADMINISTRADOR' }).expect(400);
     const registration = await request(app.getHttpServer()).post('/auth/register').send(credentials).expect(201);
-    expect(registration.body.user.role).toBe('POSTULANTE');
+    expect(registration.body.user.role).toBe('CLIENTE');
     await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + registration.body.accessToken).expect(403);
-    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'ADMINISTRATIVO' } });
+    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'ADMINISTRADOR' } });
     const login = await request(app.getHttpServer()).post('/auth/login').send({ email: temporaryEmail, password: credentials.password }).expect(201);
-    expect(login.body.user.role).toBe('ADMINISTRATIVO');
+    expect(login.body.user.role).toBe('ADMINISTRADOR');
     const list = await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + login.body.accessToken).expect(200);
     expect(list.body.some((user: { email: string }) => user.email === temporaryEmail)).toBe(true);
     expect(list.body[0].passwordCredential).toBeUndefined();
     const refreshed = await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(201);
-    expect(refreshed.body.user.role).toBe('ADMINISTRATIVO');
-    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'POSTULANTE' } });
+    expect(refreshed.body.user.role).toBe('ADMINISTRADOR');
+    await prisma.user.update({ where: { email: temporaryEmail }, data: { role: 'CLIENTE' } });
     await request(app.getHttpServer()).get('/admin/users').set('Authorization', 'Bearer ' + login.body.accessToken).expect(403);
   });
 
@@ -228,7 +228,6 @@ describe('AppController (e2e)', () => {
 
     await request(server).post('/orders').set(auth).send({ paymentMethod: 'WALLET' }).expect(400);
     await request(server).post('/cart/items').set(auth).send({ variantId: variant.id, quantity: 1 }).expect(201);
-    await request(server).post('/orders').set(auth).send({ paymentMethod: 'CARD' }).expect(422);
     await request(server)
       .post('/orders')
       .set(auth)

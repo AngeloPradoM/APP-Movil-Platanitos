@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { randomInt } from 'node:crypto';
@@ -25,9 +24,6 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, input: CreateOrderDto) {
-    if (input.paymentMethod === PaymentMethod.CARD) {
-      throw new UnprocessableEntityException('El pago con tarjeta no está disponible en la demostración.');
-    }
     const cart = await this.prisma.cart.findUnique({
       where: { userId },
       include: { items: { include: { variant: { include: { product: true } } } } },
@@ -55,6 +51,10 @@ export class OrdersService {
     });
     const total = subtotal.add(SHIPPING_COST);
     const now = Date.now();
+    const publicNumber = `PL-${randomInt(10_000_000, 99_999_999)}`;
+    const paymentStatus = input.paymentMethod === PaymentMethod.CASH
+      ? PaymentStatus.PENDING
+      : PaymentStatus.SUCCEEDED;
     const address = await this.prisma.address.findFirst({
       where: input.addressId ? { id: input.addressId, userId } : { userId, isDefault: true },
     });
@@ -70,12 +70,14 @@ export class OrdersService {
       }
       const created = await transaction.order.create({
         data: {
-          publicNumber: `PL-${randomInt(10_000_000, 99_999_999)}`,
+          publicNumber,
           userId,
           paymentMethod: input.paymentMethod,
           subtotal,
           shipping: SHIPPING_COST,
           total,
+          carrier: 'Platanitos Envíos',
+          trackingCode: publicNumber,
           estimatedFrom: new Date(now + 6 * DAY_MS),
           estimatedTo: new Date(now + 8 * DAY_MS),
           addressId: address?.id,
@@ -100,13 +102,26 @@ export class OrdersService {
             create: {
               method: input.paymentMethod,
               amount: total,
-              status: input.paymentMethod === PaymentMethod.WALLET ? PaymentStatus.SUCCEEDED : PaymentStatus.PENDING,
+              status: paymentStatus,
             },
           },
         },
         include: orderInclude,
       });
       await transaction.cartItem.deleteMany({ where: { cartId: cart.id } });
+      await transaction.auditEvent.create({
+        data: {
+          userId,
+          eventType: 'ORDER_NOTICE',
+          metadata: {
+            orderId: created.id,
+            title: 'Pago y envío registrados',
+            body: paymentStatus === PaymentStatus.PENDING
+              ? `Pedido ${publicNumber}: el pago en efectivo queda pendiente. El envío con Platanitos Envíos usa el código ${publicNumber}.`
+              : `Pedido ${publicNumber}: el pago quedó confirmado. El envío con Platanitos Envíos usa el código ${publicNumber}.`,
+          },
+        },
+      });
       return created;
     });
     return mapOrder(order);
@@ -127,25 +142,60 @@ export class OrdersService {
     return mapOrder(order);
   }
 
-  /** Simula el avance logístico; en producción lo haría el operador o el courier. */
+  /** Avanza el estado logístico del pedido. */
   async updateStatus(userId: string, publicNumber: string, input: UpdateOrderStatusDto) {
     const order = await this.prisma.order.findFirst({ where: { userId, publicNumber }, select: { id: true, status: true } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
     const current = STATUS_FLOW.indexOf(order.status);
     const next = STATUS_FLOW.indexOf(input.status);
-    if (current < 0 || next <= current) {
-      throw new BadRequestException('El pedido no puede volver a un estado anterior');
+    if (next !== current + 1) {
+      throw new BadRequestException('El envío solo avanza un paso: preparación, despacho, en camino y entregado.');
     }
     const updated = await this.prisma.order.update({
       where: { id: order.id },
       data: {
         status: input.status,
         statusHistory: {
-          create: STATUS_FLOW.slice(current + 1, next + 1).map((status) => ({ status, note: 'Estado simulado' })),
+          create: STATUS_FLOW.slice(current + 1, next + 1).map((status) => ({ status, note: 'Estado actualizado' })),
         },
       },
       include: orderInclude,
     });
+    await this.prisma.auditEvent.create({
+      data: {
+        userId,
+        eventType: 'ORDER_NOTICE',
+        metadata: {
+          orderId: updated.id,
+          title: 'Envío actualizado',
+          body: `Pedido ${updated.publicNumber}: ${input.status}.`,
+        },
+      },
+    });
+    if (input.status === OrderStatus.DELIVERED && updated.paymentMethod === PaymentMethod.CASH) {
+      await this.prisma.paymentAttempt.updateMany({
+        where: { orderId: updated.id, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.SUCCEEDED },
+      });
+    }
     return mapOrder(updated);
+  }
+
+  async notices(userId: string) {
+    const events = await this.prisma.auditEvent.findMany({
+      where: { userId, eventType: 'ORDER_NOTICE' },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    });
+    return events.map((event) => {
+      const data = event.metadata as { title?: string; body?: string; orderId?: string } | null;
+      return {
+        id: event.id,
+        title: data?.title ?? 'Aviso',
+        body: data?.body ?? '',
+        orderId: data?.orderId ?? null,
+        createdAt: event.createdAt,
+      };
+    });
   }
 }

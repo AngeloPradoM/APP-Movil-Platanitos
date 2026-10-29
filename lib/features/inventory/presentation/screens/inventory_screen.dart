@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../operations/presentation/widgets/operations_panel.dart';
+import '../../data/remote_inventory_repository.dart';
 import '../../domain/inventory_models.dart';
+import 'product_editor_screen.dart';
 import '../controllers/inventory_controller.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -118,7 +120,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Movimiento guardado localmente.')),
+          const SnackBar(content: Text('Movimiento guardado en el inventario.')),
         );
       }
     } catch (error) {
@@ -133,6 +135,63 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
       );
     }
+  }
+
+  Future<void> editPrice(InventoryItem item) async {
+    final field = TextEditingController(
+      text: item.price == 0 ? '' : item.price.toStringAsFixed(2),
+    );
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Precio · ${item.productName}'),
+        content: TextField(
+          controller: field,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Precio en soles'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    final price = double.tryParse(field.text.replaceAll(',', '.'));
+    if (submitted != true || !mounted || price == null || price < 0) return;
+    try {
+      await controller!.updatePrice(item, price);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Precio actualizado.')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar el precio.')),
+      );
+    }
+  }
+
+  Future<void> openEditor([String? productId]) async {
+    final repository = ShopScope.of(context).inventoryRepository;
+    if (repository is! RemoteInventoryRepository) return;
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => ProductEditorScreen(
+          repository: repository,
+          productId: productId,
+        ),
+      ),
+    );
+    if (saved == true) await controller?.load(query: searchController.text);
   }
 
   Future<void> showHistory(InventoryItem item) async {
@@ -177,7 +236,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final current = controller;
     if (current == null) {
       return const Center(
-        child: Text('El inventario local no está disponible.'),
+        child: Text('El inventario no está disponible para esta sesión.'),
       );
     }
     return AnimatedBuilder(
@@ -229,6 +288,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
             ),
+            if (ShopScope.of(context).inventoryRepository
+                is RemoteInventoryRepository)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: () => openEditor(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Registrar producto'),
+                ),
+              ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Mostrar solo stock bajo'),
@@ -267,7 +336,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${item.color} · Talla ${item.sizeValue} ${item.sizeSystem}',
+                            [
+                              if (item.category.isNotEmpty) item.category,
+                              item.color,
+                              'Talla ${item.sizeValue} ${item.sizeSystem}',
+                              if (item.price > 0)
+                                'S/ ${item.price.toStringAsFixed(2)}',
+                            ].join(' · '),
                             style: const TextStyle(
                               color: AppColors.muted,
                               fontSize: 12,
@@ -282,6 +357,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    if (ShopScope.of(context).inventoryRepository
+                        is RemoteInventoryRepository)
+                      IconButton(
+                        tooltip: 'Editar producto',
+                        onPressed: () => openEditor(item.productId),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: 'Cambiar precio',
+                      onPressed: () => editPrice(item),
+                      icon: const Icon(
+                        Icons.sell_outlined,
+                        color: AppColors.muted,
                       ),
                     ),
                     IconButton(

@@ -108,7 +108,24 @@ class ShopImage extends StatelessWidget {
   /// Descarga y decodifica la foto según el tamaño en que se muestra.
   final bool thumbnail;
 
-  static final _unsplashWidth = RegExp(r'([?&])w=\d+');
+  static final _unsplashPhoto = RegExp(
+    r'images\.unsplash\.com/photo-([A-Za-z0-9_-]+)',
+  );
+
+  /// Unsplash no abre desde esta red. El proxy descarga la misma foto
+  /// (la que corresponde al tipo de producto) y la entrega desde otro host.
+  String _reachable(String source, int width) {
+    if (_unsplashPhoto.firstMatch(source) == null) return source;
+    final uri = Uri.tryParse(source);
+    if (uri == null || uri.host != 'images.unsplash.com') return source;
+    final query = Map<String, String>.from(uri.queryParameters);
+    query['w'] = '$width';
+    query.putIfAbsent('fit', () => 'crop');
+    query.putIfAbsent('q', () => '85');
+    final upstream =
+        'images.unsplash.com${uri.path}?${Uri(queryParameters: query).query}';
+    return 'https://images.weserv.nl/?url=${Uri.encodeComponent(upstream)}&output=jpg';
+  }
 
   @override
   Widget build(BuildContext context) => thumbnail
@@ -118,19 +135,14 @@ class ShopImage extends StatelessWidget {
               constraints.maxWidth,
               constraints.maxHeight,
             ].where((value) => value.isFinite).fold(0.0, math.max);
-            if (side == 0) return _image(url, null);
-            final pixels = side * MediaQuery.devicePixelRatioOf(context) * 1.25;
+            final pixels = side.isFinite && side > 0
+                ? side * MediaQuery.devicePixelRatioOf(context) * 1.25
+                : 800.0;
             final width = ((pixels / 200).ceil() * 200).clamp(200, 1200);
-            final sized = url.contains('images.unsplash.com/')
-                ? url.replaceFirstMapped(
-                    _unsplashWidth,
-                    (match) => '${match[1]}w=$width',
-                  )
-                : url;
-            return _image(sized, width);
+            return _image(_reachable(url, width), width);
           },
         )
-      : _image(url, null);
+      : _image(_reachable(url, 800), null);
 
   Widget _image(String source, int? cacheWidth) => Image.network(
     source,

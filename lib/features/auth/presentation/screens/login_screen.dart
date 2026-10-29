@@ -331,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        if (!isDemoClientLogin) ...[
+                        if (!isDemoClientLogin && appState.isDemoMode) ...[
                           const SizedBox(height: 18),
                           const Row(
                             children: [

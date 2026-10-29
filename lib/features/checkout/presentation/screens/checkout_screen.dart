@@ -45,16 +45,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> pay() async {
     if (processing || ShopScope.of(context).cart.isEmpty) return;
-    setState(() => processing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    if (payment == PaymentMethod.card) {
-      setState(() {
-        processing = false;
-        paymentError = true;
-      });
-      return;
-    }
+    setState(() {
+      processing = true;
+      paymentError = false;
+    });
     final state = ShopScope.of(context);
     if (state.cart.isEmpty) {
       setState(() => processing = false);

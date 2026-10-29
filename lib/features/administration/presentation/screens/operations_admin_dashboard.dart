@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/shop_widgets.dart';
+import '../../../inventory/data/remote_inventory_repository.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
@@ -76,7 +77,7 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
           Icons.local_shipping_outlined,
         ),
         (
-          'Ventas simuladas',
+          'Ventas',
           'S/ ${(value.totalSalesCents / 100).toStringAsFixed(2)}',
           Icons.payments_outlined,
         ),
@@ -95,7 +96,7 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
             const OperationsPanelHeader(
               title: 'Resumen operativo',
               subtitle:
-                  'Indicadores calculados con los datos locales de la demostración.',
+                  'Pedidos, stock, ventas y categorías registrados en la base.',
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -110,6 +111,8 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
                   ),
               ],
             ),
+            const SizedBox(height: 16),
+            const _CategoryPanel(),
             const SizedBox(height: 16),
             OperationsTile(
               onTap: () => Navigator.push(
@@ -154,6 +157,63 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
             ),
           ],
         ),
+      );
+    },
+  );
+}
+
+class _CategoryPanel extends StatefulWidget {
+  const _CategoryPanel();
+
+  @override
+  State<_CategoryPanel> createState() => _CategoryPanelState();
+}
+
+class _CategoryPanelState extends State<_CategoryPanel> {
+  Future<List<InventoryCategory>>? categories;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    categories ??= _load();
+  }
+
+  Future<List<InventoryCategory>> _load() async {
+    final repository = ShopScope.of(context).inventoryRepository;
+    if (repository is! RemoteInventoryRepository) return const [];
+    return repository.categories();
+  }
+
+  Future<void> _toggle(InventoryCategory category, bool active) async {
+    final repository = ShopScope.of(context).inventoryRepository;
+    if (repository is! RemoteInventoryRepository) return;
+    await repository.setCategoryActive(category.id, active);
+    if (mounted) setState(() => categories = _load());
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<InventoryCategory>>(
+    future: categories,
+    builder: (context, snapshot) {
+      final values = snapshot.data ?? const <InventoryCategory>[];
+      if (values.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const OperationsPanelHeader(
+            title: 'Categorías',
+            subtitle: 'Activa o pausa una categoría del catálogo.',
+          ),
+          const SizedBox(height: 8),
+          for (final category in values)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(category.name),
+              subtitle: Text('${category.productCount} productos'),
+              value: category.isActive,
+              onChanged: (value) => _toggle(category, value),
+            ),
+        ],
       );
     },
   );
