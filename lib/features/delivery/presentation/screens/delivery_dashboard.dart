@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/state/shop_state.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../operations/data/remote_operations_repository.dart';
 import '../../../operations/domain/operations_models.dart';
 import '../../../operations/presentation/widgets/operations_error_view.dart';
 import '../../../operations/presentation/widgets/operations_panel.dart';
@@ -16,11 +17,15 @@ class DeliveryDashboard extends StatefulWidget {
 
 class _DeliveryDashboardState extends State<DeliveryDashboard> {
   Future<List<DeliveryTask>>? deliveries;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    deliveries ??= _load();
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision && deliveries != null) return;
+    _revision = revision;
+    deliveries = _load();
   }
 
   Future<List<DeliveryTask>> _load() {
@@ -154,7 +159,8 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
           children: [
             const OperationsPanelHeader(
               title: 'Entregas asignadas',
-              subtitle: 'Recojo, tránsito, evidencia de entrega e incidencias.',
+              subtitle:
+                  'Los pedidos aparecen aquí cuando almacén los despacha. Primero recógelos y después confirma la entrega.',
             ),
             const SizedBox(height: 16),
             if (snapshot.data!.isEmpty)
@@ -220,7 +226,9 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> {
                             icon: const Icon(Icons.verified_outlined),
                             label: const Text('Confirmar con evidencia'),
                           ),
-                        if (item.status == 'IN_TRANSIT')
+                        if (item.status == 'IN_TRANSIT' &&
+                            ShopScope.of(context).operationsRepository
+                                is! RemoteOperationsRepository)
                           OutlinedButton(
                             onPressed: () => _incident(item),
                             child: const Text('Incidencia'),

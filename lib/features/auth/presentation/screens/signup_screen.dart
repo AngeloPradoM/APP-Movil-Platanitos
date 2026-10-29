@@ -158,7 +158,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 18),
                 Form(
                   key: form,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -171,6 +170,8 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 fieldLabel('Nombres'),
                                 TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                                   decoration: fieldDecoration('Nombres'),
                                   textCapitalization: TextCapitalization.words,
                                   validator: validateNamePart,
@@ -186,6 +187,8 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 fieldLabel('Apellidos'),
                                 TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                                   decoration: fieldDecoration('Apellidos'),
                                   textCapitalization: TextCapitalization.words,
                                   validator: validateNamePart,
@@ -238,6 +241,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                               key: ValueKey(documentType),
                               decoration:
                                   fieldDecoration(
@@ -271,6 +276,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       gap,
                       fieldLabel('Correo electrónico'),
                       TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                         decoration: fieldDecoration('correo@ejemplo.com'),
                         validator: Validators.email,
                         keyboardType: TextInputType.emailAddress,
@@ -328,6 +335,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                               decoration: fieldDecoration('Numero de telefono'),
                               keyboardType: TextInputType.phone,
                               inputFormatters: [
@@ -347,6 +356,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       if (countryCode == 'other') ...[
                         const SizedBox(height: 12),
                         TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                           decoration: fieldDecoration('Codigo de pais')
                               .copyWith(prefixText: '+'),
                           keyboardType: TextInputType.number,
@@ -364,6 +375,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       gap,
                       fieldLabel('Contraseña'),
                       TextFormField(
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                         decoration: fieldDecoration(
                           'Mínimo 8 caracteres',
                           suffix: IconButton(

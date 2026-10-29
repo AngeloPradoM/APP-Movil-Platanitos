@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
+import { LiveService } from '../live/live.service.js';
 
 const STAFF_ROLES = new Set(['ALMACEN', 'ADMINISTRADOR']);
 
@@ -16,7 +17,10 @@ export function assertWarehouseStaff(role: string) {
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   async list(query = '', lowStockOnly = false) {
     const term = query.trim();
@@ -115,6 +119,7 @@ export class InventoryService {
         },
       });
     });
+    this.live.publish({ audience: 'staff', type: 'inventory.updated' });
   }
 
   async updatePrice(variantId: string, price: number) {
@@ -126,6 +131,7 @@ export class InventoryService {
       data: { price: new Prisma.Decimal(price.toFixed(2)) },
     });
     if (updated.count === 0) throw new NotFoundException('Variante no encontrada');
+    this.live.publish({ audience: 'staff', type: 'inventory.updated' });
   }
 
   async categories() {
@@ -151,5 +157,6 @@ export class InventoryService {
   async setCategoryActive(id: string, isActive: boolean) {
     const updated = await this.prisma.category.updateMany({ where: { id }, data: { isActive } });
     if (updated.count === 0) throw new NotFoundException('Categoría no encontrada');
+    this.live.publish({ audience: 'all', type: 'catalog.updated' });
   }
 }

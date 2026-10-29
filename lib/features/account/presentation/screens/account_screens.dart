@@ -554,11 +554,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _editForm() => Form(
     key: form,
-    autovalidateMode: AutovalidateMode.onUserInteraction,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: name,
           decoration: const InputDecoration(labelText: 'Nombre'),
           validator: Validators.name,
@@ -566,12 +566,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: document,
           readOnly: true,
           decoration: const InputDecoration(labelText: 'Documento'),
         ),
         const SizedBox(height: 16),
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: email,
           decoration: const InputDecoration(labelText: 'Correo'),
           validator: Validators.email,
@@ -580,6 +582,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: phone,
           decoration: const InputDecoration(labelText: 'Teléfono'),
           validator: Validators.phone,

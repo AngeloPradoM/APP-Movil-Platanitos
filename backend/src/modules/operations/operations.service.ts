@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
+import { LiveService } from '../live/live.service.js';
 
 @Injectable()
 export class OperationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   async report() {
     const [orders, pendingOrders, deliveredOrders, lowStockVariants, openSupportRequests, activeDeliveries, sales] =
@@ -75,6 +79,12 @@ export class OperationsService {
       },
     });
     await this.notice(updated.userId, updated.id, 'Envío despachado', `Pedido ${updated.publicNumber} salió del almacén. Código ${updated.trackingCode ?? updated.publicNumber}.`);
+    this.live.orderChanged(updated.userId, {
+      orderId: updated.id,
+      publicNumber: updated.publicNumber,
+      status: updated.status,
+      title: 'Envío despachado',
+    });
   }
 
   private async move(orderId: string, from: OrderStatus, to: OrderStatus, body: string) {
@@ -86,6 +96,13 @@ export class OperationsService {
       data: { status: to, statusHistory: { create: { status: to, note: body } } },
     });
     await this.notice(updated.userId, updated.id, 'Envío actualizado', `Pedido ${updated.publicNumber}: ${body}`);
+    this.live.orderChanged(updated.userId, {
+      orderId: updated.id,
+      publicNumber: updated.publicNumber,
+      status: updated.status,
+      title: 'Envío actualizado',
+      body,
+    });
     return updated;
   }
 
@@ -99,12 +116,78 @@ export class OperationsService {
     await this.move(orderId, OrderStatus.DISPATCH, OrderStatus.TRANSIT, 'Tu pedido está en camino.');
   }
 
-  async markDelivered(orderId: string) {
+  async deliveries() {
+    const orders = await this.prisma.order.findMany({
+      where: { status: { in: [OrderStatus.DISPATCH, OrderStatus.TRANSIT] } },
+      orderBy: { updatedAt: 'asc' },
+      include: { addressSnapshot: true },
+    });
+    return orders.map((order) => ({
+      id: order.id,
+      orderId: order.id,
+      publicNumber: order.publicNumber,
+      assignedUserId: '',
+      status: order.status === OrderStatus.DISPATCH ? 'ASSIGNED' : 'IN_TRANSIT',
+      address: order.addressSnapshot
+        ? `${order.addressSnapshot.line1}, ${order.addressSnapshot.district}`
+        : 'Dirección por coordinar',
+      assignedAt: order.updatedAt,
+      hasEvidence: false,
+    }));
+  }
+
+  async deliveryEvidence(orderId: string) {
+    const events = await this.prisma.auditEvent.findMany({
+      where: { eventType: 'DELIVERY_EVIDENCE' },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    });
+    const event = events.find((item) => (item.metadata as { orderId?: string } | null)?.orderId === orderId);
+    if (!event) return null;
+    const data = event.metadata as {
+      recipientName?: string;
+      signatureData?: string;
+      photo?: string;
+    };
+    return {
+      deliveryId: orderId,
+      recipientName: data.recipientName ?? '',
+      signatureData: data.signatureData ?? '[]',
+      photo: data.photo ?? '',
+      capturedAt: event.createdAt,
+    };
+  }
+
+  async markDelivered(
+    orderId: string,
+    proof?: { recipientName?: string; signatureData?: string; photo?: string },
+  ) {
     const order = await this.move(orderId, OrderStatus.TRANSIT, OrderStatus.DELIVERED, 'Tu pedido fue entregado.');
+    if (proof?.recipientName) {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: order.userId,
+          eventType: 'DELIVERY_EVIDENCE',
+          metadata: {
+            orderId,
+            recipientName: proof.recipientName,
+            signatureData: proof.signatureData ?? '[]',
+            photo: proof.photo ?? '',
+          },
+        },
+      });
+    }
     if (order.paymentMethod === 'CASH') {
       await this.prisma.paymentAttempt.updateMany({
         where: { orderId, status: 'PENDING' },
         data: { status: 'SUCCEEDED' },
+      });
+      this.live.orderChanged(order.userId, {
+        orderId: order.id,
+        publicNumber: order.publicNumber,
+        status: order.status,
+        title: 'Pago confirmado',
+        body: `Pedido ${order.publicNumber}: el efectivo quedó cobrado.`,
       });
     }
   }
@@ -118,9 +201,20 @@ export class OperationsService {
   }
 
   private async note(orderId: string, status: OrderStatus, marker: string) {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
-    if (!order) throw new NotFoundException('Pedido no encontrado');
-    if (order.status !== status) throw new BadRequestException('El pedido no está en preparación.');
+    const current = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!current) throw new NotFoundException('Pedido no encontrado');
+    if (current.status !== status) throw new BadRequestException('El pedido no está en preparación.');
     await this.prisma.orderStatusHistory.create({ data: { orderId, status, note: marker } });
+    const body = marker === 'PREPARING'
+      ? `Pedido ${current.publicNumber}: empezó la preparación.`
+      : `Pedido ${current.publicNumber}: está listo para despacho.`;
+    await this.notice(current.userId, current.id, 'Preparación', body);
+    this.live.orderChanged(current.userId, {
+      orderId: current.id,
+      publicNumber: current.publicNumber,
+      status: marker,
+      title: 'Preparación',
+      body,
+    });
   }
 }

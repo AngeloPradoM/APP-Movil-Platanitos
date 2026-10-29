@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma, SizeSystem } from '@prisma/client';
 import { randomInt } from 'node:crypto';
 import { PrismaService } from '../../database/prisma.service.js';
+import { LiveService } from '../live/live.service.js';
 import { SaveProductDto } from './dto/save-product.dto.js';
 
 const SIZE_RANK = ['EUR', 'US', 'CM', 'ALPHA', 'ONE_SIZE'];
@@ -27,7 +28,10 @@ function orderedVariants(variants: SaveProductDto['variants']) {
 
 @Injectable()
 export class ProductEditorService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   brands() {
     return this.prisma.brand.findMany({
@@ -154,7 +158,9 @@ export class ProductEditorService {
       });
       return product.id;
     });
-    return this.getProduct(savedId);
+    const saved = await this.getProduct(savedId);
+    this.live.publish({ audience: 'all', type: 'catalog.updated' });
+    return saved;
   }
 
   private async uniqueSlug(base: string, currentId: string | null) {

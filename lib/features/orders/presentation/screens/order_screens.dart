@@ -374,6 +374,9 @@ class TrackingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    final order =
+        state.orders.where((item) => item.id == this.order.id).firstOrNull ??
+        this.order;
     final (title, message, icon) = _statusInfo(order.status);
     return PageFrame(
       title: 'Seguir mi pedido',
@@ -547,6 +550,9 @@ class DeliveryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    final order =
+        state.orders.where((item) => item.id == this.order.id).firstOrNull ??
+        this.order;
     final (title, _, icon) = _statusInfo(order.status);
     final address = order.address;
     final units = order.items.fold<int>(0, (sum, item) => sum + item.quantity);

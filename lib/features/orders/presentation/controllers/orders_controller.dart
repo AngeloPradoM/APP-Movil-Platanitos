@@ -194,6 +194,11 @@ extension OrdersController on ShopState {
     ShippingAddress? address,
   }) async {
     if (_cart.isEmpty) throw StateError('La bolsa está vacía');
+    final repository = ordersRepository;
+    final token = _sessionToken;
+    if (repository != null && token != null) {
+      return _checkoutRemote(payment, address, repository, token);
+    }
     final demoRepository = operationsRepository;
     final userId = user.id;
     if (demoRepository != null && userId != null) {
@@ -220,12 +225,17 @@ extension OrdersController on ShopState {
       unawaited(loadRemoteCatalog());
       return order;
     }
-    final repository = ordersRepository;
-    final token = _sessionToken;
-    if (repository == null ||
-        token == null ||
-        _cart.any((item) => item.remoteVariantId == null)) {
-      return placeOrder(payment, address: address);
+    return placeOrder(payment, address: address);
+  }
+
+  Future<ShopOrder> _checkoutRemote(
+    PaymentMethod payment,
+    ShippingAddress? address,
+    OrdersRepository repository,
+    String token,
+  ) async {
+    if (_cart.any((item) => item.remoteVariantId == null)) {
+      throw StateError('El producto no tiene una variante en el catálogo.');
     }
     if (address != null && !address.isRemote) {
       final local = address;

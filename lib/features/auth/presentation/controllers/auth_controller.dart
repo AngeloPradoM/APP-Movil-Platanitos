@@ -51,6 +51,7 @@ extension AuthController on ShopState {
     );
     signedIn = true;
     _syncToken();
+    _startLive();
     _notifySafely();
   }
 
@@ -93,6 +94,7 @@ extension AuthController on ShopState {
     );
     signedIn = true;
     _syncToken();
+    _startLive();
     _notifySafely();
   }
 
@@ -132,6 +134,7 @@ extension AuthController on ShopState {
         await loadRemoteCart();
       await _loadAccountData();
       _syncToken();
+      _startLive();
       _notifySafely();
     } catch (_) {
       await _sessionStorage.clear();
@@ -148,6 +151,7 @@ extension AuthController on ShopState {
       authRepository!.logout(refreshToken).catchError((_) {});
     }
     _authSession = null;
+    _stopLive();
     _syncToken();
     _sessionStorage.clear();
     signedIn = false;
@@ -167,5 +171,62 @@ extension AuthController on ShopState {
 
   void _syncToken() {
     tokenStore?.value = _authSession?.accessToken;
+  }
+
+  void _startLive() {
+    _stopLive();
+    final token = accessToken;
+    if (token == null || ordersRepository == null) return;
+    _liveSub = LiveStream(ApiConfig.baseUrl).listen(token).listen(_onLive);
+    _livePoll = Timer.periodic(const Duration(seconds: 4), (_) {
+      unawaited(_pollLive());
+    });
+  }
+
+  void _stopLive() {
+    _liveSub?.cancel();
+    _liveSub = null;
+    _livePoll?.cancel();
+    _livePoll = null;
+    _liveCursor = '';
+  }
+
+  Future<void> _pollLive() async {
+    final token = accessToken;
+    if (token == null || _disposed) return;
+    try {
+      final payload = await ApiClient(baseUrl: ApiConfig.baseUrl).get(
+        '/live/head',
+        accessToken: token,
+      );
+      final cursor = (payload as Map)['cursor'] as String? ?? '';
+      if (cursor.isEmpty || cursor == _liveCursor) return;
+      _onLive({'type': 'poll', 'at': cursor});
+    } catch (_) {}
+  }
+
+  void _onLive(Map<String, dynamic> event) {
+    if (_disposed) return;
+    final type = event['type'] as String? ?? '';
+    if (type == 'ping') return;
+    final at = event['at'] as String?;
+    if (at != null && at.isNotEmpty) {
+      if (at == _liveCursor && type == 'poll') return;
+      _liveCursor = at;
+    }
+    liveRevision++;
+    final token = accessToken;
+    final source = ordersRepository;
+    if (token != null && source != null && (type.startsWith('order') || type == 'poll')) {
+      unawaited(
+        source.list(accessToken: token).then((orders) {
+          if (_disposed) return;
+          _applyRemoteOrders(orders);
+          _notifySafely();
+        }, onError: (_, _) {}),
+      );
+    }
+    if (type == 'catalog.updated') unawaited(loadCategories());
+    _notifySafely();
   }
 }

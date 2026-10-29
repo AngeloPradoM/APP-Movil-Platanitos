@@ -18,6 +18,7 @@ import { ContentModule } from './modules/content/content.module.js';
 import { AddressesModule } from './modules/addresses/addresses.module.js';
 import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { OperationsModule } from './modules/operations/operations.module.js';
+import { LiveModule } from './modules/live/live.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     AddressesModule,
     InventoryModule,
     OperationsModule,
+    LiveModule,
   ],
   controllers: [AppController],
   providers: [

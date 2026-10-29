@@ -457,7 +457,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             PaymentMethod.card => const DemoCardForm(),
             PaymentMethod.cash => const Text(
-              'Generaremos un código de demostración válido por 24 horas para agentes KasNet, Western Union y establecimientos autorizados.',
+              'Pagas al recibir el pedido. El cobro queda pendiente hasta que almacén marque la entrega.',
               style: TextStyle(fontSize: 13, height: 1.45),
             ),
           },
@@ -465,7 +465,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     const SizedBox(height: 4),
     const Text(
-      'Pago simulado · No ingreses datos reales',
+      'Yape, Plin y tarjeta quedan confirmados. El efectivo se cobra al entregar.',
       textAlign: TextAlign.center,
       style: TextStyle(color: AppColors.muted, fontSize: 11.5),
     ),

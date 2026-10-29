@@ -1,8 +1,25 @@
-import { Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { assertWarehouseStaff } from '../inventory/inventory.service.js';
 import { OperationsService } from './operations.service.js';
+
+class DeliveryProofDto {
+  @IsString()
+  @MaxLength(120)
+  recipientName!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  signatureData?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(700000)
+  photo?: string;
+}
 
 @Controller('operations')
 @UseGuards(AuthGuard('jwt'))
@@ -49,6 +66,39 @@ export class OperationsController {
   deliver(@CurrentUser() user: { role: string }, @Param('orderId', ParseUUIDPipe) orderId: string) {
     this.allow(user.role);
     return this.operations.markDelivered(orderId);
+  }
+
+  @Get('deliveries')
+  deliveries(@CurrentUser() user: { role: string }) {
+    this.allowDriver(user.role);
+    return this.operations.deliveries();
+  }
+
+  @Get('deliveries/:orderId/evidence')
+  evidence(@CurrentUser() user: { role: string }, @Param('orderId', ParseUUIDPipe) orderId: string) {
+    this.allowDriver(user.role);
+    return this.operations.deliveryEvidence(orderId);
+  }
+
+  @Post('deliveries/:orderId/pickup')
+  pickup(@CurrentUser() user: { role: string }, @Param('orderId', ParseUUIDPipe) orderId: string) {
+    this.allowDriver(user.role);
+    return this.operations.markInTransit(orderId);
+  }
+
+  @Post('deliveries/:orderId/deliver')
+  complete(
+    @CurrentUser() user: { role: string },
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+    @Body() body: DeliveryProofDto,
+  ) {
+    this.allowDriver(user.role);
+    return this.operations.markDelivered(orderId, body);
+  }
+
+  private allowDriver(role: string) {
+    if (role === 'REPARTIDOR' || role === 'ADMINISTRADOR') return;
+    throw new ForbiddenException('Acceso exclusivo para repartidores.');
   }
 
   private allow(role: string) {

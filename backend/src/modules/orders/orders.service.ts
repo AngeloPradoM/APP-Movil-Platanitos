@@ -8,6 +8,7 @@ import { randomInt } from 'node:crypto';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { LiveService } from '../live/live.service.js';
 import { mapOrder, orderInclude } from './orders.mapper.js';
 
 export const SHIPPING_COST = new Prisma.Decimal('6.90');
@@ -21,7 +22,10 @@ const STATUS_FLOW: OrderStatus[] = [
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   async create(userId: string, input: CreateOrderDto) {
     const cart = await this.prisma.cart.findUnique({
@@ -124,6 +128,14 @@ export class OrdersService {
       });
       return created;
     });
+    this.live.orderChanged(userId, {
+      type: 'order.created',
+      orderId: order.id,
+      publicNumber: order.publicNumber,
+      status: order.status,
+      title: 'Pedido registrado',
+      body: `Pedido ${order.publicNumber} quedó en preparación.`,
+    });
     return mapOrder(order);
   }
 
@@ -178,6 +190,13 @@ export class OrdersService {
         data: { status: PaymentStatus.SUCCEEDED },
       });
     }
+    this.live.orderChanged(userId, {
+      orderId: updated.id,
+      publicNumber: updated.publicNumber,
+      status: updated.status,
+      title: 'Envío actualizado',
+      body: `Pedido ${updated.publicNumber}: ${updated.status}.`,
+    });
     return mapOrder(updated);
   }
 

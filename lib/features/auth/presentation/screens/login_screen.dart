@@ -248,12 +248,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(height: isDemoClientLogin ? 24 : 56),
                         Form(
                           key: form,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               fieldLabel('Correo electrónico'),
                               TextFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 initialValue: isDemoClientLogin
                                     ? demoClientProfile!.email
                                     : null,
@@ -267,6 +268,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 16),
                               fieldLabel('Contraseña'),
                               TextFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 decoration: fieldDecoration(
                                   'Ingresa tu contraseña',
                                   suffix: IconButton(

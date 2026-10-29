@@ -10,7 +10,14 @@ import '../../../operations/presentation/widgets/operations_error_view.dart';
 import '../../../operations/presentation/widgets/operations_panel.dart';
 
 class OperationsAdminDashboard extends StatefulWidget {
-  const OperationsAdminDashboard({super.key});
+  const OperationsAdminDashboard({
+    super.key,
+    this.onOpenInventory,
+    this.onOpenFulfillment,
+  });
+
+  final VoidCallback? onOpenInventory;
+  final VoidCallback? onOpenFulfillment;
 
   @override
   State<OperationsAdminDashboard> createState() =>
@@ -19,11 +26,15 @@ class OperationsAdminDashboard extends StatefulWidget {
 
 class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
   Future<OperationsReport>? report;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    report ??= _load();
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision && report != null) return;
+    _revision = revision;
+    report = _load();
   }
 
   Future<OperationsReport> _load() async =>
@@ -53,33 +64,39 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
         return const Center(child: CircularProgressIndicator());
       }
       final value = snapshot.data!;
-      final metrics = <(String, String, IconData)>[
-        ('Pedidos', '${value.orders}', Icons.receipt_long_outlined),
+      final openFulfillment = widget.onOpenFulfillment;
+      final openInventory = widget.onOpenInventory;
+      final metrics = <(String, String, IconData, VoidCallback?)>[
+        ('Pedidos', '${value.orders}', Icons.receipt_long_outlined, openFulfillment),
         (
           'Pendientes',
           '${value.pendingOrders}',
           Icons.pending_actions_outlined,
+          openFulfillment,
         ),
-        ('Entregados', '${value.deliveredOrders}', Icons.task_alt_outlined),
+        (
+          'Entregados',
+          '${value.deliveredOrders}',
+          Icons.task_alt_outlined,
+          openFulfillment,
+        ),
         (
           'Stock bajo',
           '${value.lowStockVariants}',
           Icons.warning_amber_outlined,
-        ),
-        (
-          'Casos abiertos',
-          '${value.openSupportRequests}',
-          Icons.support_agent_outlined,
+          openInventory,
         ),
         (
           'Entregas activas',
           '${value.activeDeliveries}',
           Icons.local_shipping_outlined,
+          openFulfillment,
         ),
         (
           'Ventas',
           'S/ ${(value.totalSalesCents / 100).toStringAsFixed(2)}',
           Icons.payments_outlined,
+          null,
         ),
       ];
       return RefreshIndicator(
@@ -96,7 +113,7 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
             const OperationsPanelHeader(
               title: 'Resumen operativo',
               subtitle:
-                  'Pedidos, stock, ventas y categorías registrados en la base.',
+                  'Los pedidos y el despacho se actualizan solos. Toca una tarjeta para abrirla.',
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -108,6 +125,7 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
                     label: metric.$1,
                     value: metric.$2,
                     icon: metric.$3,
+                    onTap: metric.$4,
                   ),
               ],
             ),
@@ -115,7 +133,8 @@ class _OperationsAdminDashboardState extends State<OperationsAdminDashboard> {
             const _CategoryPanel(),
             const SizedBox(height: 16),
             OperationsTile(
-              onTap: () => Navigator.push(
+              onTap: openInventory ??
+                  () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
                   builder: (_) => Scaffold(
@@ -171,11 +190,15 @@ class _CategoryPanel extends StatefulWidget {
 
 class _CategoryPanelState extends State<_CategoryPanel> {
   Future<List<InventoryCategory>>? categories;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    categories ??= _load();
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision && categories != null) return;
+    _revision = revision;
+    categories = _load();
   }
 
   Future<List<InventoryCategory>> _load() async {
@@ -187,8 +210,45 @@ class _CategoryPanelState extends State<_CategoryPanel> {
   Future<void> _toggle(InventoryCategory category, bool active) async {
     final repository = ShopScope.of(context).inventoryRepository;
     if (repository is! RemoteInventoryRepository) return;
-    await repository.setCategoryActive(category.id, active);
-    if (mounted) setState(() => categories = _load());
+    final previous = categories;
+    final current = await categories;
+    if (!mounted || current == null) return;
+    setState(() {
+      categories = Future.value([
+        for (final item in current)
+          if (item.id == category.id)
+            InventoryCategory(
+              id: item.id,
+              name: item.name,
+              slug: item.slug,
+              productCount: item.productCount,
+              isActive: active,
+            )
+          else
+            item,
+      ]);
+    });
+    try {
+      await repository.setCategoryActive(category.id, active);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            active
+                ? 'Se habilitó una categoría del catálogo.'
+                : 'Se deshabilitó una categoría del catálogo.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        categories = previous;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar la categoría.')),
+      );
+    }
   }
 
   @override

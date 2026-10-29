@@ -16,11 +16,15 @@ class FulfillmentScreen extends StatefulWidget {
 
 class _FulfillmentScreenState extends State<FulfillmentScreen> {
   Future<List<FulfillmentTask>>? tasks;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    tasks ??= _load();
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision && tasks != null) return;
+    _revision = revision;
+    tasks = _load();
   }
 
   Future<List<FulfillmentTask>> _load() =>
@@ -100,7 +104,7 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
             const OperationsPanelHeader(
               title: 'Preparación y despacho',
               subtitle:
-                  'El pedido sigue este orden: preparar, despachar, poner en camino y entregar. El pago en efectivo se confirma al entregar.',
+                  'Prepara y despacha. Desde el despacho, el pedido pasa al repartidor.',
             ),
             const SizedBox(height: 16),
             if (values.isEmpty)
@@ -136,6 +140,16 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
                                   fontSize: 12,
                                 ),
                               ),
+                              if (remoteOps &&
+                                  (task.status == 'DISPATCHED' ||
+                                      task.status == 'IN_TRANSIT'))
+                                const Text(
+                                  'Lo continúa el repartidor',
+                                  style: TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -179,7 +193,7 @@ String? _action(String value, {required bool remote}) => switch (value) {
   'PENDING' => 'Iniciar',
   'PREPARING' => 'Marcar listo',
   'PREPARED' => 'Despachar',
-  'DISPATCHED' when remote => 'Poner en camino',
-  'IN_TRANSIT' when remote => 'Marcar entregado',
+  'DISPATCHED' when !remote => 'Poner en camino',
+  'IN_TRANSIT' when !remote => 'Marcar entregado',
   _ => null,
 };

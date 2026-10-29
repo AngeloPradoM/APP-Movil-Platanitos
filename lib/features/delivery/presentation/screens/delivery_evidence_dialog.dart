@@ -202,7 +202,7 @@ class _DeliveryEvidenceDialogState extends State<_DeliveryEvidenceDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Registra la conformidad de la persona que recibe. La evidencia se guarda solo en esta demo local.',
+              'Registra quién recibe el pedido. La constancia queda guardada con el envío.',
             ),
             const SizedBox(height: 16),
             TextField(

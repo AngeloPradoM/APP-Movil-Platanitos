@@ -18,15 +18,17 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   InventoryController? controller;
   final searchController = TextEditingController();
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (controller != null) return;
     final repository = ShopScope.of(context).inventoryRepository;
-    if (repository != null) {
-      controller = InventoryController(repository)..load();
-    }
+    controller ??= repository == null ? null : InventoryController(repository);
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision) return;
+    _revision = revision;
+    controller?.load(query: searchController.text);
   }
 
   @override

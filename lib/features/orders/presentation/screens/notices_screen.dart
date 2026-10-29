@@ -13,11 +13,15 @@ class NoticesScreen extends StatefulWidget {
 
 class _NoticesScreenState extends State<NoticesScreen> {
   Future<List<OrderNotice>>? notices;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    notices ??= _load();
+    final revision = ShopScope.of(context).liveRevision;
+    if (_revision == revision && notices != null) return;
+    _revision = revision;
+    notices = _load();
   }
 
   Future<List<OrderNotice>> _load() {

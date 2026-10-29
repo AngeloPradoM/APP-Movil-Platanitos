@@ -5,8 +5,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/config/api_config.dart';
 import '../../core/network/access_token_store.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/live_stream.dart';
 import '../data/demo_data.dart';
 import '../../features/loyalty/data/loyalty_repository.dart';
 import '../../features/addresses/data/addresses_repository.dart';
@@ -125,6 +127,10 @@ class ShopState extends ChangeNotifier {
   int _pendingCartRequests = 0;
   String? _cartError;
   bool _disposed = false;
+  int liveRevision = 0;
+  StreamSubscription<Map<String, dynamic>>? _liveSub;
+  Timer? _livePoll;
+  String _liveCursor = '';
   static const _failureMessage =
       'El sistema está fallando en este momento. Intenta más tarde.';
   static const _stockMessage = 'No hay más stock disponible para esta talla.';
@@ -210,6 +216,7 @@ class ShopState extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _stopLive();
     super.dispose();
   }
 

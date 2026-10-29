@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../core/network/access_token_store.dart';
@@ -116,12 +117,35 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
   Future<void> cancelOrder(String orderId, String userId) => _unavailable();
 
   @override
-  Future<List<DeliveryTask>> deliveries(String deliveryUserId) async =>
-      const [];
+  Future<List<DeliveryTask>> deliveries(String deliveryUserId) async {
+    final payload = await _client.get(
+      '/operations/deliveries',
+      accessToken: _token,
+    );
+    return [
+      for (final raw in payload as List<dynamic>)
+        DeliveryTask(
+          id: (raw as Map)['id'] as String,
+          orderId: raw['orderId'] as String,
+          publicNumber: raw['publicNumber'] as String,
+          assignedUserId: raw['assignedUserId'] as String? ?? '',
+          status: raw['status'] as String,
+          address: raw['address'] as String? ?? '',
+          assignedAt: DateTime.parse(raw['assignedAt'] as String).toLocal(),
+        ),
+    ];
+  }
 
   @override
-  Future<void> updateDelivery(String deliveryId, String status) =>
-      _unavailable();
+  Future<void> updateDelivery(String deliveryId, String status) async {
+    if (status != 'PICKED_UP' && status != 'IN_TRANSIT') {
+      throw StateError('El repartidor solo puede recoger un pedido despachado.');
+    }
+    await _client.post(
+      '/operations/deliveries/${Uri.encodeComponent(deliveryId)}/pickup',
+      accessToken: _token,
+    );
+  }
 
   @override
   Future<void> confirmDelivery({
@@ -129,10 +153,35 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
     required String recipientName,
     required String signatureData,
     required Uint8List photoBytes,
-  }) => _unavailable();
+  }) async {
+    await _client.post(
+      '/operations/deliveries/${Uri.encodeComponent(deliveryId)}/deliver',
+      accessToken: _token,
+      body: {
+        'recipientName': recipientName,
+        'signatureData': signatureData,
+        'photo': base64Encode(photoBytes),
+      },
+    );
+  }
 
   @override
-  Future<DeliveryEvidence?> deliveryEvidence(String deliveryId) async => null;
+  Future<DeliveryEvidence?> deliveryEvidence(String deliveryId) async {
+    final payload = await _client.get(
+      '/operations/deliveries/${Uri.encodeComponent(deliveryId)}/evidence',
+      accessToken: _token,
+    );
+    if (payload == null) return null;
+    final raw = Map<String, dynamic>.from(payload as Map);
+    final photo = raw['photo'] as String? ?? '';
+    return DeliveryEvidence(
+      deliveryId: raw['deliveryId'] as String? ?? deliveryId,
+      recipientName: raw['recipientName'] as String? ?? '',
+      signatureData: raw['signatureData'] as String? ?? '[]',
+      photoBytes: photo.isEmpty ? Uint8List(0) : base64Decode(photo),
+      capturedAt: DateTime.parse(raw['capturedAt'] as String).toLocal(),
+    );
+  }
 
   @override
   Future<void> reportIncident(

@@ -44,13 +44,54 @@ class RoleHome extends StatelessWidget {
   }
 }
 
-class AdministrativeHome extends StatelessWidget {
+class AdministrativeHome extends StatefulWidget {
   const AdministrativeHome({super.key});
 
   @override
-  Widget build(BuildContext context) => const _RoleScaffold(
+  State<AdministrativeHome> createState() => _AdministrativeHomeState();
+}
+
+class _AdministrativeHomeState extends State<AdministrativeHome>
+    with SingleTickerProviderStateMixin {
+  late final TabController tabs = TabController(length: 3, vsync: this);
+
+  @override
+  void dispose() {
+    tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _RoleScaffold(
     title: 'Panel administrativo',
-    child: OperationsAdminDashboard(),
+    child: Column(
+      children: [
+        TabBar(
+          controller: tabs,
+          indicatorColor: AppColors.green,
+          labelColor: AppColors.green,
+          unselectedLabelColor: AppColors.muted,
+          tabs: const [
+            Tab(icon: Icon(Icons.dashboard_outlined), text: 'Resumen'),
+            Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Inventario'),
+            Tab(icon: Icon(Icons.local_shipping_outlined), text: 'Despacho'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: tabs,
+            children: [
+              OperationsAdminDashboard(
+                onOpenInventory: () => tabs.animateTo(1),
+                onOpenFulfillment: () => tabs.animateTo(2),
+              ),
+              const InventoryScreen(),
+              const FulfillmentScreen(),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
