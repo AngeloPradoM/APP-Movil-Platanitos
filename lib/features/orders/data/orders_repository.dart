@@ -42,6 +42,9 @@ class RemoteOrder {
     required this.createdAt,
     required this.items,
     this.address,
+    this.carrier,
+    this.trackingCode,
+    this.paymentStatus,
   });
   factory RemoteOrder.fromJson(Map<String, dynamic> json) => RemoteOrder(
     publicNumber: json['publicNumber'] as String,
@@ -49,6 +52,9 @@ class RemoteOrder {
     paymentMethod: json['paymentMethod'] as String,
     shipping: double.parse(json['shipping'] as String),
     createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+    carrier: json['carrier'] as String?,
+    trackingCode: json['trackingCode'] as String?,
+    paymentStatus: json['paymentStatus'] as String?,
     address: json['address'] is Map
         ? addressFromJson(Map<String, dynamic>.from(json['address'] as Map))
         : null,
@@ -60,6 +66,7 @@ class RemoteOrder {
         .toList(growable: false),
   );
   final String publicNumber, status, paymentMethod;
+  final String? carrier, trackingCode, paymentStatus;
   final double shipping;
   final DateTime createdAt;
   final List<RemoteOrderItem> items;
@@ -101,6 +108,33 @@ class OrdersRepository {
     ),
   );
 
+  Future<List<OrderNotice>> notices({required String accessToken}) async =>
+      (await _client.get('/orders/notices', accessToken: accessToken)
+              as List<dynamic>)
+          .map(
+            (item) => OrderNotice.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(growable: false);
+
   RemoteOrder _parse(dynamic payload) =>
       RemoteOrder.fromJson(Map<String, dynamic>.from(payload as Map));
+}
+
+class OrderNotice {
+  const OrderNotice({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+  });
+  factory OrderNotice.fromJson(Map<String, dynamic> json) => OrderNotice(
+    id: json['id'] as String,
+    title: json['title'] as String? ?? 'Aviso',
+    body: json['body'] as String? ?? '',
+    createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+  );
+  final String id, title, body;
+  final DateTime createdAt;
 }

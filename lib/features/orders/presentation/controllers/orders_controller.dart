@@ -131,6 +131,9 @@ extension OrdersController on ShopState {
       status: status,
       remote: true,
       address: order.address,
+      carrier: order.carrier,
+      trackingCode: order.trackingCode,
+      paymentStatus: order.paymentStatus,
     );
   }
 

@@ -9,6 +9,7 @@ import '../features/account/presentation/screens/account_screens.dart';
 import '../features/auth/presentation/auth_flow.dart';
 import '../features/cart/presentation/screens/cart_screen.dart';
 import '../features/catalog/presentation/screens/catalog_screens.dart';
+import '../features/orders/presentation/screens/notices_screen.dart';
 import '../features/orders/presentation/screens/order_screens.dart';
 
 class ShopShell extends StatefulWidget {
@@ -60,7 +61,9 @@ class _ShopShellState extends State<ShopShell> {
                     onPressed: () => openWithLogin(
                       context,
                       AuthPrompt.orders,
-                      (_) => const OrdersScreen(),
+                      (_) => state.ordersRepository == null
+                          ? const OrdersScreen()
+                          : const NoticesScreen(),
                     ),
                     icon: const LineIcon(LineIcons.bell),
                   ),
