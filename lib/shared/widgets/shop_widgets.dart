@@ -6,6 +6,87 @@ import '../../core/theme/app_theme.dart';
 import '../../app/models/shop_models.dart';
 import '../../app/state/shop_state.dart';
 
+/// Contorno fuerte cuando un control hijo tiene el foco del teclado (WCAG 2.4.7).
+class VisibleFocus extends StatefulWidget {
+  const VisibleFocus({
+    super.key,
+    required this.child,
+    this.borderRadius,
+    this.circle = false,
+  });
+
+  final Widget child;
+  final BorderRadius? borderRadius;
+  final bool circle;
+
+  @override
+  State<VisibleFocus> createState() => _VisibleFocusState();
+}
+
+class _VisibleFocusState extends State<VisibleFocus> {
+  late final FocusNode _node = FocusNode(
+    debugLabel: 'VisibleFocus',
+    skipTraversal: true,
+    canRequestFocus: false,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _node
+      ..removeListener(_onFocusChange)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focused = _node.hasFocus;
+    final ring = Theme.of(context).focusColor.withValues(alpha: 1);
+    final width = ring.computeLuminance() > 0.45 ? 4.0 : 3.0;
+    final radius =
+        widget.borderRadius ?? BorderRadius.circular(widget.circle ? 999 : 10);
+
+    return Focus(
+      focusNode: _node,
+      canRequestFocus: false,
+      skipTraversal: true,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          shape: widget.circle ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: widget.circle ? null : radius,
+          border: Border.all(
+            color: focused ? ring : Colors.transparent,
+            width: width,
+          ),
+          boxShadow: focused
+              ? [
+                  BoxShadow(
+                    color: ring.withValues(alpha: 0.45),
+                    blurRadius: 0,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+          color: focused ? ring.withValues(alpha: 0.14) : null,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.fontSize = 32});
   final double fontSize;
@@ -683,43 +764,46 @@ class FilterPill extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     selected: selected,
-    child: Material(
-      color: selected ? AppColors.darkGreen : Colors.white,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? AppColors.darkGreen : const Color(0xFFE2E5EA),
+    child: VisibleFocus(
+      borderRadius: BorderRadius.circular(999),
+      child: Material(
+        color: selected ? AppColors.darkGreen : Colors.white,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: selected ? AppColors.darkGreen : const Color(0xFFE2E5EA),
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        overlayColor: selected
-            ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
-            : _greenOverlay,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: minHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: selected ? Colors.white : AppColors.ink,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          overlayColor: selected
+              ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
+              : _greenOverlay,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: selected ? Colors.white : AppColors.ink,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.ink,
+                      fontSize: 12.5,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(width: 5),
                 ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.ink,
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

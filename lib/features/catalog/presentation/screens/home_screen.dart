@@ -695,42 +695,49 @@ class SectionTabs extends StatelessWidget {
       child: Row(
         children: [
           for (final (index, label) in labels.indexed)
-            Semantics(
-              selected: index == selected,
-              button: true,
-              child: InkWell(
-                onTap: () => onSelected(index),
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 18),
-                  child: IntrinsicWidth(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: index == selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: index == selected
-                                  ? AppColors.darkGreen
-                                  : AppColors.ink,
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Semantics(
+                selected: index == selected,
+                button: true,
+                child: VisibleFocus(
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    onTap: () => onSelected(index),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: IntrinsicWidth(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: index == selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: index == selected
+                                      ? AppColors.darkGreen
+                                      : AppColors.ink,
+                                ),
+                              ),
                             ),
-                          ),
+                            Container(
+                              height: 2.5,
+                              decoration: BoxDecoration(
+                                color: index == selected
+                                    ? AppColors.darkGreen
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          height: 2.5,
-                          decoration: BoxDecoration(
-                            color: index == selected
-                                ? AppColors.darkGreen
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -974,37 +981,44 @@ class _CategoryRow extends StatelessWidget {
             label: 'Ver $label',
             excludeSemantics: true,
             onTap: () => onOpen(category.collection),
-            child: InkWell(
-              onTap: () => onOpen(category.collection),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.softGreen,
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: () => onOpen(category.collection),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.softGreen,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: ShopImage(category.image, thumbnail: true),
+                        ),
                       ),
-                      child: ClipOval(
-                        child: ShopImage(category.image, thumbnail: true),
+                      const SizedBox(height: 8),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1055,39 +1069,41 @@ class RecommendedCard extends StatelessWidget {
   final VoidCallback onOpen;
   @override
   Widget build(BuildContext context) => MergeSemantics(
-    child: Material(
-      color: Colors.white,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: ColoredBox(
-                    color: AppColors.background,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ShopImage(product.image, thumbnail: true),
-                        if (product.onSale)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: OfferBadge(discount: product.discount),
-                          ),
-                      ],
+    child: VisibleFocus(
+      borderRadius: BorderRadius.circular(14),
+      child: Material(
+        color: Colors.white,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: ColoredBox(
+                      color: AppColors.background,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ShopImage(product.image, thumbnail: true),
+                          if (product.onSale)
+                            Positioned(
+                              top: 6,
+                              left: 6,
+                              child: OfferBadge(discount: product.discount),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1141,6 +1157,7 @@ class RecommendedCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     ),
@@ -1242,41 +1259,48 @@ class _StoredCategoryRow extends StatelessWidget {
             label: 'Ver ${category.name}',
             excludeSemantics: true,
             onTap: () => onOpen(category),
-            child: InkWell(
-              onTap: () => onOpen(category),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.softGreen,
-                      ),
-                      child: ClipOval(
-                        child: ShopImage(
-                          category.image!,
-                          thumbnail: true,
-                          semanticLabel: category.name,
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: () => onOpen(category),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.softGreen,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: ShopImage(
+                            category.image!,
+                            thumbnail: true,
+                            semanticLabel: category.name,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      category.name,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 8),
+                      Text(
+                        category.name,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1312,30 +1336,33 @@ class _BrandRow extends StatelessWidget {
             label: 'Ver productos de $brand',
             excludeSemantics: true,
             onTap: () => onOpen(brand),
-            child: Material(
-              color: Colors.white,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              child: InkWell(
-                onTap: () => onOpen(brand),
-                child: SizedBox(
-                  width: 118 + (scale - 1) * 30,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          brand.toUpperCase(),
-                          maxLines: 1,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -.2,
-                            color: AppColors.ink,
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppColors.border),
+                ),
+                child: InkWell(
+                  onTap: () => onOpen(brand),
+                  child: SizedBox(
+                    width: 118 + (scale - 1) * 30,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            brand.toUpperCase(),
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -.2,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
                       ),
@@ -1385,12 +1412,14 @@ class _AudienceTiles extends StatelessWidget {
       label: 'Ver productos para $label',
       excludeSemantics: true,
       onTap: () => onOpen(audience.collection),
-      child: Material(
-        clipBehavior: Clip.antiAlias,
+      child: VisibleFocus(
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: () => onOpen(audience.collection),
-          child: Stack(
+        child: Material(
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: () => onOpen(audience.collection),
+            child: Stack(
             fit: StackFit.expand,
             children: [
               ShopImage(audience.image, thumbnail: true),
@@ -1439,6 +1468,7 @@ class _AudienceTiles extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
