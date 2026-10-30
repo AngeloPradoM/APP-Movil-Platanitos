@@ -9,90 +9,43 @@ import '../../app/state/shop_state.dart';
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.fontSize = 32});
   final double fontSize;
+
+  static const assetPath = 'assets/public/logo.png';
+
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'platanitos',
-    excludeSemantics: true,
-    child: FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomPaint(
-            size: Size(fontSize * 36 / 32, fontSize * 44 / 32),
-            painter: const _BrandMarkPainter(),
-          ),
-          SizedBox(width: fontSize / 16),
-          Text(
-            'platanitos',
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: AppColors.ink,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -fontSize / 26,
-              height: 1,
+  Widget build(BuildContext context) {
+    final markSize = fontSize * 1.35;
+    return Semantics(
+      label: 'platanitos',
+      excludeSemantics: true,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              assetPath,
+              width: markSize,
+              height: markSize,
+              filterQuality: FilterQuality.high,
             ),
-          ),
-        ],
+            SizedBox(width: fontSize / 8),
+            Text(
+              'platanitos',
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: AppColors.ink,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -fontSize / 26,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
-
-/// Isotipo dibujado: hojas de palmera sobre dos plátanos.
-class _BrandMarkPainter extends CustomPainter {
-  const _BrandMarkPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 36, size.height / 44);
-    final outline = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3
-      ..strokeJoin = StrokeJoin.round
-      ..color = AppColors.ink;
-    const leaves = [
-      (-2.75, Color(0xFF3FAE5A)),
-      (-2.1, Color(0xFF2A8F47)),
-      (-1.35, Color(0xFF3FAE5A)),
-      (-0.55, Color(0xFF2A8F47)),
-    ];
-    for (final (angle, color) in leaves) {
-      canvas
-        ..save()
-        ..translate(18, 17)
-        ..rotate(angle);
-      final leaf = Path()
-        ..moveTo(0, 0)
-        ..quadraticBezierTo(8, -6, 17, 0)
-        ..quadraticBezierTo(8, 5, 0, 0)
-        ..close();
-      canvas
-        ..drawPath(leaf, Paint()..color = color)
-        ..drawPath(leaf, outline)
-        ..restore();
-    }
-    final banana = Path()
-      ..moveTo(10, 20)
-      ..quadraticBezierTo(26, 21, 25, 31)
-      ..quadraticBezierTo(20, 25, 10, 25)
-      ..close();
-    final yellow = Paint()..color = AppColors.yellow;
-    canvas
-      ..drawPath(banana, yellow)
-      ..drawPath(banana, outline)
-      ..save()
-      ..translate(36, 11)
-      ..scale(-1, 1);
-    canvas
-      ..drawPath(banana, yellow)
-      ..drawPath(banana, outline)
-      ..restore();
+    );
   }
-
-  @override
-  bool shouldRepaint(_BrandMarkPainter oldDelegate) => false;
 }
 
 class ShopImage extends StatelessWidget {
