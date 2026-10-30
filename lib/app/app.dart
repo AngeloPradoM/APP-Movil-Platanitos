@@ -80,10 +80,17 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
     super.dispose();
   }
 
-  Widget _materialApp(Widget home) => MaterialApp(
+  Widget _materialApp(Widget home, {required ShopState state}) => MaterialApp(
     title: 'Platanitos',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
+    builder: (context, child) => ListenableBuilder(
+      listenable: state,
+      builder: (context, _) => Theme(
+        data: buildTheme(highContrast: state.highContrast),
+        child: child ?? const SizedBox.shrink(),
+      ),
+    ),
     home: home,
   );
 
@@ -131,6 +138,7 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
       state: currentState,
       child: _materialApp(
         currentState.signedIn ? const RoleHome() : const LoginScreen(),
+        state: currentState,
       ),
     );
   }

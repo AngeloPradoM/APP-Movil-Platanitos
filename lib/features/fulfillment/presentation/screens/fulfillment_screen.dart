@@ -113,7 +113,11 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
               ),
             for (final task in values)
               OperationsTile(
-                child: Column(
+                child: Semantics(
+                  button: _action(task.status, remote: remoteOps) != null,
+                  label:
+                      'Pedido ${task.publicNumber}, ${_label(task.status)}, ${task.units} unidades',
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
@@ -171,6 +175,7 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
                       ),
                     ],
                   ],
+                ),
                 ),
               ),
           ],

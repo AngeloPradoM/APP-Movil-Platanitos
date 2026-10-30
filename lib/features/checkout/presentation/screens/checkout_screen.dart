@@ -45,11 +45,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> pay() async {
     if (processing || ShopScope.of(context).cart.isEmpty) return;
+    final state = ShopScope.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar pago'),
+        content: Text(
+          'Vas a pagar ${money(state.total)} con ${payment.label}. '
+          'Puedes cancelar si quieres revisar la bolsa o el método de pago.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Confirmar ${money(state.total)}'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() {
       processing = true;
       paymentError = false;
     });
-    final state = ShopScope.of(context);
     if (state.cart.isEmpty) {
       setState(() => processing = false);
       return;

@@ -101,12 +101,14 @@ class ShopImage extends StatelessWidget {
     super.key,
     this.fit = BoxFit.cover,
     this.thumbnail = false,
+    this.semanticLabel,
   });
   final String url;
   final BoxFit fit;
 
   /// Descarga y decodifica la foto según el tamaño en que se muestra.
   final bool thumbnail;
+  final String? semanticLabel;
 
   static final _unsplashPhoto = RegExp(
     r'images\.unsplash\.com/photo-([A-Za-z0-9_-]+)',
@@ -150,6 +152,7 @@ class ShopImage extends StatelessWidget {
     width: double.infinity,
     height: double.infinity,
     cacheWidth: cacheWidth,
+    semanticLabel: semanticLabel,
     loadingBuilder: (context, child, progress) => progress == null
         ? child
         : const ColoredBox(
@@ -201,7 +204,7 @@ class PageFrame extends StatelessWidget {
 }
 
 const softBackground = Color(0xFFF8F9FB);
-const fieldBorderColor = Color(0xFFE2E5EA);
+const fieldBorderColor = Color(0xFFC9D0CC);
 const hintColor = Color(0xFFA0A6AE);
 
 /// Campo blanco con borde gris que se marca en verde al enfocarse.
@@ -280,7 +283,14 @@ void feedback(BuildContext context, String text) =>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Semantics(
+            liveRegion: true,
+            label: text,
+            child: Text(text),
+          ),
+        ),
       );
 Future<void> showInfo(BuildContext context, String title, String message) =>
     showDialog<void>(

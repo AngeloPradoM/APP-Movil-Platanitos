@@ -7,120 +7,157 @@ abstract final class AppColors {
       darkGreen = Color(0xFF0B6937),
       softGreen = Color(0xFFE9F5ED),
       ink = Color(0xFF17211B),
-      muted = Color(0xFF6F7772),
-      border = Color(0xFFE8ECE9),
+      /// Texto secundario con contraste ≥ 4.5:1 sobre blanco.
+      muted = Color(0xFF4A524E),
+      border = Color(0xFFC9D0CC),
       background = Color(0xFFF3F5F4),
       yellow = Color(0xFFF5CC37),
-      danger = Color(0xFFD74343);
+      danger = Color(0xFFB42318);
+
+  static const highContrastInk = Color(0xFF000000),
+      highContrastMuted = Color(0xFF1A1A1A),
+      highContrastBorder = Color(0xFF000000),
+      highContrastGreen = Color(0xFF005C2E),
+      highContrastBackground = Color(0xFFFFFFFF);
 }
 
-ThemeData buildTheme() => ThemeData(
-  useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: AppColors.green,
-    primary: AppColors.green,
-    surface: Colors.white,
-    error: AppColors.danger,
-  ),
-  scaffoldBackgroundColor: Colors.white,
-  fontFamily: 'Inter',
-  visualDensity: VisualDensity.standard,
-  focusColor: AppColors.softGreen,
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(color: AppColors.ink, fontSize: 14),
-    bodySmall: TextStyle(color: AppColors.muted, fontSize: 12),
-    titleLarge: TextStyle(
-      color: AppColors.ink,
-      fontSize: 22,
-      fontWeight: FontWeight.w700,
+ThemeData buildTheme({bool highContrast = false}) {
+  final ink = highContrast ? AppColors.highContrastInk : AppColors.ink;
+  final muted = highContrast ? AppColors.highContrastMuted : AppColors.muted;
+  final border = highContrast ? AppColors.highContrastBorder : AppColors.border;
+  final green = highContrast ? AppColors.highContrastGreen : AppColors.green;
+  final background = highContrast
+      ? AppColors.highContrastBackground
+      : AppColors.background;
+  final focusWidth = highContrast ? 3.0 : 2.2;
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: green,
+      primary: green,
+      surface: Colors.white,
+      error: AppColors.danger,
+      onSurface: ink,
+      onSurfaceVariant: muted,
+      outline: border,
     ),
-    titleMedium: TextStyle(
-      color: AppColors.ink,
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
+    scaffoldBackgroundColor: Colors.white,
+    fontFamily: 'Inter',
+    visualDensity: VisualDensity.standard,
+    focusColor: highContrast ? const Color(0xFFFFF200) : AppColors.softGreen,
+    textTheme: TextTheme(
+      bodyMedium: TextStyle(color: ink, fontSize: 14),
+      bodySmall: TextStyle(color: muted, fontSize: 12),
+      titleLarge: TextStyle(
+        color: ink,
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: TextStyle(
+        color: ink,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+      ),
     ),
-  ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.white,
-    foregroundColor: AppColors.ink,
-    centerTitle: true,
-    scrolledUnderElevation: 0,
-    titleTextStyle: TextStyle(
-      fontFamily: 'Inter',
-      color: AppColors.ink,
-      fontSize: 17,
-      fontWeight: FontWeight.w700,
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: ink,
+      centerTitle: true,
+      scrolledUnderElevation: 0,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Inter',
+        color: ink,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      ),
     ),
-  ),
-  actionIconTheme: ActionIconThemeData(
-    backButtonIconBuilder: (_) => const LineIcon(LineIcons.back),
-  ),
-  inputDecorationTheme: InputDecorationTheme(
-    filled: true,
-    fillColor: AppColors.background,
-    contentPadding: const EdgeInsets.all(16),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.border),
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const LineIcon(LineIcons.back),
     ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.border),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
     ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.green, width: 1.6),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: background,
+      contentPadding: const EdgeInsets.all(16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: green, width: focusWidth),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.6),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.danger, width: focusWidth),
+      ),
     ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.danger),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: border, width: highContrast ? 1.5 : 1),
+      ),
     ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.danger, width: 1.6),
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-  ),
-  cardTheme: CardThemeData(
-    elevation: 0,
-    color: Colors.white,
-    surfaceTintColor: Colors.transparent,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-      side: const BorderSide(color: AppColors.border),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: ink,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
-  ),
-  dialogTheme: DialogThemeData(
-    backgroundColor: Colors.white,
-    surfaceTintColor: Colors.transparent,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-  ),
-  snackBarTheme: SnackBarThemeData(
-    behavior: SnackBarBehavior.floating,
-    backgroundColor: AppColors.ink,
-    contentTextStyle: const TextStyle(color: Colors.white),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-  tooltipTheme: TooltipThemeData(
-    decoration: BoxDecoration(
-      color: AppColors.ink,
-      borderRadius: BorderRadius.circular(8),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: ink,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 12),
     ),
-    textStyle: const TextStyle(color: Colors.white, fontSize: 12),
-  ),
-  filledButtonTheme: FilledButtonThemeData(
-    style: FilledButton.styleFrom(
-      minimumSize: const Size(0, 48),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        backgroundColor: green,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
     ),
-  ),
-  outlinedButtonTheme: OutlinedButtonThemeData(
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size(0, 46),
-      foregroundColor: AppColors.green,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        foregroundColor: green,
+        side: BorderSide(color: green, width: highContrast ? 2 : 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+      ),
     ),
-  ),
-  dividerTheme: const DividerThemeData(color: AppColors.border),
-);
+    switchTheme: SwitchThemeData(
+      trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return green;
+        return border;
+      }),
+    ),
+    dividerTheme: DividerThemeData(color: border),
+  );
+}
+
 String money(double amount) => 'S/ ${amount.toStringAsFixed(2)}';

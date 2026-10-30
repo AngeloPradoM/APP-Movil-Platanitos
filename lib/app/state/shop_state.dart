@@ -127,6 +127,7 @@ class ShopState extends ChangeNotifier {
   int _pendingCartRequests = 0;
   String? _cartError;
   bool _disposed = false;
+  bool highContrast = false;
   int liveRevision = 0;
   StreamSubscription<Map<String, dynamic>>? _liveSub;
   Timer? _livePoll;
@@ -207,6 +208,12 @@ class ShopState extends ChangeNotifier {
       if (address.isDefault) return address;
     }
     return _addresses.isEmpty ? null : _addresses.first;
+  }
+
+  void setHighContrast(bool value) {
+    if (highContrast == value) return;
+    highContrast = value;
+    _notifySafely();
   }
 
   void _notifySafely() {

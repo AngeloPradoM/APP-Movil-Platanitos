@@ -19,6 +19,7 @@ import '../../../gift_cards/presentation/screens/gift_card_screen.dart';
 import '../../../content/presentation/screens/content_screens.dart';
 import '../../../loyalty/presentation/screens/recycling_screen.dart';
 import '../../../addresses/presentation/screens/address_screens.dart';
+import 'accessibility_screen.dart';
 
 Future<void> confirmLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(
@@ -93,9 +94,9 @@ class AccountScreen extends StatelessWidget {
         true,
       ),
       (
-        'Configuración',
-        Icons.settings_outlined,
-        open(const OfflineScreen()),
+        'Accesibilidad',
+        Icons.accessibility_new_outlined,
+        open(const AccessibilityScreen()),
         false,
       ),
       (

@@ -358,6 +358,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               fontSize: 12,
                             ),
                           ),
+                          if (item.lowStock)
+                            const Text(
+                              'Stock bajo: quedan 3 o menos unidades disponibles.',
+                              style: TextStyle(
+                                color: AppColors.danger,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                         ],
                       ),
                     ),

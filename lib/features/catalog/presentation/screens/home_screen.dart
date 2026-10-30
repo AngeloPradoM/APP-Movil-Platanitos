@@ -755,6 +755,7 @@ class _HeroCarouselState extends State<_HeroCarousel> {
   Timer? _timer;
   int page = _firstPage;
   bool _autoPlay = false;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -764,14 +765,24 @@ class _HeroCarouselState extends State<_HeroCarousel> {
 
   void _restart() {
     _timer?.cancel();
+    if (_paused) return;
     _timer = Timer.periodic(_interval, (_) {
-      if (_autoPlay && controller.hasClients) {
+      if (_autoPlay && !_paused && controller.hasClients) {
         controller.nextPage(
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeInOut,
         );
       }
     });
+  }
+
+  void _togglePause() {
+    setState(() => _paused = !_paused);
+    if (_paused) {
+      _timer?.cancel();
+    } else {
+      _restart();
+    }
   }
 
   @override
@@ -817,25 +828,42 @@ class _HeroCarouselState extends State<_HeroCarousel> {
         ),
         if (slides.length > 1) ...[
           const SizedBox(height: 10),
-          ExcludeSemantics(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var index = 0; index < slides.length; index++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: index == current ? 18 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      color: index == current
-                          ? AppColors.darkGreen
-                          : const Color(0xFFC9CED4),
-                    ),
-                  ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ExcludeSemantics(
+                child: Row(
+                  children: [
+                    for (var index = 0; index < slides.length; index++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: index == current ? 18 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          color: index == current
+                              ? AppColors.darkGreen
+                              : const Color(0xFFC9CED4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: _paused ? 'Reanudar carrusel' : 'Pausar carrusel',
+                onPressed: _togglePause,
+                icon: Icon(
+                  _paused ? Icons.play_arrow : Icons.pause,
+                  color: AppColors.darkGreen,
+                ),
+              ),
+              Text(
+                'Banner ${current + 1} de ${slides.length}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ],

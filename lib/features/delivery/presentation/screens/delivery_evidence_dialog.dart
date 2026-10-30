@@ -88,6 +88,7 @@ class _DeliveryEvidenceDialogState extends State<_DeliveryEvidenceDialog> {
   final picker = ImagePicker();
   Uint8List? photoBytes;
   bool loadingPhoto = false;
+  bool useTextSignature = false;
   String? photoError;
 
   @override
@@ -147,14 +148,23 @@ class _DeliveryEvidenceDialogState extends State<_DeliveryEvidenceDialog> {
     }
   }
 
-  String _signatureData() => jsonEncode([
-    for (final stroke in strokes)
-      [
-        for (final point in stroke) [point.dx, point.dy],
-      ],
-  ]);
+  String _signatureData() {
+    if (useTextSignature) {
+      return jsonEncode({
+        'type': 'text',
+        'name': recipient.text.trim(),
+      });
+    }
+    return jsonEncode([
+      for (final stroke in strokes)
+        [
+          for (final point in stroke) [point.dx, point.dy],
+        ],
+    ]);
+  }
 
   bool get _hasMeaningfulSignature {
+    if (useTextSignature) return recipient.text.trim().length >= 3;
     var distance = 0.0;
     for (final stroke in strokes) {
       for (var index = 1; index < stroke.length; index++) {
@@ -169,8 +179,17 @@ class _DeliveryEvidenceDialogState extends State<_DeliveryEvidenceDialog> {
         !_hasMeaningfulSignature ||
         photoBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Completa el nombre, la firma y la fotografía.'),
+        SnackBar(
+          content: Semantics(
+            liveRegion: true,
+            child: Text(
+              photoBytes == null
+                  ? 'Falta la fotografía. Tómala o elige una imagen.'
+                  : useTextSignature
+                  ? 'Escribe el nombre completo de quien recibe (mínimo 3 letras).'
+                  : 'Falta la firma. Dibuja en el recuadro o activa la firma con el nombre.',
+            ),
+          ),
         ),
       );
       return;
@@ -214,52 +233,70 @@ class _DeliveryEvidenceDialogState extends State<_DeliveryEvidenceDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Firma digital',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Firmar con el nombre'),
+              subtitle: const Text(
+                'Alternativa sin dibujar: usa el nombre escrito como constancia.',
+              ),
+              value: useTextSignature,
+              onChanged: (value) => setState(() => useTextSignature = value),
+            ),
+            if (!useTextSignature) ...[
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Firma digital',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: strokes.isEmpty
+                        ? null
+                        : () => setState(strokes.clear),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Limpiar'),
+                  ),
+                ],
+              ),
+              Semantics(
+                label: 'Área para dibujar la firma',
+                child: Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (details) => setState(() {
+                      strokes.add([details.localPosition]);
+                    }),
+                    onPanUpdate: (details) => setState(() {
+                      strokes.last.add(details.localPosition);
+                    }),
+                    child: CustomPaint(
+                      painter: _SignaturePainter(strokes),
+                      child: strokes.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Firma aquí',
+                                style: TextStyle(color: Colors.black45),
+                              ),
+                            )
+                          : null,
+                    ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: strokes.isEmpty
-                      ? null
-                      : () => setState(strokes.clear),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Limpiar'),
-                ),
-              ],
-            ),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(12),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: (details) => setState(() {
-                  strokes.add([details.localPosition]);
-                }),
-                onPanUpdate: (details) => setState(() {
-                  strokes.last.add(details.localPosition);
-                }),
-                child: CustomPaint(
-                  painter: _SignaturePainter(strokes),
-                  child: strokes.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Firma aquí',
-                            style: TextStyle(color: Colors.black45),
-                          ),
-                        )
-                      : null,
-                ),
+            ] else
+              Text(
+                'Se registrará: “${recipient.text.trim().isEmpty ? 'nombre de quien recibe' : recipient.text.trim()}”',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-            ),
             const SizedBox(height: 16),
             if (photoBytes != null)
               ClipRRect(
