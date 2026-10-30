@@ -80,17 +80,19 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
     super.dispose();
   }
 
-  Widget _materialApp(Widget home, {required ShopState state}) => MaterialApp(
+  Widget _materialApp(Widget home, {ShopState? state}) => MaterialApp(
     title: 'Platanitos',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
-    builder: (context, child) => ListenableBuilder(
-      listenable: state,
-      builder: (context, _) => Theme(
-        data: buildTheme(highContrast: state.highContrast),
-        child: child ?? const SizedBox.shrink(),
-      ),
-    ),
+    builder: state == null
+        ? null
+        : (context, child) => ListenableBuilder(
+            listenable: state,
+            builder: (context, _) => Theme(
+              data: buildTheme(highContrast: state.highContrast),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
     home: home,
   );
 

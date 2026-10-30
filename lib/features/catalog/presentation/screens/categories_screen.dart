@@ -108,22 +108,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               color: Colors.white,
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-              child: Row(
-                children: [
-                  for (final item in groups)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterPill(
-                        label: item.label,
-                        selected: item == current,
-                        minHeight: 44,
-                        onTap: () => setState(() => group = item),
-                      ),
-                    ),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+              child: ScrollLane(
+                step: 160,
+                builder: (context, controller) => SingleChildScrollView(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      for (final item in groups)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterPill(
+                            label: item.label,
+                            selected: item == current,
+                            minHeight: 44,
+                            onTap: () => setState(() => group = item),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

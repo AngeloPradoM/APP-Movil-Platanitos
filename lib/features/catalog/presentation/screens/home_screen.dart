@@ -687,53 +687,57 @@ class SectionTabs extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        for (final (index, label) in labels.indexed)
-          Semantics(
-            selected: index == selected,
-            button: true,
-            child: InkWell(
-              onTap: () => onSelected(index),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 18),
-                child: IntrinsicWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: index == selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: index == selected
-                                ? AppColors.darkGreen
-                                : AppColors.ink,
+  Widget build(BuildContext context) => ScrollLane(
+    step: 160,
+    builder: (context, controller) => SingleChildScrollView(
+      controller: controller,
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (index, label) in labels.indexed)
+            Semantics(
+              selected: index == selected,
+              button: true,
+              child: InkWell(
+                onTap: () => onSelected(index),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 18),
+                  child: IntrinsicWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: index == selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: index == selected
+                                  ? AppColors.darkGreen
+                                  : AppColors.ink,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        height: 2.5,
-                        decoration: BoxDecoration(
-                          color: index == selected
-                              ? AppColors.darkGreen
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(2),
+                        Container(
+                          height: 2.5,
+                          decoration: BoxDecoration(
+                            color: index == selected
+                                ? AppColors.darkGreen
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -1219,13 +1223,17 @@ class _StoredCategoryRow extends StatelessWidget {
         if (category.productCount > 0 && category.image != null) category,
     ];
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    return SizedBox(
-      height: 96 + 22 * scale,
-      child: ListView.builder(
+    final itemExtent = 80 + (scale - 1) * 50;
+    final height = 96 + 22 * scale;
+    return ScrollLane(
+      height: height,
+      step: itemExtent * 2,
+      builder: (context, controller) => ListView.builder(
         key: const PageStorageKey('stored-categories'),
+        controller: controller,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemExtent: 80 + (scale - 1) * 50,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemExtent: itemExtent,
         itemCount: visible.length,
         itemBuilder: (context, index) {
           final category = visible[index];
@@ -1250,7 +1258,11 @@ class _StoredCategoryRow extends StatelessWidget {
                         color: AppColors.softGreen,
                       ),
                       child: ClipOval(
-                        child: ShopImage(category.image!, thumbnail: true),
+                        child: ShopImage(
+                          category.image!,
+                          thumbnail: true,
+                          semanticLabel: category.name,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1282,12 +1294,15 @@ class _BrandRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    return SizedBox(
-      height: 64 + (scale - 1) * 20,
-      child: ListView.separated(
+    final height = 64 + (scale - 1) * 20;
+    return ScrollLane(
+      height: height,
+      step: 200,
+      builder: (context, controller) => ListView.separated(
         key: const PageStorageKey('brands'),
+        controller: controller,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         itemCount: brands.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {

@@ -122,19 +122,31 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
       '/operations/deliveries',
       accessToken: _token,
     );
-    return [
-      for (final raw in payload as List<dynamic>)
-        DeliveryTask(
-          id: (raw as Map)['id'] as String,
-          orderId: raw['orderId'] as String,
-          publicNumber: raw['publicNumber'] as String,
-          assignedUserId: raw['assignedUserId'] as String? ?? '',
-          status: raw['status'] as String,
-          address: raw['address'] as String? ?? '',
-          assignedAt: DateTime.parse(raw['assignedAt'] as String).toLocal(),
-        ),
-    ];
+    return _parseDeliveries(payload);
   }
+
+  Future<List<DeliveryTask>> deliveryHistory() async {
+    final payload = await _client.get(
+      '/operations/deliveries/history',
+      accessToken: _token,
+    );
+    return _parseDeliveries(payload);
+  }
+
+  List<DeliveryTask> _parseDeliveries(dynamic payload) => [
+    for (final raw in payload as List<dynamic>)
+      DeliveryTask(
+        id: (raw as Map)['id'] as String,
+        orderId: raw['orderId'] as String,
+        publicNumber: raw['publicNumber'] as String,
+        assignedUserId: raw['assignedUserId'] as String? ?? '',
+        status: raw['status'] as String,
+        address: raw['address'] as String? ?? '',
+        assignedAt: DateTime.parse(raw['assignedAt'] as String).toLocal(),
+        hasEvidence: raw['hasEvidence'] as bool? ?? false,
+        recipientName: raw['recipientName'] as String?,
+      ),
+  ];
 
   @override
   Future<void> updateDelivery(String deliveryId, String status) async {

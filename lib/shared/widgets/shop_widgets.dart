@@ -207,6 +207,173 @@ const softBackground = Color(0xFFF8F9FB);
 const fieldBorderColor = Color(0xFFC9D0CC);
 const hintColor = Color(0xFFA0A6AE);
 
+/// Carril horizontal con flechas para ver todo el contenido.
+class ScrollLane extends StatefulWidget {
+  const ScrollLane({
+    super.key,
+    required this.builder,
+    this.step = 220,
+    this.height,
+  });
+
+  final Widget Function(BuildContext context, ScrollController controller)
+  builder;
+  final double step;
+  final double? height;
+
+  @override
+  State<ScrollLane> createState() => _ScrollLaneState();
+}
+
+class _ScrollLaneState extends State<ScrollLane> {
+  final _scroll = ScrollController();
+  var _canBack = false;
+  var _canForward = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_sync);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_sync)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _sync() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    final back = position.pixels > 1;
+    final forward = position.pixels < position.maxScrollExtent - 1;
+    if (back == _canBack && forward == _canForward) return;
+    setState(() {
+      _canBack = back;
+      _canForward = forward;
+    });
+  }
+
+  Future<void> _page(double delta) async {
+    if (!_scroll.hasClients) return;
+    final target = (_scroll.offset + delta).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    await _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lane = Row(
+      children: [
+        _LaneArrow(
+          icon: Icons.chevron_left,
+          enabled: _canBack,
+          tooltip: 'Anterior',
+          onPressed: () => _page(-widget.step),
+        ),
+        Expanded(child: widget.builder(context, _scroll)),
+        _LaneArrow(
+          icon: Icons.chevron_right,
+          enabled: _canForward,
+          tooltip: 'Siguiente',
+          onPressed: () => _page(widget.step),
+        ),
+      ],
+    );
+    return widget.height == null
+        ? lane
+        : SizedBox(height: widget.height, child: lane);
+  }
+}
+
+class _LaneArrow extends StatelessWidget {
+  const _LaneArrow({
+    required this.icon,
+    required this.enabled,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: enabled ? onPressed : null,
+    style: IconButton.styleFrom(
+      minimumSize: const Size(40, 40),
+      foregroundColor: enabled ? AppColors.darkGreen : AppColors.border,
+      disabledForegroundColor: AppColors.border,
+    ),
+    icon: Icon(icon, size: 26),
+  );
+}
+
+/// TabBar con el mismo patrón de flechas en paneles y catálogo.
+class ShopTabBar extends StatelessWidget {
+  const ShopTabBar({
+    super.key,
+    required this.tabs,
+    this.controller,
+    this.isScrollable = true,
+  });
+
+  final List<Widget> tabs;
+  final TabController? controller;
+  final bool isScrollable;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabsController = controller ?? DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: tabsController,
+      builder: (context, _) {
+        final canBack = tabsController.index > 0;
+        final canForward = tabsController.index < tabsController.length - 1;
+        return Row(
+          children: [
+            _LaneArrow(
+              icon: Icons.chevron_left,
+              enabled: canBack,
+              tooltip: 'Pestaña anterior',
+              onPressed: () => tabsController.animateTo(tabsController.index - 1),
+            ),
+            Expanded(
+              child: TabBar(
+                controller: tabsController,
+                isScrollable: isScrollable,
+                tabAlignment: isScrollable ? TabAlignment.start : null,
+                indicatorColor: AppColors.green,
+                labelColor: AppColors.green,
+                unselectedLabelColor: AppColors.muted,
+                tabs: tabs,
+              ),
+            ),
+            _LaneArrow(
+              icon: Icons.chevron_right,
+              enabled: canForward,
+              tooltip: 'Pestaña siguiente',
+              onPressed: () => tabsController.animateTo(tabsController.index + 1),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Campo blanco con borde gris que se marca en verde al enfocarse.
 InputDecoration fieldDecoration(String hint, {Widget? suffix}) =>
     InputDecoration(

@@ -83,6 +83,7 @@ class DeliveryTask {
     required this.address,
     required this.assignedAt,
     this.hasEvidence = false,
+    this.recipientName,
   });
   final String id;
   final String orderId;
@@ -92,6 +93,7 @@ class DeliveryTask {
   final String address;
   final DateTime assignedAt;
   final bool hasEvidence;
+  final String? recipientName;
 }
 
 class DeliveryEvidence {

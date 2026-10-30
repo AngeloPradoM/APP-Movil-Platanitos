@@ -108,69 +108,73 @@ class CatalogFilterBar extends StatelessWidget {
     String counted(String label, int count) =>
         count == 0 ? label : '$label ($count)';
     final price = filter.price;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: Row(
-        children: [
-          for (final pill in [
-            FilterPill(
-              label: counted('Filtrar', filter.selectionCount),
-              icon: Icons.tune,
-              selected: filter.selectionCount > 0,
-              minHeight: 44,
-              onTap: () => onOpen(null),
-            ),
-            FilterPill(
-              label: filter.sort == ProductSort.recommended
-                  ? 'Ordenar'
-                  : filter.sort.label,
-              icon: Icons.swap_vert,
-              selected: filter.sort != ProductSort.recommended,
-              minHeight: 44,
-              onTap: () => onOpen(FilterSection.sort),
-            ),
-            if (facets.sizes.isNotEmpty)
+    return ScrollLane(
+      step: 160,
+      builder: (context, controller) => SingleChildScrollView(
+        controller: controller,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        child: Row(
+          children: [
+            for (final pill in [
               FilterPill(
-                label: counted('Talla', filter.sizes.length),
-                selected: filter.sizes.isNotEmpty,
+                label: counted('Filtrar', filter.selectionCount),
+                icon: Icons.tune,
+                selected: filter.selectionCount > 0,
                 minHeight: 44,
-                onTap: () => onOpen(FilterSection.size),
+                onTap: () => onOpen(null),
               ),
-            if (facets.brands.length > 1 || filter.brands.isNotEmpty)
               FilterPill(
-                label: counted('Marca', filter.brands.length),
-                selected: filter.brands.isNotEmpty,
+                label: filter.sort == ProductSort.recommended
+                    ? 'Ordenar'
+                    : filter.sort.label,
+                icon: Icons.swap_vert,
+                selected: filter.sort != ProductSort.recommended,
                 minHeight: 44,
-                onTap: () => onOpen(FilterSection.brand),
+                onTap: () => onOpen(FilterSection.sort),
               ),
-            if (facets.colors.length > 1 || filter.colors.isNotEmpty)
+              if (facets.sizes.isNotEmpty)
+                FilterPill(
+                  label: counted('Talla', filter.sizes.length),
+                  selected: filter.sizes.isNotEmpty,
+                  minHeight: 44,
+                  onTap: () => onOpen(FilterSection.size),
+                ),
+              if (facets.brands.length > 1 || filter.brands.isNotEmpty)
+                FilterPill(
+                  label: counted('Marca', filter.brands.length),
+                  selected: filter.brands.isNotEmpty,
+                  minHeight: 44,
+                  onTap: () => onOpen(FilterSection.brand),
+                ),
+              if (facets.colors.length > 1 || filter.colors.isNotEmpty)
+                FilterPill(
+                  label: counted('Color', filter.colors.length),
+                  selected: filter.colors.isNotEmpty,
+                  minHeight: 44,
+                  onTap: () => onOpen(FilterSection.color),
+                ),
               FilterPill(
-                label: counted('Color', filter.colors.length),
-                selected: filter.colors.isNotEmpty,
+                label: price?.label ?? 'Precio',
+                selected: price != null,
                 minHeight: 44,
-                onTap: () => onOpen(FilterSection.color),
+                onTap: () => onOpen(FilterSection.price),
               ),
-            FilterPill(
-              label: price?.label ?? 'Precio',
-              selected: price != null,
-              minHeight: 44,
-              onTap: () => onOpen(FilterSection.price),
-            ),
-            if (facets.offers > 0 || filter.onSaleOnly)
-              FilterPill(
-                label: 'Solo ofertas',
-                icon: Icons.local_offer_outlined,
-                selected: filter.onSaleOnly,
-                minHeight: 44,
-                onTap: () {
-                  filter.onSaleOnly = !filter.onSaleOnly;
-                  onChanged();
-                },
-              ),
-          ])
-            Padding(padding: const EdgeInsets.only(right: 8), child: pill),
-        ],
+              if (facets.offers > 0 || filter.onSaleOnly)
+                FilterPill(
+                  label: 'Solo ofertas',
+                  icon: Icons.local_offer_outlined,
+                  selected: filter.onSaleOnly,
+                  minHeight: 44,
+                  onTap: () {
+                    filter.onSaleOnly = !filter.onSaleOnly;
+                    onChanged();
+                  },
+                ),
+            ])
+              Padding(padding: const EdgeInsets.only(right: 8), child: pill),
+          ],
+        ),
       ),
     );
   }

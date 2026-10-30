@@ -262,6 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'ejemplo@correo.com',
                                 ),
                                 keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
                                 validator: Validators.email,
                                 onChanged: (value) => email = value,
                               ),
@@ -288,6 +289,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 obscureText: hidden,
+                                textInputAction: TextInputAction.go,
+                                onFieldSubmitted: (_) {
+                                  if (!submitting) login();
+                                },
                                 validator: Validators.password,
                                 onChanged: (value) => password = value,
                               ),

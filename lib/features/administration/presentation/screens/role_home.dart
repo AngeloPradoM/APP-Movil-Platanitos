@@ -8,6 +8,7 @@ import '../../../../shared/widgets/shop_widgets.dart';
 import '../../../auth/domain/user_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../delivery/presentation/screens/delivery_dashboard.dart';
+import '../../../delivery/presentation/screens/delivery_history_screen.dart';
 import '../../../fulfillment/presentation/screens/fulfillment_screen.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../store_operations/presentation/screens/store_operations_screen.dart';
@@ -53,7 +54,7 @@ class AdministrativeHome extends StatefulWidget {
 
 class _AdministrativeHomeState extends State<AdministrativeHome>
     with SingleTickerProviderStateMixin {
-  late final TabController tabs = TabController(length: 3, vsync: this);
+  late final TabController tabs = TabController(length: 4, vsync: this);
 
   @override
   void dispose() {
@@ -66,15 +67,13 @@ class _AdministrativeHomeState extends State<AdministrativeHome>
     title: 'Panel administrativo',
     child: Column(
       children: [
-        TabBar(
+        ShopTabBar(
           controller: tabs,
-          indicatorColor: AppColors.green,
-          labelColor: AppColors.green,
-          unselectedLabelColor: AppColors.muted,
           tabs: const [
             Tab(icon: Icon(Icons.dashboard_outlined), text: 'Resumen'),
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Inventario'),
             Tab(icon: Icon(Icons.local_shipping_outlined), text: 'Despacho'),
+            Tab(icon: Icon(Icons.history), text: 'Entregas'),
           ],
         ),
         Expanded(
@@ -87,6 +86,11 @@ class _AdministrativeHomeState extends State<AdministrativeHome>
               ),
               const InventoryScreen(),
               const FulfillmentScreen(),
+              const DeliveryHistoryScreen(
+                title: 'Historial de entregas',
+                subtitle:
+                    'Todos los pedidos entregados. Abre la evidencia dejada por el repartidor.',
+              ),
             ],
           ),
         ),
@@ -99,20 +103,17 @@ class _WarehouseHome extends StatelessWidget {
   const _WarehouseHome();
 
   @override
-  Widget build(BuildContext context) => const DefaultTabController(
+  Widget build(BuildContext context) => DefaultTabController(
     length: 2,
     child: Column(
       children: [
-        TabBar(
-          indicatorColor: AppColors.green,
-          labelColor: AppColors.green,
-          unselectedLabelColor: AppColors.muted,
+        const ShopTabBar(
           tabs: [
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Inventario'),
             Tab(icon: Icon(Icons.inventory_outlined), text: 'Preparación'),
           ],
         ),
-        Expanded(
+        const Expanded(
           child: TabBarView(children: [InventoryScreen(), FulfillmentScreen()]),
         ),
       ],

@@ -140,7 +140,7 @@ export class OperationsService {
     const events = await this.prisma.auditEvent.findMany({
       where: { eventType: 'DELIVERY_EVIDENCE' },
       orderBy: { createdAt: 'desc' },
-      take: 40,
+      take: 80,
     });
     const event = events.find((item) => (item.metadata as { orderId?: string } | null)?.orderId === orderId);
     if (!event) return null;
@@ -148,19 +148,76 @@ export class OperationsService {
       recipientName?: string;
       signatureData?: string;
       photo?: string;
+      courierId?: string;
     };
     return {
       deliveryId: orderId,
       recipientName: data.recipientName ?? '',
       signatureData: data.signatureData ?? '[]',
       photo: data.photo ?? '',
+      courierId: data.courierId ?? null,
       capturedAt: event.createdAt,
     };
+  }
+
+  async deliveryHistory(viewer: { id: string; role: string }) {
+    const orders = await this.prisma.order.findMany({
+      where: { status: OrderStatus.DELIVERED },
+      orderBy: { updatedAt: 'desc' },
+      take: 60,
+      include: { addressSnapshot: true },
+    });
+    const events = await this.prisma.auditEvent.findMany({
+      where: { eventType: 'DELIVERY_EVIDENCE' },
+      orderBy: { createdAt: 'desc' },
+      take: 120,
+    });
+    const evidenceByOrder = new Map<
+      string,
+      { recipientName: string; courierId: string | null; capturedAt: Date }
+    >();
+    for (const event of events) {
+      const data = event.metadata as {
+        orderId?: string;
+        recipientName?: string;
+        courierId?: string;
+      } | null;
+      if (!data?.orderId || evidenceByOrder.has(data.orderId)) continue;
+      evidenceByOrder.set(data.orderId, {
+        recipientName: data.recipientName ?? '',
+        courierId: data.courierId ?? null,
+        capturedAt: event.createdAt,
+      });
+    }
+    const mineOnly = viewer.role === 'REPARTIDOR';
+    return orders
+      .filter((order) => {
+        if (!mineOnly) return true;
+        const evidence = evidenceByOrder.get(order.id);
+        return evidence?.courierId === viewer.id;
+      })
+      .map((order) => {
+        const evidence = evidenceByOrder.get(order.id);
+        return {
+          id: order.id,
+          orderId: order.id,
+          publicNumber: order.publicNumber,
+          assignedUserId: evidence?.courierId ?? '',
+          status: 'DELIVERED',
+          address: order.addressSnapshot
+            ? `${order.addressSnapshot.line1}, ${order.addressSnapshot.district}`
+            : 'Dirección por coordinar',
+          assignedAt: evidence?.capturedAt ?? order.updatedAt,
+          hasEvidence: evidence != null,
+          recipientName: evidence?.recipientName ?? null,
+        };
+      });
   }
 
   async markDelivered(
     orderId: string,
     proof?: { recipientName?: string; signatureData?: string; photo?: string },
+    courierId?: string,
   ) {
     const order = await this.move(orderId, OrderStatus.TRANSIT, OrderStatus.DELIVERED, 'Tu pedido fue entregado.');
     if (proof?.recipientName) {
@@ -170,6 +227,7 @@ export class OperationsService {
           eventType: 'DELIVERY_EVIDENCE',
           metadata: {
             orderId,
+            courierId: courierId ?? null,
             recipientName: proof.recipientName,
             signatureData: proof.signatureData ?? '[]',
             photo: proof.photo ?? '',

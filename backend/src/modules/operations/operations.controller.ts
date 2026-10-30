@@ -74,6 +74,12 @@ export class OperationsController {
     return this.operations.deliveries();
   }
 
+  @Get('deliveries/history')
+  deliveryHistory(@CurrentUser() user: { id: string; role: string }) {
+    this.allowDriver(user.role);
+    return this.operations.deliveryHistory(user);
+  }
+
   @Get('deliveries/:orderId/evidence')
   evidence(@CurrentUser() user: { role: string }, @Param('orderId', ParseUUIDPipe) orderId: string) {
     this.allowDriver(user.role);
@@ -88,12 +94,12 @@ export class OperationsController {
 
   @Post('deliveries/:orderId/deliver')
   complete(
-    @CurrentUser() user: { role: string },
+    @CurrentUser() user: { id: string; role: string },
     @Param('orderId', ParseUUIDPipe) orderId: string,
     @Body() body: DeliveryProofDto,
   ) {
     this.allowDriver(user.role);
-    return this.operations.markDelivered(orderId, body);
+    return this.operations.markDelivered(orderId, body, user.id);
   }
 
   private allowDriver(role: string) {
