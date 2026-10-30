@@ -355,7 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           name: name.trim(),
           document: document,
           email: email.trim(),
-          phone: phone,
+          phone: Validators.toE164Peru(phone),
         ),
       );
       if (!mounted) return;
@@ -373,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       name = user.name;
       email = user.email;
-      phone = user.phone;
+      phone = Validators.nationalMobile(user.phone);
       document = user.document;
       editing = true;
     });
@@ -488,7 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ProfileData(
                           icon: Icons.phone_outlined,
                           label: 'Teléfono',
-                          value: '+51 ${_groupPhone(user.phone)}',
+                          value: Validators.formatDisplayPhone(user.phone),
                         ),
                         ProfileData(
                           icon: Icons.location_on_outlined,
@@ -549,10 +549,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  static String _groupPhone(String phone) => phone.length == 9
-      ? '${phone.substring(0, 3)} ${phone.substring(3, 6)} ${phone.substring(6)}'
-      : phone;
-
   Widget _editForm() => Form(
     key: form,
     child: Column(
@@ -583,9 +579,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-        autovalidateMode: AutovalidateMode.onUserInteraction,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: phone,
-          decoration: const InputDecoration(labelText: 'Teléfono'),
+          decoration: const InputDecoration(
+            labelText: 'Teléfono',
+            prefixText: '+51 ',
+            hintText: '987654321',
+          ),
           validator: Validators.phone,
           keyboardType: TextInputType.phone,
           inputFormatters: [

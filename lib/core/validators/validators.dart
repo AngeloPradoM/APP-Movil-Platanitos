@@ -27,8 +27,38 @@ abstract final class Validators {
         : 'Incluye también tu apellido. Ejemplo: Ana Pérez.';
   }
 
+  /// Solo dígitos, sin espacios ni signos.
+  static String digitsOnly(String value) => value.replaceAll(RegExp(r'\D'), '');
+
+  /// Celular nacional (9 dígitos), sin código de país (+51 / 51).
+  static String nationalMobile(String value) {
+    var digits = digitsOnly(value);
+    if (digits.startsWith('51') && digits.length >= 11) {
+      digits = digits.substring(digits.length - 9);
+    } else if (digits.length > 9) {
+      digits = digits.substring(digits.length - 9);
+    }
+    return digits;
+  }
+
+  /// Presentación: `+51 987 654 321`.
+  static String formatDisplayPhone(String value) {
+    final local = nationalMobile(value);
+    if (RegExp(r'^9\d{8}$').hasMatch(local)) {
+      return '+51 ${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}';
+    }
+    final raw = value.trim();
+    return raw.isEmpty ? '—' : raw;
+  }
+
+  /// Guarda en formato E.164 Perú (`+51987654321`).
+  static String toE164Peru(String value) {
+    final local = nationalMobile(value);
+    return local.isEmpty ? value.trim() : '+51$local';
+  }
+
   static String? phone(String? value) {
-    final text = value ?? '';
+    final text = nationalMobile(value ?? '');
     if (text.isEmpty) return 'Escribe tu celular de 9 dígitos, empezando en 9.';
     return RegExp(r'^9\d{8}$').hasMatch(text)
         ? null
