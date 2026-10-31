@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/accessibility/shop_speech.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../app/navigation/navigation.dart';
 import '../../../../app/models/shop_models.dart';
@@ -46,26 +47,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> pay() async {
     if (processing || ShopScope.of(context).cart.isEmpty) return;
     final state = ShopScope.of(context);
+    final amount = money(state.total);
+    await ShopSpeech.announce(ShopSpeech.paymentPrompt(state.total));
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar pago'),
-        content: Text(
-          'Vas a pagar ${money(state.total)} con ${payment.label}. '
-          'Puedes cancelar si quieres revisar la bolsa o el método de pago.',
+        content: Semantics(
+          liveRegion: true,
+          child: Text(
+            'Vas a pagar $amount con ${payment.label}. '
+            'Puedes cancelar si quieres revisar la bolsa o el método de pago.',
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () {
+              ShopSpeech.stop();
+              Navigator.pop(context, false);
+            },
             child: const Text('Cancelar'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Confirmar ${money(state.total)}'),
+            onPressed: () {
+              ShopSpeech.stop();
+              Navigator.pop(context, true);
+            },
+            child: Text('Confirmar $amount'),
           ),
         ],
       ),
     );
+    await ShopSpeech.stop();
     if (confirmed != true || !mounted) return;
     setState(() {
       processing = true;

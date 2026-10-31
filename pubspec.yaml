@@ -39,6 +39,7 @@ dependencies:
   sqflite: ^2.4.4+2
   path: ^1.9.1
   image_picker: ^1.2.4
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:
