@@ -95,8 +95,11 @@ Esta sección es **solo para probar la integración HTTP**. Para usar la demo no
 ```powershell
 cd backend
 npm install
+npx prisma generate
 Copy-Item .env.example .env
 ```
+
+`npm install` debería ejecutar `prisma generate` solo (script `postinstall`). Si al compilar o arrancar ves errores del tipo *Property 'order' does not exist on type 'PrismaService'* (o `address`, `$transaction`, etc.), regenera el cliente a mano con `npx prisma generate` y vuelve a intentar.
 
 3. En `backend/.env`, ajusta **al menos** `DATABASE_URL` y `JWT_ACCESS_SECRET`:
 
@@ -114,6 +117,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 4. Prepara la base de datos e inicia la API (desde `backend/`):
 
 ```powershell
+npx prisma generate
 npm run db:setup
 npm run start:dev
 ```
@@ -186,7 +190,7 @@ npm.cmd run account:create # Crea una cuenta para el backend; solicita sus datos
 | El emulador figura `offline` | Reinícialo desde Android Studio → Device Manager; vuelve a ejecutar `flutter devices` |
 | `DATABASE_URL` no está definida | Crea `backend/.env` a partir de `.env.example` |
 | PostgreSQL rechaza la conexión | Comprueba que el servicio esté encendido, el puerto y las credenciales de `DATABASE_URL` |
-| Falta `@prisma/client` | Dentro de `backend/`, ejecuta `npx prisma generate` |
+| Falta `@prisma/client` o TypeScript dice que `order` / `address` / `$transaction` no existen en `PrismaService` | Dentro de `backend/`, ejecuta `npx prisma generate` y luego `npm run start:dev` (o `npm run build`). Suele pasar tras borrar `node_modules` o un `npm install` incompleto |
 | La API no inicia por `JWT_ACCESS_SECRET` | Genera y configura un secreto suficientemente largo |
 | La API devuelve error o no conecta | Revisa [localhost:3000/health](http://localhost:3000/health) y asegúrate de usar `APP_MODE=remote` si quieres consumirla |
 | Puerto `3000` ocupado | Detén el otro proceso o cambia `PORT` y `API_BASE_URL` |
