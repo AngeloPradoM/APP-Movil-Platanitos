@@ -99,8 +99,9 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
   Future<List<DemoCartLine>> loadCart(String userId) async => const [];
 
   @override
-  Future<void> setCartItem(String userId, String variantId, int quantity) =>
-      _unavailable();
+  Future<void> setCartItem(String userId, String variantId, int quantity) async {
+    // La bolsa remota se persiste con CartRepository (/cart), no por operations.
+  }
 
   @override
   Future<DemoOrder> checkout({
@@ -279,7 +280,7 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
   Future<void> updateReservation(String reservationId, String status) =>
       _unavailable();
 
-  Future<Never> _unavailable() {
+  Future<Never> _unavailable() async {
     throw StateError('Esta operación todavía no está en el servidor.');
   }
 }

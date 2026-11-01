@@ -38,8 +38,6 @@ extension AuthController on ShopState {
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
     );
-    await loadRemoteCart();
-    await _loadAccountData();
     final remoteUser = session.user;
     user = AppUser(
       id: remoteUser['id'] as String?,
@@ -52,6 +50,10 @@ extension AuthController on ShopState {
     signedIn = true;
     _syncToken();
     _startLive();
+    _notifySafely();
+    // Después de marcar sesión: GET /cart contra la misma base compartida.
+    await loadRemoteCart();
+    await _loadAccountData();
     _notifySafely();
   }
 
@@ -80,8 +82,6 @@ extension AuthController on ShopState {
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
     );
-    await loadRemoteCart();
-    await _loadAccountData();
     user = AppUser(
       id: session.user['id'] as String?,
       name: session.user['name'] as String? ?? name,
@@ -95,6 +95,9 @@ extension AuthController on ShopState {
     signedIn = true;
     _syncToken();
     _startLive();
+    _notifySafely();
+    await loadRemoteCart();
+    await _loadAccountData();
     _notifySafely();
   }
 
@@ -131,10 +134,11 @@ extension AuthController on ShopState {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
       );
-        await loadRemoteCart();
-      await _loadAccountData();
       _syncToken();
       _startLive();
+      _notifySafely();
+      await loadRemoteCart();
+      await _loadAccountData();
       _notifySafely();
     } catch (_) {
       await _sessionStorage.clear();
