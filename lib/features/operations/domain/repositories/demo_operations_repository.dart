@@ -45,7 +45,11 @@ abstract interface class DemoOperationsRepository {
     required String type,
     required String reason,
   });
-  Future<void> updateSupportRequest(String requestId, String status);
+  Future<void> updateSupportRequest(
+    String requestId,
+    String status, {
+    String? note,
+  });
 
   Future<OperationsReport> report();
 

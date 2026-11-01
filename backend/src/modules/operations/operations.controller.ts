@@ -1,6 +1,16 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { assertWarehouseStaff } from '../inventory/inventory.service.js';
 import { OperationsService } from './operations.service.js';
@@ -19,6 +29,32 @@ class DeliveryProofDto {
   @IsString()
   @MaxLength(700000)
   photo?: string;
+}
+
+class CreateSupportTicketDto {
+  @IsString()
+  @MaxLength(32)
+  publicNumber!: string;
+
+  @IsString()
+  @IsIn(['CHANGE', 'RETURN', 'CLAIM'])
+  type!: string;
+
+  @IsString()
+  @MinLength(10)
+  @MaxLength(2000)
+  reason!: string;
+}
+
+class UpdateSupportTicketDto {
+  @IsString()
+  @IsIn(['REGISTERED', 'IN_REVIEW', 'RESOLVED', 'REJECTED', 'OPEN', 'IN_PROGRESS', 'CLOSED'])
+  status!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }
 
 @Controller('operations')
@@ -102,9 +138,43 @@ export class OperationsController {
     return this.operations.markDelivered(orderId, body, user.id);
   }
 
+  @Get('support')
+  supportList(@CurrentUser() user: { id: string; role: string }) {
+    this.allowSupportRead(user.role);
+    return this.operations.supportTickets(user);
+  }
+
+  @Post('support')
+  supportCreate(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() body: CreateSupportTicketDto,
+  ) {
+    return this.operations.createSupportTicket(user, body);
+  }
+
+  @Patch('support/:ticketId')
+  supportUpdate(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('ticketId', ParseUUIDPipe) ticketId: string,
+    @Body() body: UpdateSupportTicketDto,
+  ) {
+    return this.operations.updateSupportTicket(user, ticketId, body);
+  }
+
   private allowDriver(role: string) {
     if (role === 'REPARTIDOR' || role === 'ADMINISTRADOR') return;
     throw new ForbiddenException('Acceso exclusivo para repartidores.');
+  }
+
+  private allowSupportRead(role: string) {
+    if (
+      role === 'CLIENTE' ||
+      role === 'ATENCION_CLIENTE' ||
+      role === 'ADMINISTRADOR'
+    ) {
+      return;
+    }
+    throw new ForbiddenException('Sin acceso a solicitudes de soporte.');
   }
 
   private allow(role: string) {
