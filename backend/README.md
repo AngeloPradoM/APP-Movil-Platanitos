@@ -10,9 +10,19 @@ Desde esta carpeta (`backend/`):
 
 ```powershell
 npm.cmd ci                      # 1. dependencias reproducibles
+npx prisma generate             # 2. cliente Prisma (obligatorio si falla el postinstall)
 if (-not (Test-Path .env)) { Copy-Item .env.example .env } # conserva .env existente
 npm.cmd run db:setup            # 3. crea la base, aplica migraciones, genera Prisma y carga datos
 npm.cmd run start:dev           # 4. API en http://localhost:3000 (prueba /health)
+```
+
+Si al compilar aparecen errores como *Property 'order' does not exist on type
+'PrismaService'* (también con `address`, `$transaction`, `auditEvent`, etc.), el
+cliente de Prisma no está generado. Desde `backend/` ejecuta:
+
+```powershell
+npx prisma generate
+npm.cmd run start:dev
 ```
 
 Como alternativa al paso 3, puedes crear una base vacía `platanitos` y ejecutar

@@ -1,7 +1,33 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { OrderStatus, Prisma, SupportTicketStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LiveService } from '../live/live.service.js';
+
+const SUPPORT_TYPES = new Set(['CHANGE', 'RETURN', 'CLAIM']);
+
+const SUPPORT_TYPE_LABEL: Record<string, string> = {
+  CHANGE: 'Cambio',
+  RETURN: 'Devolución',
+  CLAIM: 'Reclamo',
+};
+
+/** Estados que consume Flutter (demo + remoto). */
+const STATUS_OUT: Record<SupportTicketStatus, string> = {
+  OPEN: 'REGISTERED',
+  IN_PROGRESS: 'IN_REVIEW',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'REJECTED',
+};
+
+const STATUS_IN: Record<string, SupportTicketStatus> = {
+  REGISTERED: SupportTicketStatus.OPEN,
+  IN_REVIEW: SupportTicketStatus.IN_PROGRESS,
+  RESOLVED: SupportTicketStatus.RESOLVED,
+  REJECTED: SupportTicketStatus.CLOSED,
+  OPEN: SupportTicketStatus.OPEN,
+  IN_PROGRESS: SupportTicketStatus.IN_PROGRESS,
+  CLOSED: SupportTicketStatus.CLOSED,
+};
 
 @Injectable()
 export class OperationsService {
@@ -274,5 +300,266 @@ export class OperationsService {
       title: 'Preparación',
       body,
     });
+  }
+
+  async supportTickets(viewer: { id: string; role: string }) {
+    const staff = viewer.role === 'ATENCION_CLIENTE' || viewer.role === 'ADMINISTRADOR';
+    const tickets = await this.prisma.supportTicket.findMany({
+      where: staff ? undefined : { userId: viewer.id },
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+      include: {
+        order: { select: { id: true, publicNumber: true, status: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+    const notes = await this.prisma.auditEvent.findMany({
+      where: {
+        eventType: 'SUPPORT_RESOLUTION',
+        createdAt: { gte: tickets.at(-1)?.createdAt ?? new Date(0) },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 160,
+    });
+    const noteByTicket = new Map<string, string>();
+    for (const event of notes) {
+      const data = event.metadata as { ticketId?: string; note?: string } | null;
+      if (!data?.ticketId || noteByTicket.has(data.ticketId)) continue;
+      if (data.note?.trim()) noteByTicket.set(data.ticketId, data.note.trim());
+    }
+    return tickets.map((ticket) => {
+      const type = this.supportType(ticket.subject);
+      return {
+        id: ticket.id,
+        orderId: ticket.orderId ?? ticket.order?.id ?? '',
+        publicNumber: ticket.order?.publicNumber ?? 'Sin pedido',
+        userId: ticket.userId,
+        customerName: ticket.user.name,
+        customerEmail: ticket.user.email,
+        type,
+        status: STATUS_OUT[ticket.status],
+        reason: ticket.message,
+        resolutionNote: noteByTicket.get(ticket.id) ?? null,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
+      };
+    });
+  }
+
+  async createSupportTicket(
+    user: { id: string; role: string },
+    input: { publicNumber: string; type: string; reason: string },
+  ) {
+    if (user.role !== 'CLIENTE' && user.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('Solo el cliente puede registrar una solicitud.');
+    }
+    const type = input.type.trim().toUpperCase();
+    if (!SUPPORT_TYPES.has(type)) {
+      throw new BadRequestException('Tipo inválido. Usa CHANGE, RETURN o CLAIM.');
+    }
+    const reason = input.reason.trim();
+    if (reason.length < 10) {
+      throw new BadRequestException('Describe el motivo con al menos 10 caracteres.');
+    }
+    const order = await this.prisma.order.findFirst({
+      where: { publicNumber: input.publicNumber.trim(), userId: user.id },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    this.assertSupportEligible(order.status, type);
+
+    const open = await this.prisma.supportTicket.findFirst({
+      where: {
+        userId: user.id,
+        orderId: order.id,
+        subject: { startsWith: `[${type}]` },
+        status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.IN_PROGRESS] },
+      },
+    });
+    if (open) {
+      throw new BadRequestException(
+        `Ya tienes un ${SUPPORT_TYPE_LABEL[type].toLowerCase()} abierto para este pedido.`,
+      );
+    }
+
+    const ticket = await this.prisma.supportTicket.create({
+      data: {
+        userId: user.id,
+        orderId: order.id,
+        subject: `[${type}] ${SUPPORT_TYPE_LABEL[type]} · ${order.publicNumber}`,
+        message: reason,
+        status: SupportTicketStatus.OPEN,
+      },
+      include: { order: { select: { publicNumber: true } }, user: { select: { name: true, email: true } } },
+    });
+
+    await this.notice(
+      user.id,
+      order.id,
+      'Solicitud registrada',
+      `Tu ${SUPPORT_TYPE_LABEL[type].toLowerCase()} del pedido ${order.publicNumber} fue recibido. Atención al cliente lo revisará.`,
+    );
+    this.live.publish({
+      audience: 'staff',
+      type: 'support.created',
+      orderId: order.id,
+      publicNumber: order.publicNumber,
+      status: 'REGISTERED',
+      title: 'Nueva solicitud',
+      body: `${SUPPORT_TYPE_LABEL[type]} · ${order.publicNumber}`,
+    });
+    this.live.publish({
+      audience: 'customer',
+      userId: user.id,
+      type: 'support.created',
+      orderId: order.id,
+      publicNumber: order.publicNumber,
+      status: 'REGISTERED',
+      title: 'Solicitud registrada',
+      body: `Pedido ${order.publicNumber}: tu solicitud quedó registrada.`,
+    });
+
+    return {
+      id: ticket.id,
+      orderId: order.id,
+      publicNumber: order.publicNumber,
+      userId: user.id,
+      customerName: ticket.user.name,
+      customerEmail: ticket.user.email,
+      type,
+      status: 'REGISTERED',
+      reason,
+      resolutionNote: null,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+    };
+  }
+
+  async updateSupportTicket(
+    agent: { id: string; role: string },
+    ticketId: string,
+    input: { status: string; note?: string },
+  ) {
+    if (agent.role !== 'ATENCION_CLIENTE' && agent.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('Solo atención al cliente puede gestionar solicitudes.');
+    }
+    const next = STATUS_IN[input.status.trim().toUpperCase()];
+    if (!next) throw new BadRequestException('Estado inválido.');
+
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: { order: { select: { id: true, publicNumber: true } } },
+    });
+    if (!ticket) throw new NotFoundException('Solicitud no encontrada.');
+
+    const allowed: Partial<Record<SupportTicketStatus, SupportTicketStatus[]>> = {
+      OPEN: [SupportTicketStatus.IN_PROGRESS, SupportTicketStatus.CLOSED],
+      IN_PROGRESS: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED],
+      RESOLVED: [],
+      CLOSED: [],
+    };
+    if (!(allowed[ticket.status] ?? []).includes(next)) {
+      throw new BadRequestException('Esa transición no está permitida.');
+    }
+    if (
+      (next === SupportTicketStatus.RESOLVED || next === SupportTicketStatus.CLOSED) &&
+      !(input.note?.trim())
+    ) {
+      throw new BadRequestException('Indica una nota de resolución o rechazo.');
+    }
+
+    const updated = await this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: { status: next },
+      include: {
+        order: { select: { id: true, publicNumber: true } },
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    const note = input.note?.trim() ?? '';
+    if (note) {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: agent.id,
+          eventType: 'SUPPORT_RESOLUTION',
+          metadata: {
+            ticketId,
+            status: STATUS_OUT[next],
+            note,
+            customerUserId: ticket.userId,
+            orderId: ticket.orderId,
+          },
+        },
+      });
+    }
+
+    const type = this.supportType(ticket.subject);
+    const publicNumber = updated.order?.publicNumber ?? 'pedido';
+    const title =
+      next === SupportTicketStatus.IN_PROGRESS
+        ? 'Solicitud en revisión'
+        : next === SupportTicketStatus.RESOLVED
+          ? 'Solicitud resuelta'
+          : 'Solicitud rechazada';
+    const body =
+      next === SupportTicketStatus.IN_PROGRESS
+        ? `Pedido ${publicNumber}: atención al cliente está revisando tu ${SUPPORT_TYPE_LABEL[type].toLowerCase()}.`
+        : next === SupportTicketStatus.RESOLVED
+          ? `Pedido ${publicNumber}: tu ${SUPPORT_TYPE_LABEL[type].toLowerCase()} fue resuelto. ${note}`
+          : `Pedido ${publicNumber}: tu ${SUPPORT_TYPE_LABEL[type].toLowerCase()} fue rechazado. ${note}`;
+
+    if (ticket.orderId) {
+      await this.notice(ticket.userId, ticket.orderId, title, body);
+    }
+    this.live.orderChanged(ticket.userId, {
+      type: 'support.updated',
+      orderId: ticket.orderId ?? undefined,
+      publicNumber,
+      status: STATUS_OUT[next],
+      title,
+      body,
+    });
+
+    return {
+      id: updated.id,
+      orderId: updated.orderId ?? '',
+      publicNumber,
+      userId: updated.userId,
+      customerName: updated.user.name,
+      customerEmail: updated.user.email,
+      type,
+      status: STATUS_OUT[next],
+      reason: updated.message,
+      resolutionNote: note || null,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  private supportType(subject: string) {
+    const match = /^\[(CHANGE|RETURN|CLAIM)\]/.exec(subject);
+    return match?.[1] ?? 'CLAIM';
+  }
+
+  private assertSupportEligible(status: OrderStatus, type: string) {
+    if (status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('No se pueden abrir solicitudes sobre un pedido cancelado.');
+    }
+    if (type === 'CLAIM') {
+      if (
+        status === OrderStatus.PREPARATION ||
+        status === OrderStatus.DISPATCH ||
+        status === OrderStatus.TRANSIT ||
+        status === OrderStatus.DELIVERED
+      ) {
+        return;
+      }
+      throw new BadRequestException('El reclamo solo aplica a pedidos en curso o entregados.');
+    }
+    if (status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException(
+        `El ${SUPPORT_TYPE_LABEL[type].toLowerCase()} solo aplica cuando el pedido ya fue entregado.`,
+      );
+    }
   }
 }

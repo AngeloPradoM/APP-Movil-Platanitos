@@ -122,6 +122,9 @@ class SupportRequestRecord {
     required this.status,
     required this.reason,
     required this.createdAt,
+    this.customerName,
+    this.customerEmail,
+    this.resolutionNote,
   });
   final String id;
   final String orderId;
@@ -131,6 +134,9 @@ class SupportRequestRecord {
   final String status;
   final String reason;
   final DateTime createdAt;
+  final String? customerName;
+  final String? customerEmail;
+  final String? resolutionNote;
 }
 
 class OperationsReport {

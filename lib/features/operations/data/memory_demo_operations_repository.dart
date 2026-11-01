@@ -344,18 +344,26 @@ class MemoryDemoOperationsRepository implements DemoOperationsRepository {
   }
 
   @override
-  Future<void> updateSupportRequest(String requestId, String status) async {
+  Future<void> updateSupportRequest(
+    String requestId,
+    String status, {
+    String? note,
+  }) async {
     final index = store.supportRequests.indexWhere(
       (item) => item.id == requestId,
     );
     if (index < 0) throw StateError('La solicitud no existe.');
     final current = store.supportRequests[index];
-    final allowed = <String, String>{
-      'REGISTERED': 'IN_REVIEW',
-      'IN_REVIEW': 'RESOLVED',
+    final allowed = <String, Set<String>>{
+      'REGISTERED': {'IN_REVIEW', 'REJECTED'},
+      'IN_REVIEW': {'RESOLVED', 'REJECTED'},
     };
-    if (allowed[current.status] != status) {
+    if (!(allowed[current.status]?.contains(status) ?? false)) {
       throw StateError('Transición de atención no permitida.');
+    }
+    if ((status == 'RESOLVED' || status == 'REJECTED') &&
+        (note == null || note.trim().isEmpty)) {
+      throw StateError('Indica una nota de resolución o rechazo.');
     }
     store.supportRequests[index] = SupportRequestRecord(
       id: current.id,
@@ -366,6 +374,9 @@ class MemoryDemoOperationsRepository implements DemoOperationsRepository {
       status: status,
       reason: current.reason,
       createdAt: current.createdAt,
+      customerName: current.customerName,
+      customerEmail: current.customerEmail,
+      resolutionNote: note?.trim() ?? current.resolutionNote,
     );
   }
 

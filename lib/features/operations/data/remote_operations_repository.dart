@@ -203,8 +203,16 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
   ) => _unavailable();
 
   @override
-  Future<List<SupportRequestRecord>> supportRequests({String? userId}) async =>
-      const [];
+  Future<List<SupportRequestRecord>> supportRequests({String? userId}) async {
+    final payload = await _client.get(
+      '/operations/support',
+      accessToken: _token,
+    );
+    return [
+      for (final raw in payload as List<dynamic>)
+        _supportFrom(Map<String, dynamic>.from(raw as Map)),
+    ];
+  }
 
   @override
   Future<void> createSupportRequest({
@@ -212,11 +220,49 @@ class RemoteOperationsRepository implements DemoOperationsRepository {
     required String userId,
     required String type,
     required String reason,
-  }) => _unavailable();
+  }) async {
+    await _client.post(
+      '/operations/support',
+      accessToken: _token,
+      body: {
+        // En remoto [orderId] llega como número público del pedido.
+        'publicNumber': orderId,
+        'type': type,
+        'reason': reason,
+      },
+    );
+  }
 
   @override
-  Future<void> updateSupportRequest(String requestId, String status) =>
-      _unavailable();
+  Future<void> updateSupportRequest(
+    String requestId,
+    String status, {
+    String? note,
+  }) async {
+    await _client.patch(
+      '/operations/support/${Uri.encodeComponent(requestId)}',
+      accessToken: _token,
+      body: {
+        'status': status,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+  }
+
+  SupportRequestRecord _supportFrom(Map<String, dynamic> raw) =>
+      SupportRequestRecord(
+        id: raw['id'] as String,
+        orderId: raw['orderId'] as String? ?? '',
+        publicNumber: raw['publicNumber'] as String? ?? '',
+        userId: raw['userId'] as String? ?? '',
+        type: raw['type'] as String? ?? 'CLAIM',
+        status: raw['status'] as String? ?? 'REGISTERED',
+        reason: raw['reason'] as String? ?? '',
+        createdAt: DateTime.parse(raw['createdAt'] as String).toLocal(),
+        customerName: raw['customerName'] as String?,
+        customerEmail: raw['customerEmail'] as String?,
+        resolutionNote: raw['resolutionNote'] as String?,
+      );
 
   @override
   Future<List<StoreReservation>> reservations() async => const [];
