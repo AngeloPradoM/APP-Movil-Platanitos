@@ -11,8 +11,8 @@ export class AdminController {
 
   @Get('users')
   async users(@CurrentUser() user: { role: UserRole }) {
-    if (user.role !== UserRole.ADMINISTRATIVO) {
-      throw new ForbiddenException('Acceso exclusivo para administrativos.');
+    if (user.role !== UserRole.ADMINISTRADOR) {
+      throw new ForbiddenException('Acceso exclusivo para administradores.');
     }
     return this.prisma.user.findMany({
       select: { id: true, name: true, email: true, role: true, isActive: true },

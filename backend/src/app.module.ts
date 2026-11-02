@@ -16,6 +16,9 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module.js';
 import { GiftCardsModule } from './modules/gift-cards/gift-cards.module.js';
 import { ContentModule } from './modules/content/content.module.js';
 import { AddressesModule } from './modules/addresses/addresses.module.js';
+import { InventoryModule } from './modules/inventory/inventory.module.js';
+import { OperationsModule } from './modules/operations/operations.module.js';
+import { LiveModule } from './modules/live/live.module.js';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { AddressesModule } from './modules/addresses/addresses.module.js';
     GiftCardsModule,
     ContentModule,
     AddressesModule,
+    InventoryModule,
+    OperationsModule,
+    LiveModule,
   ],
   controllers: [AppController],
   providers: [

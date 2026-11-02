@@ -62,7 +62,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final form = GlobalKey<FormState>();
   late final ShippingAddress? initial = widget.initial;
   late final recipient = TextEditingController(text: initial?.recipient);
-  late final phone = TextEditingController(text: initial?.phone);
+  late final phone = TextEditingController(
+    text: initial == null
+        ? null
+        : Validators.nationalMobile(initial!.phone),
+  );
   late final line1 = TextEditingController(text: initial?.line1);
   late final district = TextEditingController(text: initial?.district);
   late final province = TextEditingController(
@@ -82,7 +86,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     if (initial != null || recipient.text.isNotEmpty) return;
     final user = ShopScope.of(context).user;
     recipient.text = user.name;
-    phone.text = user.phone;
+    phone.text = Validators.nationalMobile(user.phone);
   }
 
   @override
@@ -138,7 +142,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       color: softBackground,
       child: Form(
         key: form,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [
@@ -168,6 +171,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             const SizedBox(height: 18),
             fieldLabel('Nombre de quien recibe'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: recipient,
               textCapitalization: TextCapitalization.words,
               decoration: fieldDecoration('Nombres y Apellidos'),
@@ -176,18 +180,22 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             const SizedBox(height: 16),
             fieldLabel('Teléfono de contacto'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: phone,
               keyboardType: TextInputType.phone,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(9),
               ],
-              decoration: fieldDecoration('987 654 321'),
+              decoration: fieldDecoration('987 654 321').copyWith(
+                prefixText: '+51 ',
+              ),
               validator: Validators.phone,
             ),
             const SizedBox(height: 16),
             fieldLabel('Dirección'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: line1,
               textCapitalization: TextCapitalization.sentences,
               maxLength: 180,
@@ -216,6 +224,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             const SizedBox(height: 16),
             fieldLabel('Provincia'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: province,
               textCapitalization: TextCapitalization.words,
               decoration: fieldDecoration('Ej. Lima'),
@@ -225,6 +234,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             const SizedBox(height: 16),
             fieldLabel('Distrito'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: district,
               textCapitalization: TextCapitalization.words,
               decoration: fieldDecoration('Ej. Miraflores'),
@@ -234,6 +244,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
             const SizedBox(height: 16),
             fieldLabel('Referencia (opcional)'),
             TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               controller: reference,
               maxLength: 180,
               textCapitalization: TextCapitalization.sentences,
@@ -467,7 +478,7 @@ class AddressCard extends StatelessWidget {
                           ),
                         ),
                       Text(
-                        '${address.recipient}${address.phone.isEmpty ? '' : ' · ${address.phone}'}',
+                        '${address.recipient}${address.phone.isEmpty ? '' : ' · ${Validators.formatDisplayPhone(address.phone)}'}',
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 12,

@@ -5,7 +5,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/config/api_config.dart';
+import '../../core/network/access_token_store.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/live_stream.dart';
 import '../data/demo_data.dart';
 import '../../features/loyalty/data/loyalty_repository.dart';
 import '../../features/addresses/data/addresses_repository.dart';
@@ -56,6 +59,7 @@ class ShopState extends ChangeNotifier {
     this.demoAuthRepository,
     this.inventoryRepository,
     this.operationsRepository,
+    this.tokenStore,
     SessionStorage? sessionStorage,
   }) : _sessionStorage = sessionStorage ?? SessionStorage() {
     if (seedHistory) {
@@ -91,6 +95,7 @@ class ShopState extends ChangeNotifier {
   final DemoAuthRepository? demoAuthRepository;
   final InventoryRepository? inventoryRepository;
   final DemoOperationsRepository? operationsRepository;
+  final AccessTokenStore? tokenStore;
   final SessionStorage _sessionStorage;
   final CartRepository? cartRepository;
   final FavoritesRepository? favoritesRepository;
@@ -122,6 +127,11 @@ class ShopState extends ChangeNotifier {
   int _pendingCartRequests = 0;
   String? _cartError;
   bool _disposed = false;
+  bool highContrast = false;
+  int liveRevision = 0;
+  StreamSubscription<Map<String, dynamic>>? _liveSub;
+  Timer? _livePoll;
+  String _liveCursor = '';
   static const _failureMessage =
       'El sistema está fallando en este momento. Intenta más tarde.';
   static const _stockMessage = 'No hay más stock disponible para esta talla.';
@@ -200,6 +210,12 @@ class ShopState extends ChangeNotifier {
     return _addresses.isEmpty ? null : _addresses.first;
   }
 
+  void setHighContrast(bool value) {
+    if (highContrast == value) return;
+    highContrast = value;
+    _notifySafely();
+  }
+
   void _notifySafely() {
     if (!_disposed) notifyListeners();
   }
@@ -207,6 +223,7 @@ class ShopState extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _stopLive();
     super.dispose();
   }
 

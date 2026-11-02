@@ -83,6 +83,7 @@ class DeliveryTask {
     required this.address,
     required this.assignedAt,
     this.hasEvidence = false,
+    this.recipientName,
   });
   final String id;
   final String orderId;
@@ -92,6 +93,7 @@ class DeliveryTask {
   final String address;
   final DateTime assignedAt;
   final bool hasEvidence;
+  final String? recipientName;
 }
 
 class DeliveryEvidence {
@@ -120,6 +122,9 @@ class SupportRequestRecord {
     required this.status,
     required this.reason,
     required this.createdAt,
+    this.customerName,
+    this.customerEmail,
+    this.resolutionNote,
   });
   final String id;
   final String orderId;
@@ -129,6 +134,9 @@ class SupportRequestRecord {
   final String status;
   final String reason;
   final DateTime createdAt;
+  final String? customerName;
+  final String? customerEmail;
+  final String? resolutionNote;
 }
 
 class OperationsReport {

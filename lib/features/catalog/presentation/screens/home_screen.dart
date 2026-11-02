@@ -15,6 +15,15 @@ import './catalog_screens.dart';
 String _photo(String id) =>
     'https://images.unsplash.com/$id?fit=crop&q=85&w=800';
 
+String? _photoFrom(List<Product> source, ProductCollection collection) {
+  for (final product in source) {
+    if (collection.matches(product) && product.image.isNotEmpty) {
+      return product.image;
+    }
+  }
+  return null;
+}
+
 bool Function(Product) _named(List<String> words) => (product) {
   final name = product.name.toLowerCase();
   return words.any(name.contains);
@@ -128,29 +137,24 @@ class _HomeContent {
       return category.contains('running') ? 1 : 2;
     }
 
-    final present = <String, String>{};
     final frequency = <String, int>{};
     for (final product in source) {
       if (product.brand.isEmpty) continue;
-      present.putIfAbsent(product.brand.toLowerCase(), () => product.brand);
       frequency.update(product.brand, (count) => count + 1, ifAbsent: () => 1);
     }
-    final brands = <String>[
-      for (final brand in _HomeScreenState.topBrands)
-        if (present[brand.toLowerCase()] case final name?)
-          name
-        else if (hasMore)
-          brand,
-    ];
-    final others =
-        frequency.keys.where((brand) => !brands.contains(brand)).toList()
-          ..sort((a, b) => frequency[b]!.compareTo(frequency[a]!));
-    if (brands.length < 10) brands.addAll(others.take(10 - brands.length));
+    final brands = frequency.keys.toList()
+      ..sort((a, b) => frequency[b]!.compareTo(frequency[a]!));
 
     return _HomeContent._(
       slides: [
         for (final slide in _HomeScreenState.slides)
-          if (available(slide.collection)) slide,
+          if (available(slide.collection))
+            (
+              image: _photoFrom(source, slide.collection) ?? slide.image,
+              title: slide.title,
+              subtitle: slide.subtitle,
+              collection: slide.collection,
+            ),
       ],
       categories: [
         for (final category in _HomeScreenState.categories)
@@ -161,7 +165,11 @@ class _HomeContent {
       brands: brands,
       audiences: [
         for (final audience in _HomeScreenState.audiences)
-          if (available(audience.collection)) audience,
+          if (available(audience.collection))
+            (
+              image: _photoFrom(source, audience.collection) ?? audience.image,
+              collection: audience.collection,
+            ),
       ],
       trending: [
         for (var level = 0; level < 3; level++)
@@ -192,20 +200,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _Collections.accessories,
   ];
   static const _tabLabels = ['Calzado', 'Carteras', 'Ofertas', 'Accesorios'];
-  static const topBrands = [
-    'Nike',
-    'Adidas',
-    'Puma',
-    'Vans',
-    'Converse',
-    'Skechers',
-    'New Balance',
-    'Platanitos',
-    'Reebok',
-    'Under Armour',
-    'Crocs',
-    'CAT',
-  ];
   static final List<_Slide> slides = [
     (
       image: _photo('photo-1549298916-b41d501d3772'),
@@ -292,6 +286,19 @@ class _HomeScreenState extends State<HomeScreen> {
   int section = 0;
   Object? _contentKey;
   _HomeContent? _content;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = ShopScope.of(context);
+      state.loadCategories();
+      state.ensureCatalog().whenComplete(() {
+        if (mounted) unawaited(state.loadFullCatalog());
+      });
+    });
+  }
 
   _HomeContent _contentFor(ShopState state) {
     final source = state.catalogProducts;
@@ -425,7 +432,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            if (content.categories.isNotEmpty)
+            if (state.categories.any((category) => category.image != null))
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _SectionHeader('Compra por categoría'),
+                    _StoredCategoryRow(
+                      categories: state.categories,
+                      onOpen: (category) => openCategory(
+                        context,
+                        title: category.name,
+                        categories: [category],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (content.categories.isNotEmpty)
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -663,53 +687,64 @@ class SectionTabs extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        for (final (index, label) in labels.indexed)
-          Semantics(
-            selected: index == selected,
-            button: true,
-            child: InkWell(
-              onTap: () => onSelected(index),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 18),
-                child: IntrinsicWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: index == selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: index == selected
-                                ? AppColors.darkGreen
-                                : AppColors.ink,
-                          ),
+  Widget build(BuildContext context) => ScrollLane(
+    step: 160,
+    builder: (context, controller) => SingleChildScrollView(
+      controller: controller,
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (index, label) in labels.indexed)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Semantics(
+                selected: index == selected,
+                button: true,
+                child: VisibleFocus(
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    onTap: () => onSelected(index),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: IntrinsicWidth(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: index == selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: index == selected
+                                      ? AppColors.darkGreen
+                                      : AppColors.ink,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              height: 2.5,
+                              decoration: BoxDecoration(
+                                color: index == selected
+                                    ? AppColors.darkGreen
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Container(
-                        height: 2.5,
-                        decoration: BoxDecoration(
-                          color: index == selected
-                              ? AppColors.darkGreen
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -731,6 +766,7 @@ class _HeroCarouselState extends State<_HeroCarousel> {
   Timer? _timer;
   int page = _firstPage;
   bool _autoPlay = false;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -740,14 +776,24 @@ class _HeroCarouselState extends State<_HeroCarousel> {
 
   void _restart() {
     _timer?.cancel();
+    if (_paused) return;
     _timer = Timer.periodic(_interval, (_) {
-      if (_autoPlay && controller.hasClients) {
+      if (_autoPlay && !_paused && controller.hasClients) {
         controller.nextPage(
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeInOut,
         );
       }
     });
+  }
+
+  void _togglePause() {
+    setState(() => _paused = !_paused);
+    if (_paused) {
+      _timer?.cancel();
+    } else {
+      _restart();
+    }
   }
 
   @override
@@ -793,25 +839,42 @@ class _HeroCarouselState extends State<_HeroCarousel> {
         ),
         if (slides.length > 1) ...[
           const SizedBox(height: 10),
-          ExcludeSemantics(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var index = 0; index < slides.length; index++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: index == current ? 18 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      color: index == current
-                          ? AppColors.darkGreen
-                          : const Color(0xFFC9CED4),
-                    ),
-                  ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ExcludeSemantics(
+                child: Row(
+                  children: [
+                    for (var index = 0; index < slides.length; index++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: index == current ? 18 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          color: index == current
+                              ? AppColors.darkGreen
+                              : const Color(0xFFC9CED4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: _paused ? 'Reanudar carrusel' : 'Pausar carrusel',
+                onPressed: _togglePause,
+                icon: Icon(
+                  _paused ? Icons.play_arrow : Icons.pause,
+                  color: AppColors.darkGreen,
+                ),
+              ),
+              Text(
+                'Banner ${current + 1} de ${slides.length}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ],
@@ -918,37 +981,44 @@ class _CategoryRow extends StatelessWidget {
             label: 'Ver $label',
             excludeSemantics: true,
             onTap: () => onOpen(category.collection),
-            child: InkWell(
-              onTap: () => onOpen(category.collection),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.softGreen,
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: () => onOpen(category.collection),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.softGreen,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: ShopImage(category.image, thumbnail: true),
+                        ),
                       ),
-                      child: ClipOval(
-                        child: ShopImage(category.image, thumbnail: true),
+                      const SizedBox(height: 8),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -999,39 +1069,41 @@ class RecommendedCard extends StatelessWidget {
   final VoidCallback onOpen;
   @override
   Widget build(BuildContext context) => MergeSemantics(
-    child: Material(
-      color: Colors.white,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: ColoredBox(
-                    color: AppColors.background,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ShopImage(product.image, thumbnail: true),
-                        if (product.onSale)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: OfferBadge(discount: product.discount),
-                          ),
-                      ],
+    child: VisibleFocus(
+      borderRadius: BorderRadius.circular(14),
+      child: Material(
+        color: Colors.white,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: ColoredBox(
+                      color: AppColors.background,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ShopImage(product.image, thumbnail: true),
+                          if (product.onSale)
+                            Positioned(
+                              top: 6,
+                              left: 6,
+                              child: OfferBadge(discount: product.discount),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1085,6 +1157,7 @@ class RecommendedCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     ),
@@ -1155,6 +1228,89 @@ class _CountdownState extends State<_Countdown> {
   }
 }
 
+class _StoredCategoryRow extends StatelessWidget {
+  const _StoredCategoryRow({required this.categories, required this.onOpen});
+  final List<ShopCategory> categories;
+  final ValueChanged<ShopCategory> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = [
+      for (final category in categories)
+        if (category.productCount > 0 && category.image != null) category,
+    ];
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final itemExtent = 80 + (scale - 1) * 50;
+    final height = 96 + 22 * scale;
+    return ScrollLane(
+      height: height,
+      step: itemExtent * 2,
+      builder: (context, controller) => ListView.builder(
+        key: const PageStorageKey('stored-categories'),
+        controller: controller,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemExtent: itemExtent,
+        itemCount: visible.length,
+        itemBuilder: (context, index) {
+          final category = visible[index];
+          return Semantics(
+            button: true,
+            label: 'Ver ${category.name}',
+            excludeSemantics: true,
+            onTap: () => onOpen(category),
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: () => onOpen(category),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.softGreen,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: ShopImage(
+                            category.image!,
+                            thumbnail: true,
+                            semanticLabel: category.name,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        category.name,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _BrandRow extends StatelessWidget {
   const _BrandRow({required this.brands, required this.onOpen});
   final List<String> brands;
@@ -1162,12 +1318,15 @@ class _BrandRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    return SizedBox(
-      height: 64 + (scale - 1) * 20,
-      child: ListView.separated(
+    final height = 64 + (scale - 1) * 20;
+    return ScrollLane(
+      height: height,
+      step: 200,
+      builder: (context, controller) => ListView.separated(
         key: const PageStorageKey('brands'),
+        controller: controller,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         itemCount: brands.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
@@ -1177,30 +1336,33 @@ class _BrandRow extends StatelessWidget {
             label: 'Ver productos de $brand',
             excludeSemantics: true,
             onTap: () => onOpen(brand),
-            child: Material(
-              color: Colors.white,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              child: InkWell(
-                onTap: () => onOpen(brand),
-                child: SizedBox(
-                  width: 118 + (scale - 1) * 30,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          brand.toUpperCase(),
-                          maxLines: 1,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -.2,
-                            color: AppColors.ink,
+            child: VisibleFocus(
+              borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppColors.border),
+                ),
+                child: InkWell(
+                  onTap: () => onOpen(brand),
+                  child: SizedBox(
+                    width: 118 + (scale - 1) * 30,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            brand.toUpperCase(),
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -.2,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
                       ),
@@ -1250,12 +1412,14 @@ class _AudienceTiles extends StatelessWidget {
       label: 'Ver productos para $label',
       excludeSemantics: true,
       onTap: () => onOpen(audience.collection),
-      child: Material(
-        clipBehavior: Clip.antiAlias,
+      child: VisibleFocus(
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: () => onOpen(audience.collection),
-          child: Stack(
+        child: Material(
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: () => onOpen(audience.collection),
+            child: Stack(
             fit: StackFit.expand,
             children: [
               ShopImage(audience.image, thumbnail: true),
@@ -1304,6 +1468,7 @@ class _AudienceTiles extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -59,7 +59,7 @@ export class CatalogService {
         include: {
           brand: { select: { name: true, slug: true } },
           category: { select: { name: true, slug: true } },
-          images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+          images: { orderBy: { sortOrder: 'asc' } },
           variants: {
             where: { isActive: true },
             orderBy: { price: 'asc' },

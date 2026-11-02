@@ -80,11 +80,11 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
         const SectionTitle('¿Para quién es?'),
         Form(
           key: form,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: const InputDecoration(
                   labelText: 'Nombre de quien recibe',
                 ),
@@ -93,6 +93,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: const InputDecoration(
                   labelText: 'Correo de quien recibe',
                 ),
@@ -102,6 +103,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: const InputDecoration(
                   labelText: 'Mensaje (opcional)',
                 ),

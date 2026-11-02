@@ -122,16 +122,19 @@ class OperationsMetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 190,
     child: OperationsTile(
+      onTap: onTap,
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(14),
       child: Row(

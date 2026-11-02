@@ -659,8 +659,15 @@ VALUES (gen_random_uuid()::text, '722d583e46b4b0bc757f0d7fe039b077a8daa8510e22f7
 -- ---------------------------------------------------------------------
 -- Migración 20261009210000_user_roles
 -- ---------------------------------------------------------------------
-CREATE TYPE "UserRole" AS ENUM ('ADMINISTRATIVO', 'POSTULANTE');
-ALTER TABLE "User" ADD COLUMN "role" "UserRole" NOT NULL DEFAULT 'POSTULANTE';
+CREATE TYPE "UserRole" AS ENUM (
+  'CLIENTE',
+  'ALMACEN',
+  'REPARTIDOR',
+  'ATENCION_CLIENTE',
+  'ADMINISTRADOR',
+  'TRABAJADOR_TIENDA'
+);
+ALTER TABLE "User" ADD COLUMN "role" "UserRole" NOT NULL DEFAULT 'CLIENTE';
 
 INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
 VALUES (gen_random_uuid()::text, '3d07cbd37a2b3522cf9d807952cc0cb9162bbb68e35c1389362736f37397efda', now(), '20261009210000_user_roles', now(), 1);

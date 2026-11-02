@@ -13,7 +13,11 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(config: ConfigService) {
-    const connectionString = config.getOrThrow<string>('DATABASE_URL');
+    // DIRECT_URL es el pooler en modo sesión (puerto 5432). Las transacciones
+    // de bolsa y pedido fallan en el pooler de transacciones (6543).
+    const connectionString =
+      config.get<string>('DIRECT_URL') ??
+      config.getOrThrow<string>('DATABASE_URL');
     super({ adapter: new PrismaPg({ connectionString }) });
   }
 

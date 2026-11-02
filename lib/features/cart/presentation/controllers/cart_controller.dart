@@ -5,9 +5,9 @@ extension CartController on ShopState {
     final repository = cartRepository;
     final token = accessToken;
     if (repository == null || token == null) return;
-    if (_remoteProducts.isEmpty) await loadRemoteCatalog();
     _beginCartRequest();
     try {
+      // Primero la bolsa del servidor; el catálogo no debe bloquear el GET /cart.
       var remote = await repository.getCart(accessToken: token);
       final pending = _pendingLocalQuantities(remote);
       if (pending.isNotEmpty) {
@@ -18,6 +18,11 @@ extension CartController on ShopState {
               {'variantId': entry.key, 'quantity': entry.value},
           ],
         );
+      }
+      if (_remoteProducts.isEmpty) {
+        try {
+          await loadRemoteCatalog();
+        } catch (_) {}
       }
       await _loadCartProducts(remote);
       _applyRemoteCart(remote);
@@ -284,6 +289,8 @@ extension CartController on ShopState {
   }
 
   void _persistDemoCartItem(CartItem item, {int? quantity}) {
+    // En remoto la bolsa va por CartRepository (/cart). setCartItem es solo demo.
+    if (cartRepository != null) return;
     final repository = operationsRepository;
     final userId = user.id;
     final variantId = item.remoteVariantId;

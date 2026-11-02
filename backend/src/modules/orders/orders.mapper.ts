@@ -17,6 +17,7 @@ export const orderInclude = {
     },
   },
   statusHistory: { orderBy: { createdAt: 'asc' as const } },
+  paymentAttempts: { orderBy: { createdAt: 'desc' as const }, take: 1 },
   addressSnapshot: true,
 } satisfies Prisma.OrderInclude;
 
@@ -32,6 +33,9 @@ export function mapOrder(order: OrderWithRelations) {
     shipping: order.shipping.toString(),
     total: order.total.toString(),
     currency: order.currency,
+    carrier: order.carrier,
+    trackingCode: order.trackingCode,
+    paymentStatus: order.paymentAttempts[0]?.status ?? null,
     estimatedFrom: order.estimatedFrom,
     estimatedTo: order.estimatedTo,
     createdAt: order.createdAt,

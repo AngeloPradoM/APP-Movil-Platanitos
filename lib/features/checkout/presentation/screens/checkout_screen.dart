@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/accessibility/shop_speech.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../app/navigation/navigation.dart';
 import '../../../../app/models/shop_models.dart';
@@ -45,17 +46,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> pay() async {
     if (processing || ShopScope.of(context).cart.isEmpty) return;
-    setState(() => processing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    if (payment == PaymentMethod.card) {
-      setState(() {
-        processing = false;
-        paymentError = true;
-      });
-      return;
-    }
     final state = ShopScope.of(context);
+    final amount = money(state.total);
+    await ShopSpeech.announce(ShopSpeech.paymentPrompt(state.total));
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar pago'),
+        content: Semantics(
+          liveRegion: true,
+          child: Text(
+            'Vas a pagar $amount con ${payment.label}. '
+            'Puedes cancelar si quieres revisar la bolsa o el método de pago.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ShopSpeech.stop();
+              Navigator.pop(context, false);
+            },
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ShopSpeech.stop();
+              Navigator.pop(context, true);
+            },
+            child: Text('Confirmar $amount'),
+          ),
+        ],
+      ),
+    );
+    await ShopSpeech.stop();
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      processing = true;
+      paymentError = false;
+    });
     if (state.cart.isEmpty) {
       setState(() => processing = false);
       return;
@@ -463,7 +492,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             PaymentMethod.card => const DemoCardForm(),
             PaymentMethod.cash => const Text(
-              'Generaremos un código de demostración válido por 24 horas para agentes KasNet, Western Union y establecimientos autorizados.',
+              'Pagas al recibir el pedido. El cobro queda pendiente hasta que almacén marque la entrega.',
               style: TextStyle(fontSize: 13, height: 1.45),
             ),
           },
@@ -471,7 +500,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     const SizedBox(height: 4),
     const Text(
-      'Pago simulado · No ingreses datos reales',
+      'Yape, Plin y tarjeta quedan confirmados. El efectivo se cobra al entregar.',
       textAlign: TextAlign.center,
       style: TextStyle(color: AppColors.muted, fontSize: 11.5),
     ),

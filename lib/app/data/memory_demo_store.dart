@@ -267,4 +267,12 @@ class MemoryInventoryRepository implements InventoryRepository {
       ),
     );
   }
+
+  @override
+  Future<void> updatePrice({
+    required String variantId,
+    required double price,
+  }) async {
+    throw StateError('El precio de demostración no se edita en memoria.');
+  }
 }

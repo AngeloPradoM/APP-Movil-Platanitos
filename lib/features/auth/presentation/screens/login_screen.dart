@@ -248,12 +248,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(height: isDemoClientLogin ? 24 : 56),
                         Form(
                           key: form,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               fieldLabel('Correo electrónico'),
                               TextFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 initialValue: isDemoClientLogin
                                     ? demoClientProfile!.email
                                     : null,
@@ -261,12 +262,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'ejemplo@correo.com',
                                 ),
                                 keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
                                 validator: Validators.email,
                                 onChanged: (value) => email = value,
                               ),
                               const SizedBox(height: 16),
                               fieldLabel('Contraseña'),
                               TextFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 decoration: fieldDecoration(
                                   'Ingresa tu contraseña',
                                   suffix: IconButton(
@@ -285,6 +289,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 obscureText: hidden,
+                                textInputAction: TextInputAction.go,
+                                onFieldSubmitted: (_) {
+                                  if (!submitting) login();
+                                },
                                 validator: Validators.password,
                                 onChanged: (value) => password = value,
                               ),
@@ -331,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        if (!isDemoClientLogin) ...[
+                        if (!isDemoClientLogin && appState.isDemoMode) ...[
                           const SizedBox(height: 18),
                           const Row(
                             children: [

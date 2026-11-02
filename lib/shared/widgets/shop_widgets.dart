@@ -6,93 +6,127 @@ import '../../core/theme/app_theme.dart';
 import '../../app/models/shop_models.dart';
 import '../../app/state/shop_state.dart';
 
-class BrandLogo extends StatelessWidget {
-  const BrandLogo({super.key, this.fontSize = 32});
-  final double fontSize;
+/// Contorno fuerte cuando un control hijo tiene el foco del teclado (WCAG 2.4.7).
+class VisibleFocus extends StatefulWidget {
+  const VisibleFocus({
+    super.key,
+    required this.child,
+    this.borderRadius,
+    this.circle = false,
+  });
+
+  final Widget child;
+  final BorderRadius? borderRadius;
+  final bool circle;
+
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'platanitos',
-    excludeSemantics: true,
-    child: FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomPaint(
-            size: Size(fontSize * 36 / 32, fontSize * 44 / 32),
-            painter: const _BrandMarkPainter(),
-          ),
-          SizedBox(width: fontSize / 16),
-          Text(
-            'platanitos',
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: AppColors.ink,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -fontSize / 26,
-              height: 1,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+  State<VisibleFocus> createState() => _VisibleFocusState();
 }
 
-/// Isotipo dibujado: hojas de palmera sobre dos plátanos.
-class _BrandMarkPainter extends CustomPainter {
-  const _BrandMarkPainter();
+class _VisibleFocusState extends State<VisibleFocus> {
+  late final FocusNode _node = FocusNode(
+    debugLabel: 'VisibleFocus',
+    skipTraversal: true,
+    canRequestFocus: false,
+  );
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 36, size.height / 44);
-    final outline = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3
-      ..strokeJoin = StrokeJoin.round
-      ..color = AppColors.ink;
-    const leaves = [
-      (-2.75, Color(0xFF3FAE5A)),
-      (-2.1, Color(0xFF2A8F47)),
-      (-1.35, Color(0xFF3FAE5A)),
-      (-0.55, Color(0xFF2A8F47)),
-    ];
-    for (final (angle, color) in leaves) {
-      canvas
-        ..save()
-        ..translate(18, 17)
-        ..rotate(angle);
-      final leaf = Path()
-        ..moveTo(0, 0)
-        ..quadraticBezierTo(8, -6, 17, 0)
-        ..quadraticBezierTo(8, 5, 0, 0)
-        ..close();
-      canvas
-        ..drawPath(leaf, Paint()..color = color)
-        ..drawPath(leaf, outline)
-        ..restore();
-    }
-    final banana = Path()
-      ..moveTo(10, 20)
-      ..quadraticBezierTo(26, 21, 25, 31)
-      ..quadraticBezierTo(20, 25, 10, 25)
-      ..close();
-    final yellow = Paint()..color = AppColors.yellow;
-    canvas
-      ..drawPath(banana, yellow)
-      ..drawPath(banana, outline)
-      ..save()
-      ..translate(36, 11)
-      ..scale(-1, 1);
-    canvas
-      ..drawPath(banana, yellow)
-      ..drawPath(banana, outline)
-      ..restore();
+  void initState() {
+    super.initState();
+    _node.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
   }
 
   @override
-  bool shouldRepaint(_BrandMarkPainter oldDelegate) => false;
+  void dispose() {
+    _node
+      ..removeListener(_onFocusChange)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focused = _node.hasFocus;
+    final ring = Theme.of(context).focusColor.withValues(alpha: 1);
+    final width = ring.computeLuminance() > 0.45 ? 4.0 : 3.0;
+    final radius =
+        widget.borderRadius ?? BorderRadius.circular(widget.circle ? 999 : 10);
+
+    return Focus(
+      focusNode: _node,
+      canRequestFocus: false,
+      skipTraversal: true,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          shape: widget.circle ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: widget.circle ? null : radius,
+          border: Border.all(
+            color: focused ? ring : Colors.transparent,
+            width: width,
+          ),
+          boxShadow: focused
+              ? [
+                  BoxShadow(
+                    color: ring.withValues(alpha: 0.45),
+                    blurRadius: 0,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+          color: focused ? ring.withValues(alpha: 0.14) : null,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class BrandLogo extends StatelessWidget {
+  const BrandLogo({super.key, this.fontSize = 32});
+  final double fontSize;
+
+  static const assetPath = 'assets/public/logo.png';
+
+  @override
+  Widget build(BuildContext context) {
+    final markSize = fontSize * 1.35;
+    return Semantics(
+      label: 'platanitos',
+      excludeSemantics: true,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              assetPath,
+              width: markSize,
+              height: markSize,
+              filterQuality: FilterQuality.high,
+            ),
+            SizedBox(width: fontSize / 8),
+            Text(
+              'platanitos',
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: AppColors.ink,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -fontSize / 26,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ShopImage extends StatelessWidget {
@@ -101,14 +135,33 @@ class ShopImage extends StatelessWidget {
     super.key,
     this.fit = BoxFit.cover,
     this.thumbnail = false,
+    this.semanticLabel,
   });
   final String url;
   final BoxFit fit;
 
   /// Descarga y decodifica la foto según el tamaño en que se muestra.
   final bool thumbnail;
+  final String? semanticLabel;
 
-  static final _unsplashWidth = RegExp(r'([?&])w=\d+');
+  static final _unsplashPhoto = RegExp(
+    r'images\.unsplash\.com/photo-([A-Za-z0-9_-]+)',
+  );
+
+  /// Unsplash no abre desde esta red. El proxy descarga la misma foto
+  /// (la que corresponde al tipo de producto) y la entrega desde otro host.
+  String _reachable(String source, int width) {
+    if (_unsplashPhoto.firstMatch(source) == null) return source;
+    final uri = Uri.tryParse(source);
+    if (uri == null || uri.host != 'images.unsplash.com') return source;
+    final query = Map<String, String>.from(uri.queryParameters);
+    query['w'] = '$width';
+    query.putIfAbsent('fit', () => 'crop');
+    query.putIfAbsent('q', () => '85');
+    final upstream =
+        'images.unsplash.com${uri.path}?${Uri(queryParameters: query).query}';
+    return 'https://images.weserv.nl/?url=${Uri.encodeComponent(upstream)}&output=jpg';
+  }
 
   @override
   Widget build(BuildContext context) => thumbnail
@@ -118,19 +171,14 @@ class ShopImage extends StatelessWidget {
               constraints.maxWidth,
               constraints.maxHeight,
             ].where((value) => value.isFinite).fold(0.0, math.max);
-            if (side == 0) return _image(url, null);
-            final pixels = side * MediaQuery.devicePixelRatioOf(context) * 1.25;
+            final pixels = side.isFinite && side > 0
+                ? side * MediaQuery.devicePixelRatioOf(context) * 1.25
+                : 800.0;
             final width = ((pixels / 200).ceil() * 200).clamp(200, 1200);
-            final sized = url.contains('images.unsplash.com/')
-                ? url.replaceFirstMapped(
-                    _unsplashWidth,
-                    (match) => '${match[1]}w=$width',
-                  )
-                : url;
-            return _image(sized, width);
+            return _image(_reachable(url, width), width);
           },
         )
-      : _image(url, null);
+      : _image(_reachable(url, 800), null);
 
   Widget _image(String source, int? cacheWidth) => Image.network(
     source,
@@ -138,6 +186,7 @@ class ShopImage extends StatelessWidget {
     width: double.infinity,
     height: double.infinity,
     cacheWidth: cacheWidth,
+    semanticLabel: semanticLabel,
     loadingBuilder: (context, child, progress) => progress == null
         ? child
         : const ColoredBox(
@@ -189,8 +238,175 @@ class PageFrame extends StatelessWidget {
 }
 
 const softBackground = Color(0xFFF8F9FB);
-const fieldBorderColor = Color(0xFFE2E5EA);
+const fieldBorderColor = Color(0xFFC9D0CC);
 const hintColor = Color(0xFFA0A6AE);
+
+/// Carril horizontal con flechas para ver todo el contenido.
+class ScrollLane extends StatefulWidget {
+  const ScrollLane({
+    super.key,
+    required this.builder,
+    this.step = 220,
+    this.height,
+  });
+
+  final Widget Function(BuildContext context, ScrollController controller)
+  builder;
+  final double step;
+  final double? height;
+
+  @override
+  State<ScrollLane> createState() => _ScrollLaneState();
+}
+
+class _ScrollLaneState extends State<ScrollLane> {
+  final _scroll = ScrollController();
+  var _canBack = false;
+  var _canForward = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_sync);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_sync)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _sync() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    final back = position.pixels > 1;
+    final forward = position.pixels < position.maxScrollExtent - 1;
+    if (back == _canBack && forward == _canForward) return;
+    setState(() {
+      _canBack = back;
+      _canForward = forward;
+    });
+  }
+
+  Future<void> _page(double delta) async {
+    if (!_scroll.hasClients) return;
+    final target = (_scroll.offset + delta).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    await _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lane = Row(
+      children: [
+        _LaneArrow(
+          icon: Icons.chevron_left,
+          enabled: _canBack,
+          tooltip: 'Anterior',
+          onPressed: () => _page(-widget.step),
+        ),
+        Expanded(child: widget.builder(context, _scroll)),
+        _LaneArrow(
+          icon: Icons.chevron_right,
+          enabled: _canForward,
+          tooltip: 'Siguiente',
+          onPressed: () => _page(widget.step),
+        ),
+      ],
+    );
+    return widget.height == null
+        ? lane
+        : SizedBox(height: widget.height, child: lane);
+  }
+}
+
+class _LaneArrow extends StatelessWidget {
+  const _LaneArrow({
+    required this.icon,
+    required this.enabled,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: enabled ? onPressed : null,
+    style: IconButton.styleFrom(
+      minimumSize: const Size(40, 40),
+      foregroundColor: enabled ? AppColors.darkGreen : AppColors.border,
+      disabledForegroundColor: AppColors.border,
+    ),
+    icon: Icon(icon, size: 26),
+  );
+}
+
+/// TabBar con el mismo patrón de flechas en paneles y catálogo.
+class ShopTabBar extends StatelessWidget {
+  const ShopTabBar({
+    super.key,
+    required this.tabs,
+    this.controller,
+    this.isScrollable = true,
+  });
+
+  final List<Widget> tabs;
+  final TabController? controller;
+  final bool isScrollable;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabsController = controller ?? DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: tabsController,
+      builder: (context, _) {
+        final canBack = tabsController.index > 0;
+        final canForward = tabsController.index < tabsController.length - 1;
+        return Row(
+          children: [
+            _LaneArrow(
+              icon: Icons.chevron_left,
+              enabled: canBack,
+              tooltip: 'Pestaña anterior',
+              onPressed: () => tabsController.animateTo(tabsController.index - 1),
+            ),
+            Expanded(
+              child: TabBar(
+                controller: tabsController,
+                isScrollable: isScrollable,
+                tabAlignment: isScrollable ? TabAlignment.start : null,
+                indicatorColor: AppColors.green,
+                labelColor: AppColors.green,
+                unselectedLabelColor: AppColors.muted,
+                tabs: tabs,
+              ),
+            ),
+            _LaneArrow(
+              icon: Icons.chevron_right,
+              enabled: canForward,
+              tooltip: 'Pestaña siguiente',
+              onPressed: () => tabsController.animateTo(tabsController.index + 1),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 /// Campo blanco con borde gris que se marca en verde al enfocarse.
 InputDecoration fieldDecoration(String hint, {Widget? suffix}) =>
@@ -268,7 +484,14 @@ void feedback(BuildContext context, String text) =>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Semantics(
+            liveRegion: true,
+            label: text,
+            child: Text(text),
+          ),
+        ),
       );
 Future<void> showInfo(BuildContext context, String title, String message) =>
     showDialog<void>(
@@ -541,43 +764,46 @@ class FilterPill extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     selected: selected,
-    child: Material(
-      color: selected ? AppColors.darkGreen : Colors.white,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? AppColors.darkGreen : const Color(0xFFE2E5EA),
+    child: VisibleFocus(
+      borderRadius: BorderRadius.circular(999),
+      child: Material(
+        color: selected ? AppColors.darkGreen : Colors.white,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: selected ? AppColors.darkGreen : const Color(0xFFE2E5EA),
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        overlayColor: selected
-            ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
-            : _greenOverlay,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: minHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: selected ? Colors.white : AppColors.ink,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          overlayColor: selected
+              ? WidgetStatePropertyAll(Colors.white.withValues(alpha: .14))
+              : _greenOverlay,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: selected ? Colors.white : AppColors.ink,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.ink,
+                      fontSize: 12.5,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(width: 5),
                 ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.ink,
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

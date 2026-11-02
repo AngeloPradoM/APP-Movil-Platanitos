@@ -374,6 +374,9 @@ class TrackingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    final order =
+        state.orders.where((item) => item.id == this.order.id).firstOrNull ??
+        this.order;
     final (title, message, icon) = _statusInfo(order.status);
     return PageFrame(
       title: 'Seguir mi pedido',
@@ -468,9 +471,36 @@ class TrackingScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (order.carrier != null || order.trackingCode != null) ...[
+            const SizedBox(height: 16),
+            OrderCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    order.carrier ?? 'Platanitos Envíos',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Código de seguimiento: ${order.trackingCode ?? order.id}'),
+                  const SizedBox(height: 4),
+                  Text(
+                    order.paymentStatus == 'PENDING'
+                        ? 'Pago en efectivo pendiente hasta la entrega.'
+                        : order.paymentStatus == 'SUCCEEDED'
+                        ? 'Pago confirmado.'
+                        : order.payment.shortLabel,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
-          const OrderFootnote(
-            'Estado ilustrativo. El seguimiento se actualizará cuando se confirme cada etapa.',
+          OrderFootnote(
+            order.remote
+                ? 'El envío avanza en este orden: preparación, despacho, en camino y entregado.'
+                : 'Estado ilustrativo. El seguimiento se actualizará cuando se confirme cada etapa.',
           ),
           const SizedBox(height: 18),
           FilledButton(
@@ -490,7 +520,7 @@ class TrackingScreen extends StatelessWidget {
             child: const Text('Volver al Inicio'),
           ),
           const SizedBox(height: 4),
-          if (order.status != OrderStatus.delivered)
+          if (!order.remote && order.status != OrderStatus.delivered)
             TextButton(
               onPressed: () {
                 state.advanceOrder(order);
@@ -520,6 +550,9 @@ class DeliveryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
+    final order =
+        state.orders.where((item) => item.id == this.order.id).firstOrNull ??
+        this.order;
     final (title, _, icon) = _statusInfo(order.status);
     final address = order.address;
     final units = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
@@ -650,6 +683,7 @@ class DeliveryScreen extends StatelessWidget {
             child: const Text('Necesito ayuda'),
           ),
           const SizedBox(height: 4),
+          if (!order.remote)
           TextButton(
             onPressed: () {
               state.deliverOrder(order);

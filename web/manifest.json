@@ -1,11 +1,11 @@
 {
-    "name": "platanitos_app",
-    "short_name": "platanitos_app",
+    "name": "Platanitos",
+    "short_name": "Platanitos",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#2A8F47",
+    "description": "Tienda Platanitos",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

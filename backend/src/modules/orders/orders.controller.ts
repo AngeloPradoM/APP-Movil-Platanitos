@@ -20,6 +20,11 @@ export class OrdersController {
     return this.ordersService.list(user.id);
   }
 
+  @Get('notices')
+  notices(@CurrentUser() user: { id: string }) {
+    return this.ordersService.notices(user.id);
+  }
+
   @Get(':publicNumber')
   get(@CurrentUser() user: { id: string }, @Param('publicNumber') publicNumber: string) {
     return this.ordersService.get(user.id, publicNumber);

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/config/app_environment.dart';
 import '../core/theme/app_theme.dart';
 import './dependencies.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -36,11 +37,13 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
     try {
       final createdDependencies = await AppDependencies.create();
       final createdState = ShopState(
+        seedHistory: createdDependencies.mode == AppMode.demo,
         catalogRepository: createdDependencies.catalog,
         authRepository: createdDependencies.auth,
         demoAuthRepository: createdDependencies.demoAuth,
         inventoryRepository: createdDependencies.inventory,
         operationsRepository: createdDependencies.operations,
+        tokenStore: createdDependencies.tokenStore,
         cartRepository: createdDependencies.cart,
         favoritesRepository: createdDependencies.favorites,
         ordersRepository: createdDependencies.orders,
@@ -77,10 +80,19 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
     super.dispose();
   }
 
-  Widget _materialApp(Widget home) => MaterialApp(
+  Widget _materialApp(Widget home, {ShopState? state}) => MaterialApp(
     title: 'Platanitos',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
+    builder: state == null
+        ? null
+        : (context, child) => ListenableBuilder(
+            listenable: state,
+            builder: (context, _) => Theme(
+              data: buildTheme(highContrast: state.highContrast),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
     home: home,
   );
 
@@ -128,6 +140,7 @@ class _PlatanitosAppState extends State<PlatanitosApp> {
       state: currentState,
       child: _materialApp(
         currentState.signedIn ? const RoleHome() : const LoginScreen(),
+        state: currentState,
       ),
     );
   }

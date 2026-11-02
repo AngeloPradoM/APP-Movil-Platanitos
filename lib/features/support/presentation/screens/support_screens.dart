@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/navigation/navigation.dart';
 import '../../../../app/state/shop_state.dart';
+import '../../../../core/errors/api_exception.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/shop_widgets.dart';
 import '../../../operations/domain/operations_models.dart';
+import '../../../orders/domain/order_models.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -16,13 +19,36 @@ class _SupportScreenState extends State<SupportScreen> {
   String? orderId;
   final reason = TextEditingController();
   Future<List<SupportRequestRecord>>? requests;
+  bool submitting = false;
+  int _revision = -1;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final state = ShopScope.of(context);
-    orderId ??= state.orders.isEmpty ? null : state.orders.first.id;
-    requests ??= _load();
+    final revision = state.liveRevision;
+    orderId ??= state.orders.isEmpty ? null : _eligibleOrders(state.orders).firstOrNull?.id;
+    if (_revision != revision || requests == null) {
+      _revision = revision;
+      requests = _load();
+    }
+  }
+
+  List<ShopOrder> _eligibleOrders(List<ShopOrder> orders) {
+    return [
+      for (final order in orders)
+        if (_allowsType(order, type)) order,
+    ];
+  }
+
+  bool _allowsType(ShopOrder order, String selected) {
+    if (selected == 'CLAIM') {
+      return order.status == OrderStatus.preparation ||
+          order.status == OrderStatus.dispatch ||
+          order.status == OrderStatus.transit ||
+          order.status == OrderStatus.delivered;
+    }
+    return order.status == OrderStatus.delivered;
   }
 
   Future<List<SupportRequestRecord>> _load() {
@@ -33,42 +59,60 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Future<void> _submit() async {
     final state = ShopScope.of(context);
-    if (orderId == null ||
-        reason.text.trim().isEmpty ||
-        state.user.id == null) {
+    final repository = state.operationsRepository;
+    if (repository == null ||
+        orderId == null ||
+        reason.text.trim().length < 10 ||
+        submitting) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Selecciona un pedido y describe tu solicitud.'),
+          content: Text(
+            'Elige un pedido entregado (o en curso si es reclamo) y escribe al menos 10 caracteres.',
+          ),
         ),
       );
       return;
     }
+    setState(() => submitting = true);
     try {
-      final records = await state.operationsRepository!.orders(
-        userId: state.user.id,
-      );
-      final order = records.firstWhere((item) => item.publicNumber == orderId);
-      await state.operationsRepository!.createSupportRequest(
-        orderId: order.id,
-        userId: state.user.id!,
+      await repository.createSupportRequest(
+        orderId: orderId!,
+        userId: state.user.id ?? '',
         type: type,
-        reason: reason.text,
+        reason: reason.text.trim(),
       );
       reason.clear();
+      if (!mounted) return;
+      setState(() {
+        requests = _load();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Solicitud enviada. Atención al cliente la revisará pronto.',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
       if (mounted) {
-        setState(() {
-          requests = _load();
-        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Solicitud registrada localmente.')),
+          SnackBar(content: Text(error.message)),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo registrar la solicitud.')),
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'No se pudo registrar la solicitud.',
+            ),
+          ),
         );
       }
+    } finally {
+      if (mounted) setState(() => submitting = false);
     }
   }
 
@@ -82,6 +126,10 @@ class _SupportScreenState extends State<SupportScreen> {
   Widget build(BuildContext context) {
     final state = ShopScope.of(context);
     if (state.operationsRepository == null) return const _InformativeSupport();
+    final eligible = _eligibleOrders(state.orders);
+    if (orderId != null && !eligible.any((order) => order.id == orderId)) {
+      orderId = eligible.firstOrNull?.id;
+    }
     return PageFrame(
       title: 'Centro de ayuda',
       child: ListView(
@@ -91,17 +139,13 @@ class _SupportScreenState extends State<SupportScreen> {
             'Nueva solicitud',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: orderId,
-            decoration: const InputDecoration(labelText: 'Pedido'),
-            items: [
-              for (final order in state.orders)
-                DropdownMenuItem(value: order.id, child: Text(order.id)),
-            ],
-            onChanged: (value) => setState(() => orderId = value),
+          const SizedBox(height: 8),
+          const Text(
+            'Cambio y devolución: solo pedidos entregados. '
+            'Reclamo: también pedidos en preparación, despacho o en camino.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.35),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -114,26 +158,64 @@ class _SupportScreenState extends State<SupportScreen> {
                 ChoiceChip(
                   label: Text(option.$2),
                   selected: type == option.$1,
-                  onSelected: (_) => setState(() => type = option.$1),
+                  onSelected: (_) => setState(() {
+                    type = option.$1;
+                    final next = _eligibleOrders(state.orders);
+                    if (!next.any((order) => order.id == orderId)) {
+                      orderId = next.firstOrNull?.id;
+                    }
+                  }),
                 ),
             ],
           ),
           const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: ValueKey('support-order-$type-$orderId-${eligible.length}'),
+            initialValue:
+                eligible.any((order) => order.id == orderId) ? orderId : null,
+            decoration: const InputDecoration(labelText: 'Pedido'),
+            items: [
+              for (final order in eligible)
+                DropdownMenuItem(
+                  value: order.id,
+                  child: Text(
+                    '${order.id} · ${_orderStatus(order.status)}',
+                  ),
+                ),
+            ],
+            onChanged: eligible.isEmpty
+                ? null
+                : (value) => setState(() => orderId = value),
+          ),
+          if (eligible.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              type == 'CLAIM'
+                  ? 'No tienes pedidos aptos para reclamo.'
+                  : 'Necesitas un pedido entregado para cambio o devolución.',
+              style: const TextStyle(color: AppColors.muted, fontSize: 12.5),
+            ),
+          ],
+          const SizedBox(height: 12),
           TextField(
             controller: reason,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Motivo y detalle'),
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Motivo y detalle',
+              hintText: 'Ej.: talla incorrecta, producto dañado, demora…',
+            ),
           ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: state.orders.isEmpty ? null : _submit,
-            child: const Text('Registrar solicitud'),
+            onPressed: eligible.isEmpty || submitting ? null : _submit,
+            child: Text(submitting ? 'Enviando…' : 'Registrar solicitud'),
           ),
           const SizedBox(height: 24),
           Text(
             'Mis solicitudes',
             style: Theme.of(context).textTheme.titleLarge,
           ),
+          const SizedBox(height: 8),
           FutureBuilder<List<SupportRequestRecord>>(
             future: requests,
             builder: (context, snapshot) {
@@ -171,10 +253,17 @@ class _SupportScreenState extends State<SupportScreen> {
                   for (final item in values)
                     Card(
                       child: ListTile(
-                        leading: const Icon(Icons.support_agent_outlined),
-                        title: Text('${item.publicNumber} · ${item.type}'),
+                        leading: Icon(
+                          _typeIcon(item.type),
+                          color: AppColors.darkGreen,
+                        ),
+                        title: Text(
+                          '${item.publicNumber} · ${_typeLabel(item.type)}',
+                        ),
                         subtitle: Text(
-                          '${item.reason}\nEstado: ${item.status}',
+                          '${item.reason}'
+                          '\nEstado: ${_statusLabel(item.status)}'
+                          '${item.resolutionNote == null || item.resolutionNote!.isEmpty ? '' : '\nRespuesta: ${item.resolutionNote}'}',
                         ),
                         isThreeLine: true,
                       ),
@@ -198,7 +287,7 @@ class _InformativeSupport extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(32),
         child: Text(
-          'Selecciona un pedido para registrar cambios, devoluciones o reclamos.',
+          'Inicia sesión en modo remoto para registrar cambios, devoluciones o reclamos.',
         ),
       ),
     ),
@@ -233,3 +322,27 @@ class _OfflineScreenState extends State<OfflineScreen> {
           ),
   );
 }
+
+IconData _typeIcon(String value) => switch (value) {
+  'CHANGE' => Icons.swap_horiz,
+  'RETURN' => Icons.assignment_return_outlined,
+  'CLAIM' => Icons.report_problem_outlined,
+  _ => Icons.support_agent_outlined,
+};
+
+String _typeLabel(String value) => switch (value) {
+  'CHANGE' => 'Cambio',
+  'RETURN' => 'Devolución',
+  'CLAIM' => 'Reclamo',
+  _ => value,
+};
+
+String _statusLabel(String value) => switch (value) {
+  'REGISTERED' => 'Registrado · pendiente de atención',
+  'IN_REVIEW' => 'En revisión por atención al cliente',
+  'RESOLVED' => 'Resuelto',
+  'REJECTED' => 'Rechazado',
+  _ => value,
+};
+
+String _orderStatus(OrderStatus status) => status.label;

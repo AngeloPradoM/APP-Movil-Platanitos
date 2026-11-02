@@ -641,34 +641,46 @@ class SqliteDemoOperationsRepository implements DemoOperationsRepository {
   }
 
   @override
-  Future<void> updateSupportRequest(String requestId, String status) =>
-      _appDatabase.database.transaction((transaction) async {
-        final rows = await transaction.query(
-          'support_requests',
-          columns: ['status'],
-          where: 'id = ?',
-          whereArgs: [requestId],
-          limit: 1,
-        );
-        if (rows.isEmpty) throw StateError('La solicitud no existe.');
-        final current = rows.single['status'] as String;
-        final allowed = <String, String>{
-          'REGISTERED': 'IN_REVIEW',
-          'IN_REVIEW': 'RESOLVED',
-        };
-        if (allowed[current] != status) {
-          throw StateError('Transición de atención no permitida.');
-        }
-        await transaction.update(
-          'support_requests',
-          {
-            'status': status,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          },
-          where: 'id = ?',
-          whereArgs: [requestId],
-        );
-      });
+  Future<void> updateSupportRequest(
+    String requestId,
+    String status, {
+    String? note,
+  }) => _appDatabase.database.transaction((transaction) async {
+    final rows = await transaction.query(
+      'support_requests',
+      columns: ['status', 'reason'],
+      where: 'id = ?',
+      whereArgs: [requestId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw StateError('La solicitud no existe.');
+    final current = rows.single['status'] as String;
+    final allowed = <String, Set<String>>{
+      'REGISTERED': {'IN_REVIEW', 'REJECTED'},
+      'IN_REVIEW': {'RESOLVED', 'REJECTED'},
+    };
+    if (!(allowed[current]?.contains(status) ?? false)) {
+      throw StateError('Transición de atención no permitida.');
+    }
+    if ((status == 'RESOLVED' || status == 'REJECTED') &&
+        (note == null || note.trim().isEmpty)) {
+      throw StateError('Indica una nota de resolución o rechazo.');
+    }
+    final reason = rows.single['reason'] as String? ?? '';
+    final stamped = note == null || note.trim().isEmpty
+        ? reason
+        : '$reason\n\n---\n$note';
+    await transaction.update(
+      'support_requests',
+      {
+        'status': status,
+        'reason': stamped,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [requestId],
+    );
+  });
 
   @override
   Future<OperationsReport> report() async {

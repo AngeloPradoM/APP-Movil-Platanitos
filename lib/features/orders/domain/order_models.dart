@@ -60,6 +60,9 @@ class ShopOrder {
     this.status = OrderStatus.preparation,
     this.remote = false,
     this.address,
+    this.carrier,
+    this.trackingCode,
+    this.paymentStatus,
   });
   final String id;
   final List<OrderItem> items;
@@ -70,6 +73,9 @@ class ShopOrder {
 
   /// Indica que el pedido existe en el backend y su estado se sincroniza.
   final bool remote;
+  final String? carrier;
+  final String? trackingCode;
+  final String? paymentStatus;
   OrderStatus status;
   double get subtotal => items.fold(0, (sum, item) => sum + item.subtotal);
   double get total => subtotal + shipping;

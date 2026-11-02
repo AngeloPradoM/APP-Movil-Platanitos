@@ -110,6 +110,29 @@ class SqliteInventoryRepository implements InventoryRepository {
     });
   }
 
+  @override
+  Future<void> updatePrice({
+    required String variantId,
+    required double price,
+  }) async {
+    final cents = (price * 100).round();
+    if (cents < 0) throw ArgumentError.value(price, 'price');
+    final rows = await _appDatabase.database.query(
+      'product_variants',
+      columns: ['product_id'],
+      where: 'id = ?',
+      whereArgs: [variantId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw StateError('La variante no existe.');
+    await _appDatabase.database.update(
+      'products',
+      {'price_cents': cents},
+      where: 'id = ?',
+      whereArgs: [rows.first['product_id']],
+    );
+  }
+
   InventoryItem _itemFromRow(Map<String, Object?> row) => InventoryItem(
     variantId: row['variant_id'] as String,
     productId: row['product_id'] as String,

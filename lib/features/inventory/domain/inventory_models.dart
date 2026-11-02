@@ -18,6 +18,8 @@ class InventoryItem {
     required this.color,
     required this.physicalStock,
     required this.reservedStock,
+    this.category = '',
+    this.price = 0,
   });
 
   final String variantId;
@@ -28,6 +30,8 @@ class InventoryItem {
   final String color;
   final int physicalStock;
   final int reservedStock;
+  final String category;
+  final double price;
 
   int get availableStock => physicalStock - reservedStock;
   bool get lowStock => availableStock <= 3;

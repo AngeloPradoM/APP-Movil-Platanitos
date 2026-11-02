@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../core/config/app_environment.dart';
 import '../core/config/api_config.dart';
 import '../core/database/app_database.dart';
+import '../core/network/access_token_store.dart';
 import '../core/network/api_client.dart';
 import '../features/addresses/data/addresses_repository.dart';
 import '../features/auth/data/auth_repository.dart';
@@ -14,9 +15,11 @@ import '../features/catalog/data/local_catalog_repository.dart';
 import '../features/content/data/content_repository.dart';
 import '../features/favorites/data/favorites_repository.dart';
 import '../features/gift_cards/data/gift_cards_repository.dart';
+import '../features/inventory/data/remote_inventory_repository.dart';
 import '../features/inventory/data/sqlite_inventory_repository.dart';
 import '../features/inventory/domain/repositories/inventory_repository.dart';
 import '../features/loyalty/data/loyalty_repository.dart';
+import '../features/operations/data/remote_operations_repository.dart';
 import '../features/operations/data/memory_demo_operations_repository.dart';
 import '../features/operations/data/sqlite_demo_operations_repository.dart';
 import '../features/operations/domain/repositories/demo_operations_repository.dart';
@@ -38,6 +41,7 @@ class AppDependencies {
     this.demoAuth,
     this.inventory,
     this.operations,
+    this.tokenStore,
     this.localDatabase,
   });
 
@@ -49,6 +53,7 @@ class AppDependencies {
 
   static AppDependencies _remote() {
     final client = ApiClient(baseUrl: ApiConfig.baseUrl);
+    final tokens = AccessTokenStore();
     return AppDependencies(
       mode: AppMode.remote,
       auth: AuthRepository(client: client),
@@ -60,6 +65,9 @@ class AppDependencies {
       giftCards: GiftCardsRepository(client: client),
       content: ContentRepository(client: client),
       addresses: AddressesRepository(client: client),
+      inventory: RemoteInventoryRepository(client, tokens),
+      operations: RemoteOperationsRepository(client, tokens),
+      tokenStore: tokens,
     );
   }
 
@@ -115,6 +123,7 @@ class AppDependencies {
   final CatalogRepositoryContract? catalog;
   final InventoryRepository? inventory;
   final DemoOperationsRepository? operations;
+  final AccessTokenStore? tokenStore;
   final AppDatabase? localDatabase;
   final CartRepository? cart;
   final FavoritesRepository? favorites;

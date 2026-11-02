@@ -23,7 +23,7 @@ class Product {
   /// UUID del backend cuando el producto proviene de PostgreSQL.
   final String? remoteId, slug;
 
-  /// Galería del producto; el listado del backend solo trae la primera foto.
+  /// Galería completa que llega del catálogo.
   final List<String> images;
 
   /// Deben coincidir con IMAGE_VIEWS de backend/database/catalog.

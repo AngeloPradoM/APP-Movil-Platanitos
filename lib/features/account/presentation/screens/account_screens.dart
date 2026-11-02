@@ -19,6 +19,7 @@ import '../../../gift_cards/presentation/screens/gift_card_screen.dart';
 import '../../../content/presentation/screens/content_screens.dart';
 import '../../../loyalty/presentation/screens/recycling_screen.dart';
 import '../../../addresses/presentation/screens/address_screens.dart';
+import 'accessibility_screen.dart';
 
 Future<void> confirmLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(
@@ -93,9 +94,9 @@ class AccountScreen extends StatelessWidget {
         true,
       ),
       (
-        'Configuración',
-        Icons.settings_outlined,
-        open(const OfflineScreen()),
+        'Accesibilidad',
+        Icons.accessibility_new_outlined,
+        open(const AccessibilityScreen()),
         false,
       ),
       (
@@ -354,7 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           name: name.trim(),
           document: document,
           email: email.trim(),
-          phone: phone,
+          phone: Validators.toE164Peru(phone),
         ),
       );
       if (!mounted) return;
@@ -372,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       name = user.name;
       email = user.email;
-      phone = user.phone;
+      phone = Validators.nationalMobile(user.phone);
       document = user.document;
       editing = true;
     });
@@ -487,7 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ProfileData(
                           icon: Icons.phone_outlined,
                           label: 'Teléfono',
-                          value: '+51 ${_groupPhone(user.phone)}',
+                          value: Validators.formatDisplayPhone(user.phone),
                         ),
                         ProfileData(
                           icon: Icons.location_on_outlined,
@@ -548,17 +549,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  static String _groupPhone(String phone) => phone.length == 9
-      ? '${phone.substring(0, 3)} ${phone.substring(3, 6)} ${phone.substring(6)}'
-      : phone;
-
   Widget _editForm() => Form(
     key: form,
-    autovalidateMode: AutovalidateMode.onUserInteraction,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: name,
           decoration: const InputDecoration(labelText: 'Nombre'),
           validator: Validators.name,
@@ -566,12 +563,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: document,
           readOnly: true,
           decoration: const InputDecoration(labelText: 'Documento'),
         ),
         const SizedBox(height: 16),
         TextFormField(
+        autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: email,
           decoration: const InputDecoration(labelText: 'Correo'),
           validator: Validators.email,
@@ -580,8 +579,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           initialValue: phone,
-          decoration: const InputDecoration(labelText: 'Teléfono'),
+          decoration: const InputDecoration(
+            labelText: 'Teléfono',
+            prefixText: '+51 ',
+            hintText: '987654321',
+          ),
           validator: Validators.phone,
           keyboardType: TextInputType.phone,
           inputFormatters: [
